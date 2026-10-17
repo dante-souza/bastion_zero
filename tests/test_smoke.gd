@@ -15,7 +15,7 @@ func _expect(ok: bool, label: String) -> void:
 func _run() -> void:
     _expect(GameCatalog.TOTAL_WAVES == 8, "eight waves")
     _expect(GameCatalog.next_level_xp(2) > GameCatalog.next_level_xp(1), "XP progression increases")
-    _expect(GameCatalog.meta_cost("hull", 0) == 40, "first hull research costs 40")
+    _expect(GameCatalog.meta_cost("hull", 0) == 68, "first hull research costs 68")
     _expect(GameCatalog.meta_cost("damage", 8) == -1, "research capped")
     _expect(GameCatalog.reward(0, 1, true) > GameCatalog.reward(0, 1, false), "victory reward")
     var rng := RandomNumberGenerator.new()
@@ -27,7 +27,7 @@ func _run() -> void:
     _expect(offers.size() == 3, "three offers")
     _expect(offers[0] != offers[1] and offers[1] != offers[2] and offers[0] != offers[2], "unique offers")
     var save := SaveData.defaults()
-    save["bank"] = 40
+    save["bank"] = 68
     _expect(SaveData.buy_meta(save, "hull"), "buy available upgrade")
     _expect(save["bank"] == 0 and save["meta"]["hull"] == 1, "purchase debit and rank")
     _expect(not SaveData.buy_meta(save, "damage"), "reject unaffordable upgrade")
