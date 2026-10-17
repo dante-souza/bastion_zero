@@ -23,8 +23,14 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Configure Android SDK
-        uses: android-actions/setup-android@v3
+      # Ubuntu hosted runners already include the Android SDK. Avoid the setup-android@v3
+      # action: its legacy "tools" installation is no longer available upstream.
+      - name: Locate runner Android SDK
+        shell: bash
+        run: |
+          echo "ANDROID_HOME=${ANDROID_HOME}"
+          test -x "${ANDROID_HOME}/platform-tools/adb" || test -d "${ANDROID_HOME}/cmdline-tools"
+          command -v sdkmanager
 
       - name: Install Godot 4.4 Android SDK dependencies
         shell: bash
