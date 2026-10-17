@@ -1,0 +1,80 @@
+name: Android J8 debug APK
+
+on:
+  push:
+    branches: ['feature/m1-playable-game']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android-debug:
+    name: ARMv7 APK • Samsung Galaxy J8
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+
+      - name: Install JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configure Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Godot 4.4 Android SDK dependencies
+        shell: bash
+        run: |
+          sdkmanager "platform-tools" "build-tools;34.0.0" "platforms;android-34" "cmdline-tools;latest"
+          echo "Android SDK: ${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+
+      - name: Install Godot and export templates
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.4.1
+          use-dotnet: false
+          include-templates: true
+
+      - name: Configure Godot Android paths
+        shell: bash
+        run: |
+          mkdir -p "$HOME/.config/godot"
+          cat > "$HOME/.config/godot/editor_settings-4.tres" <<EOF
+          [gd_resource type="EditorSettings" format=3]
+
+          [resource]
+          export/android/java_sdk_path = "${JAVA_HOME}"
+          export/android/android_sdk_path = "${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          EOF
+          keytool -genkeypair -noprompt -keystore "$RUNNER_TEMP/bastion-zero-debug.keystore" \
+            -storepass android -alias androiddebugkey -keypass android \
+            -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Bastion Zero,C=BR"
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_PATH=$RUNNER_TEMP/bastion-zero-debug.keystore" >> "$GITHUB_ENV"
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_USER=androiddebugkey" >> "$GITHUB_ENV"
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=android" >> "$GITHUB_ENV"
+
+      - name: Import Godot resources
+        shell: bash
+        run: godot --headless --path . --editor --quit --quit-after 240
+
+      - name: Create 32-bit ARM debug APK
+        shell: bash
+        run: |
+          mkdir -p dist
+          godot --headless --path . --export-debug "Android J8 Debug" "dist/bastion-zero-j8-debug.apk"
+          test -s dist/bastion-zero-j8-debug.apk
+          sha256sum dist/bastion-zero-j8-debug.apk | tee dist/SHA256SUMS.txt
+
+      - name: Upload J8 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bastion-Zero-M1-J8-ARMv7-debug
+          path: |
+            dist/bastion-zero-j8-debug.apk
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30
