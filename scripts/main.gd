@@ -12,6 +12,9 @@ var hud_detail: Label
 var xp_bar: ProgressBar
 
 func _ready() -> void:
+    # Fullscreen root must not swallow battlefield taps before _unhandled_input.
+    # Child GUI buttons still receive events through their own mouse filters.
+    mouse_filter = Control.MOUSE_FILTER_IGNORE
     record = SaveData.load_game()
     arena = Arena.new()
     add_child(arena)

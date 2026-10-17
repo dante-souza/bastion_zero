@@ -2,7 +2,7 @@ class_name GameCatalog
 extends RefCounted
 
 ## All tuning is centralized for transparent, non-monetized progression.
-const GAME_VERSION := "0.1.0"
+const GAME_VERSION := "0.1.1"
 const TOTAL_WAVES := 8
 const WAVE_SECONDS := 42.0
 const WORLD_SIZE := Vector2(720.0, 1280.0)

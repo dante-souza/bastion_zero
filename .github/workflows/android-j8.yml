@@ -81,7 +81,7 @@ jobs:
       - name: Upload J8 APK
         uses: actions/upload-artifact@v4
         with:
-          name: Bastion-Zero-M1-J8-ARMv7-debug
+          name: Bastion-Zero-M1-J8-ARMv7-v0.1.1-touchfix
           path: |
             dist/bastion-zero-j8-debug.apk
             dist/SHA256SUMS.txt
