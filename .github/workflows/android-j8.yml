@@ -29,8 +29,11 @@ jobs:
         shell: bash
         run: |
           echo "ANDROID_HOME=${ANDROID_HOME}"
-          test -x "${ANDROID_HOME}/platform-tools/adb" || test -d "${ANDROID_HOME}/cmdline-tools"
-          command -v sdkmanager
+          test -d "${ANDROID_HOME}/cmdline-tools"
+          SDKMANAGER="$(find "${ANDROID_HOME}/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)"
+          test -n "$SDKMANAGER"
+          echo "$(dirname "$SDKMANAGER")" >> "$GITHUB_PATH"
+          echo "Using $SDKMANAGER"
 
       - name: Install Godot 4.4 Android SDK dependencies
         shell: bash
