@@ -352,7 +352,7 @@ func _move_projectiles(delta: float) -> void:
             if kind == "rocket":
                 _damage_by_id(collision, base_damage, "volley")
                 if int(levels["volley"]) >= 3:
-                    _blast(hit_at, 54.0 + int(levels["volley"]) * 7.0, base_damage * 0.45, "volley", GOLD)
+                    _blast(hit_at, 54.0 + int(levels["volley"]) * 7.0, base_damage * 0.45, "volley", VisualProfile.COMET_IMPACT)
                 if int(levels["volley"]) >= 4 and projectiles.size() < MAX_BULLETS - 3:
                     for j in range(3):
                         var velocity_frag := Vector2.from_angle(-PI + j * PI / 2.0) * 450.0
@@ -385,7 +385,10 @@ func _move_projectiles(delta: float) -> void:
             else:
                 _damage_by_id(collision, base_damage, "volley")
                 projectiles.remove_at(i)
-            _effect("flash", hit_at, Vector2.ZERO, 12.0 if kind == "gun" else 22.0, CYAN if kind == "gun" else GOLD, 0.14 if kind == "gun" else 0.22)
+            _effect("flash" if kind == "gun" else "impact",
+                hit_at, Vector2.ZERO, 12.0 if kind == "gun" else 22.0,
+                VisualProfile.GUN_TRACER if kind == "gun" else VisualProfile.COMET_IMPACT,
+                0.14 if kind == "gun" else 0.22)
         elif float(bullet["life"]) <= 0.0 or next.y < 110.0 or next.y > 1180.0:
             projectiles.remove_at(i)
 
@@ -545,7 +548,7 @@ func _fire_beam() -> void:
         var destination: Vector2 = enemies[idx]["pos"]
         var direction: Vector2 = (destination - start).normalized()
         var end: Vector2 = start + direction * 1300.0
-        _effect("beam", start, end, 4.0 + int(levels["beam"]), CYAN, 0.16)
+        _effect("beam", start, end, 4.0 + int(levels["beam"]), VisualProfile.PRISM_BEAM, 0.16)
         var hits: Array[Dictionary] = []
         for enemy in enemies:
             var offset: Vector2 = Vector2(enemy["pos"]) - start
@@ -585,7 +588,7 @@ func _fire_arc() -> void:
         if idx < 0:
             break
         var pos: Vector2 = enemies[idx]["pos"]
-        _effect("beam", point, pos, 3.0, BLUE, 0.27)
+        _effect("arc", point, pos, 3.0, VisualProfile.ARC_BOLT, 0.27)
         if int(levels["arc"]) >= 3:
             enemies[idx]["stun"] = maxf(float(enemies[idx]["stun"]), 0.33)
         _damage_by_id(next_id, _power(26.0 + int(levels["arc"]) * 8.0) * pow(0.82, jump), "arc")
@@ -619,8 +622,8 @@ func _fire_nova() -> void:
         if neighbors > best_score:
             best_score = neighbors
             center = pos
-    _effect("ring", center, Vector2.ZERO, radius, GREEN, 0.65)
-    _blast(center, radius, _power(17.0 + int(levels["nova"]) * 12.0), "nova", GREEN)
+    _effect("nova", center, Vector2.ZERO, radius, VisualProfile.NOVA_FIELD, 0.65)
+    _blast(center, radius, _power(17.0 + int(levels["nova"]) * 12.0), "nova", VisualProfile.NOVA_FIELD)
     for enemy in enemies:
         if Vector2(enemy["pos"]).distance_to(center) <= radius:
             enemy["slow"] = maxf(float(enemy["slow"]), 1.1 + float(levels["nova"]) * 0.30)
@@ -629,7 +632,8 @@ func _fire_nova() -> void:
         _blast(center, radius * 0.67, _power(24.0), "nova", GOLD)
 
 func _blast(pos: Vector2, radius: float, amount: float, source: String, color: Color) -> void:
-    _effect("ring", pos, Vector2.ZERO, radius, color, 0.40)
+    if source != "nova":
+        _effect("ring", pos, Vector2.ZERO, radius, color, 0.40)
     var victims: Array[int] = []
     for enemy in enemies:
         if Vector2(enemy["pos"]).distance_to(pos) <= radius + float(enemy["radius"]):
@@ -710,26 +714,6 @@ func _draw() -> void:
         EnemyRenderer.draw_to(self, enemy, low_fx, _visual_clock,
             int(enemy["id"]) == focused_id, _elite_enraged)
     for bullet in projectiles:
-        var pos: Vector2 = bullet["pos"]
-        if bullet["kind"] == "gun":
-            draw_line(pos, pos - Vector2(bullet["velocity"]).normalized() * 18.0, CYAN, 2.8, true)
-            draw_circle(pos, 3.0, Color.WHITE)
-        else:
-            draw_circle(pos, 9.0 if bullet["kind"] == "rocket" else 4.0, GOLD)
-            if bullet["kind"] == "rocket":
-                draw_line(pos, pos - Vector2(bullet["velocity"]).normalized() * 24.0, Color("#d55686"), 3.0, true)
+        WeaponEffects.draw_projectile(self, bullet, low_fx)
     for fx in effects:
-        var alpha: float = clampf(float(fx["ttl"]) / float(fx["duration"]), 0.0, 1.0)
-        var shade: Color = fx["color"]
-        shade.a = alpha
-        match String(fx["kind"]):
-            "beam":
-                draw_line(fx["a"], fx["b"], shade, float(fx["radius"]) + 2.0 * alpha, true)
-                draw_line(fx["a"], fx["b"], Color(1, 1, 1, alpha * 0.50), 1.4, true)
-            "ring":
-                draw_arc(fx["a"], float(fx["radius"]) * (1.0 - 0.35 * alpha), 0, TAU, 28, shade, 4.0, true)
-            "flash":
-                draw_circle(fx["a"], float(fx["radius"]) * alpha, shade)
-            "number":
-                if not low_fx:
-                    draw_string(ThemeDB.fallback_font, fx["a"] + Vector2(0, -20 * (1.0 - alpha)), "%d" % ceili(float(fx["radius"])), HORIZONTAL_ALIGNMENT_CENTER, -1, 19, shade)
+        WeaponEffects.draw_effect(self, fx, low_fx, _visual_clock)

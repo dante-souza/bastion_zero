@@ -40,7 +40,15 @@ const ENEMY_ENRAGED := Color("#FF4768")
 const HEALTH_TRACK := Color("#273A4B")
 const HEALTH_FILL := Color("#7BF5A6")
 const HIT := Color("#ffffff")
-const GUN_TRACER := Color("#5feeff")
+const GUN_TRACER := Color("#31D6FF")
+const PRISM_BEAM := Color("#FF56DD")
+const ARC_BOLT := Color("#79A3FF")
+const ARC_HOT := Color("#CFE7FF")
+const NOVA_FIELD := Color("#47E7A8")
+const COMET_BODY := Color("#FFB545")
+const COMET_TRAIL := Color("#F16A42")
+const COMET_HOT := Color("#FFF4BB")
+const COMET_IMPACT := Color("#FF9B45")
 
 static func enemy_tint(kind: String) -> Color:
     match kind:

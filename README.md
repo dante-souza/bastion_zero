@@ -121,3 +121,12 @@ Three starter enemy types appear immediately; an elite visual test encounter
 spawns at 14 seconds. Only this showcase launch has the boost; Stage 2 and
 normal non-showcase logic are unchanged. `GameCatalog.STAGE_ONE_SHOWCASE` is
 an explicit, temporary testing switch to disable before normal game balancing.
+
+### Phase D — weapon effects
+
+Prism Beam now draws magenta rays directly over its existing physical hit
+segments; Arc Relay gets electric-blue zigzags through the same exact chain
+endpoints; Comet Volley has amber rockets and short orange impact sparks; and
+Nova Field paints a translucent jade pulse at its real area-damage center.
+J8 LOW FX keeps only inexpensive shapes and shorter electrical paths.
+See `docs/VISUAL-PHASE-D.md`.
