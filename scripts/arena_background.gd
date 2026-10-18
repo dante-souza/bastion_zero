@@ -46,7 +46,7 @@ static func draw_to(canvas: CanvasItem, reduced_fx: bool, visual_time: float) ->
     var sectors: int = 20 if reduced_fx else RADIAL_SECTORS
     var tint: Color = VisualProfile.GUARDIAN_AURA
     if reduced_fx:
-        tint.a *= 0.60
+        tint.a *= 0.86
     var edge_tint := Color(tint.r, tint.g, tint.b, 0.0)
     for i in range(sectors):
         var a0: float = TAU * float(i) / float(sectors)

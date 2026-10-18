@@ -90,3 +90,11 @@ and muzzle flashes with the **actual fired projectile positions and velocities**
 Base, dual and Saturation upgrades display the appropriate barrel count, and
 hull breaches pulse the Guardian's outer rim. This is strictly a presentation
 layer; combat math is unchanged. See [Phase B.2 details](docs/VISUAL-PHASE-B2.md).
+
+## B.3 visual-fidelity correction
+
+After the first real J8 screenshot showed a Guardian that remained too close to
+thin neon wireframe geometry, B.3 switches to a larger, original **SVG-based**
+blue reactor chassis and strengthens the smooth lower-field navy aura. The
+barrel and combat fidelity from B.2 remains intact. Run `make phase-b` after
+updating the existing branch. See [B.3 notes](docs/VISUAL-PHASE-B3.md).
