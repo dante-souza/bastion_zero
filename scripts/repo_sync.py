@@ -7,7 +7,7 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parent.parent
-BRANCHES = ("main", "dev", "feature/m1-playable-game", "feature/m1-visual-phase-a", "feature/m1-visual-phase-b-guardian", "feature/m1-visual-phase-c-enemies", "feature/m1-visual-phase-d-weapons", "feature/m1-visual-phase-e-hud", "feature/m1-visual-phase-f-evolution", "feature/m1-visual-phase-g-identity-hangar", "feature/m1-visual-phase-h-premium", "feature/m1-visual-phase-i1-combat-hud", "feature/m1-visual-phase-i2-evolution")
+BRANCHES = ("main", "dev", "feature/m1-playable-game", "feature/m1-visual-phase-a", "feature/m1-visual-phase-b-guardian", "feature/m1-visual-phase-c-enemies", "feature/m1-visual-phase-d-weapons", "feature/m1-visual-phase-e-hud", "feature/m1-visual-phase-f-evolution", "feature/m1-visual-phase-g-identity-hangar", "feature/m1-visual-phase-h-premium", "feature/m1-visual-phase-i1-combat-hud", "feature/m1-visual-phase-i2-evolution", "feature/m1-visual-phase-i3-title-menu")
 
 
 def git(*args: str, capture: bool = True, check: bool = True) -> subprocess.CompletedProcess[str]:

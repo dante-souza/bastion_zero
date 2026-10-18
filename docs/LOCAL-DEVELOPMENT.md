@@ -327,3 +327,26 @@ make phase-i2-screenshot
 
 Assets remain directly committed to GitHub, and CI still performs Godot
 checks and APK export. Local Godot is not required.
+
+## Phase I.3 — Tactical Title/Menu + readable I.2 cards
+
+The default landing view on `feature/m1-visual-phase-i3-title-menu` is a
+reference-inspired BASTION/ZERO wordmark, original Guardian, defensive horizon,
+primary deploy control and HANGAR/SECTORS/SETTINGS navigation. All buttons
+are native and functional; Hangar still hosts alloy research, Sectors opens
+live stage selection, and Settings changes the persisted LOW/FULL flag.
+The I.2 J8 font corrections are included; CHOOSE ONE is unchanged (39).
+
+Android J8 version `0.9.2-phase-i3-title-menu-debug`, version code 22, same
+premium `com.dantesouza.bastionzero.phaseh` package. Source and full approved
+art reside on GitHub; no manual downloads or local Godot are needed.
+
+```powershell
+git fetch origin --prune
+git switch feature/m1-visual-phase-i3-title-menu
+git merge --ff-only origin/feature/m1-visual-phase-i3-title-menu
+make profile
+make check-tools
+make phase-i3
+make phase-i3-screenshot
+```
