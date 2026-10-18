@@ -170,3 +170,13 @@ SVG used in combat. All mission, research, FX and progression interactions
 remain real. Run `make phase-g` on
 `feature/m1-visual-phase-g-identity-hangar`; see
 [Phase G](docs/VISUAL-PHASE-G.md) for design, constraints and testing.
+
+## Phase H — premium identity and Hangar
+
+Phase H uses the user-approved cinematic Last Horizon artwork and keeps all
+buttons as actual Godot controls. High-resolution PNG/WebP art is delivered as
+a separate local import bundle and can be installed with `make phase-h-art`,
+then committed normally and built by GitHub Actions. Until imported, the
+Phase G vector hero remains a safe fallback. The same phase upgrades the
+Hangar panel hierarchy, decorative accents and button styling; Phase F combat
+is unchanged. See `docs/VISUAL-PHASE-H.md`.

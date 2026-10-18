@@ -421,6 +421,9 @@ func _run() -> void:
     var hangar_view: HangarView = game.get("modal") as HangarView
     _expect(hangar_view != null, "Phase G uses dedicated Last Horizon Hangar")
     if hangar_view != null:
+        _expect(hangar_view.find_child("MissionControlHeading", true, false) != null
+            and hangar_view.find_child("ResearchLabHeading", true, false) != null,
+            "premium Hangar section headings retain hierarchy")
         var hero_art: TextureRect = hangar_view.find_child("HorizonArtwork", true, false) as TextureRect
         _expect(hero_art != null and hero_art.texture != null,
             "Hangar shows real Guardian/Horizon hero illustration")
@@ -444,7 +447,7 @@ func _run() -> void:
         for label_node in hangar_view.find_children("*", "Label", true, false):
             if String((label_node as Label).text) == "BUILD  " + GameCatalog.GAME_VERSION:
                 build_label_visible = true
-        _expect(GameCatalog.GAME_VERSION.begins_with("0.7.1") and build_label_visible,
+        _expect(GameCatalog.GAME_VERSION.begins_with("0.8.0") and build_label_visible,
             "Hangar footer displays current Phase G patch version")
     var deploy: Button
     for node in game.find_children("*", "Button", true, false):
