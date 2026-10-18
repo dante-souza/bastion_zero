@@ -34,6 +34,7 @@ var weapon_damage: Dictionary = {}
 var rng := RandomNumberGenerator.new()
 var low_fx := true
 var _spawn_timer := 0.0
+var _gun_timer := 0.0
 var _beam_timer := 0.0
 var _volley_timer := 0.0
 var _arc_timer := 0.0
@@ -59,10 +60,10 @@ func begin_run(permanent_upgrades: Dictionary, selected_stage: int = 1, reduced_
     low_fx = reduced_fx
     rng.seed = 14057 + stage * 137
     levels = {
-        "beam": 1, "volley": 0, "arc": 0, "nova": 0,
+        "gun": 1, "beam": 0, "volley": 0, "arc": 0, "nova": 0,
         "hull": 0, "rate": 0, "power": 0, "reach": 0
     }
-    weapon_damage = {"beam": 0.0, "volley": 0.0, "arc": 0.0, "nova": 0.0}
+    weapon_damage = {"gun": 0.0, "beam": 0.0, "volley": 0.0, "arc": 0.0, "nova": 0.0}
     elapsed = 0.0
     level = 1
     xp = 0
@@ -75,6 +76,7 @@ func begin_run(permanent_upgrades: Dictionary, selected_stage: int = 1, reduced_
     projectiles.clear()
     effects.clear()
     _spawn_timer = 0.8
+    _gun_timer = 0.10
     _beam_timer = 0.24
     _volley_timer = 1.0
     _arc_timer = 1.3
@@ -290,25 +292,31 @@ func _move_projectiles(delta: float) -> void:
         var pos: Vector2 = bullet["pos"]
         var target_idx: int = _index_by_id(int(bullet["target"]))
         var velocity: Vector2 = bullet["velocity"]
-        if target_idx >= 0 and String(bullet["kind"]) == "rocket":
+        var kind: String = String(bullet["kind"])
+        # Both rockets and the basic cannon track the assigned threat. The
+        # cannon makes smaller corrections, avoiding the old missing shots.
+        if target_idx >= 0 and (kind == "rocket" or kind == "gun"):
             var destination: Vector2 = enemies[target_idx]["pos"]
             var aim: Vector2 = (destination - pos).normalized()
-            velocity = velocity.lerp(aim * 670.0, minf(delta * 7.0, 1.0))
+            var bullet_speed := 670.0 if kind == "rocket" else (1250.0 if int(levels["gun"]) >= 4 else 1100.0)
+            var turning := 7.0 if kind == "rocket" else (9.0 if int(levels["gun"]) >= 4 else 6.0)
+            velocity = velocity.lerp(aim * bullet_speed, minf(delta * turning, 1.0))
             bullet["velocity"] = velocity
         var next: Vector2 = pos + velocity * delta
         bullet["pos"] = next
         var collision := -1
         for enemy in enemies:
-            var radius: float = float(enemy["radius"]) + (10.0 if bullet["kind"] == "rocket" else 7.0)
-            # Segment collision prevents fast rockets tunneling through runners.
-            var along: float = clampf((Vector2(enemy["pos"]) - pos).dot(next - pos) / maxf(0.01, (next - pos).length_squared()), 0.0, 1.0)
+            var radius: float = float(enemy["radius"]) + (10.0 if kind == "rocket" else (9.0 if kind == "gun" else 7.0))
+            # Swept segment-vs-circle collision prevents high-speed tunneling.
+            var path: Vector2 = next - pos
+            var along: float = clampf((Vector2(enemy["pos"]) - pos).dot(path) / maxf(0.01, path.length_squared()), 0.0, 1.0)
             if Vector2(enemy["pos"]).distance_to(pos.lerp(next, along)) <= radius:
                 collision = int(enemy["id"])
                 break
         if collision >= 0:
             var hit_at: Vector2 = next
             var base_damage: float = float(bullet["damage"])
-            if String(bullet["kind"]) == "rocket":
+            if kind == "rocket":
                 _damage_by_id(collision, base_damage, "volley")
                 if int(levels["volley"]) >= 3:
                     _blast(hit_at, 54.0 + int(levels["volley"]) * 7.0, base_damage * 0.45, "volley", GOLD)
@@ -316,13 +324,14 @@ func _move_projectiles(delta: float) -> void:
                     for j in range(3):
                         var velocity_frag := Vector2.from_angle(-PI + j * PI / 2.0) * 450.0
                         projectiles.append({"pos": hit_at, "velocity": velocity_frag, "damage": base_damage * 0.33, "life": 0.36, "target": -1, "kind": "frag"})
+            elif kind == "gun":
+                _damage_by_id(collision, base_damage, "gun")
             else:
                 _damage_by_id(collision, base_damage, "volley")
-            _effect("flash", hit_at, Vector2.ZERO, 22.0, GOLD, 0.22)
+            _effect("flash", hit_at, Vector2.ZERO, 12.0 if kind == "gun" else 22.0, CYAN if kind == "gun" else GOLD, 0.14 if kind == "gun" else 0.22)
             projectiles.remove_at(i)
         elif float(bullet["life"]) <= 0.0 or next.y < 110.0 or next.y > 1180.0:
             projectiles.remove_at(i)
-
 func _update_effects(delta: float) -> void:
     for i in range(effects.size() - 1, -1, -1):
         effects[i]["ttl"] = float(effects[i]["ttl"]) - delta
@@ -331,11 +340,16 @@ func _update_effects(delta: float) -> void:
 
 func _tick_weapons(delta: float) -> void:
     var cadence: float = 1.0 + 0.13 * int(levels["rate"])
+    _gun_timer -= delta
     _beam_timer -= delta
     _volley_timer -= delta
     _arc_timer -= delta
     _nova_timer -= delta
-    if _beam_timer <= 0.0:
+    if _gun_timer <= 0.0:
+        var gun_cadence := 0.17 if int(levels["gun"]) == 1 else 0.13
+        _gun_timer = gun_cadence / cadence
+        _fire_gun()
+    if int(levels["beam"]) > 0 and _beam_timer <= 0.0:
         _beam_timer = maxf(0.49, 0.87 - 0.055 * int(levels["beam"])) / cadence
         _fire_beam()
     if int(levels["volley"]) > 0 and _volley_timer <= 0.0:
@@ -347,7 +361,6 @@ func _tick_weapons(delta: float) -> void:
     if int(levels["nova"]) > 0 and _nova_timer <= 0.0:
         _nova_timer = maxf(1.1, 4.2 - 0.38 * int(levels["nova"])) / cadence
         _fire_nova()
-
 func _range(base: float) -> float:
     return base * (1.0 + 0.12 * int(levels["reach"]))
 
@@ -369,32 +382,82 @@ func _target_index(max_dist: float) -> int:
             highest_y = threat
     return winner
 
-func _fire_beam() -> void:
-    var target_idx: int = _target_index(_range(1160.0))
-    if target_idx < 0:
+func _fire_gun() -> void:
+    var target_idx: int = _target_index(_range(1170.0))
+    if target_idx < 0 or projectiles.size() >= MAX_BULLETS - 2:
         return
-    var destination: Vector2 = enemies[target_idx]["pos"]
-    var base_angle: float = (destination - G).angle()
-    var beams: int = 2 if int(levels["beam"]) >= 3 else 1
-    for lane in range(beams):
-        var angle: float = base_angle + (float(lane) - (beams - 1.0) / 2.0) * 0.13
-        var direction := Vector2.from_angle(angle)
-        var end: Vector2 = G + direction * 1300.0
-        _effect("beam", G + Vector2(0.0, -42.0), end, 4.0 + int(levels["beam"]), CYAN, 0.16)
+    var enemy: Dictionary = enemies[target_idx]
+    var target: Vector2 = enemy["pos"]
+    var speed := 1250.0 if int(levels["gun"]) >= 4 else 1100.0
+    var barrels := 2 if int(levels["gun"]) >= 3 else 1
+    for barrel in range(barrels):
+        var offset: float = (float(barrel) - (barrels - 1.0) * 0.5) * 32.0
+        var muzzle: Vector2 = G + Vector2(offset, -45.0)
+        var flight: float = muzzle.distance_to(target) / (speed + float(enemy["speed"]))
+        var lead: Vector2 = target + Vector2(0.0, float(enemy["speed"]) * flight * 0.75)
+        var velocity: Vector2 = (lead - muzzle).normalized() * speed
+        projectiles.append({
+            "pos": muzzle, "velocity": velocity,
+            "damage": _power(7.0 + 2.0 * (int(levels["gun"]) - 1)),
+            "life": 1.45, "target": int(enemy["id"]), "kind": "gun"
+        })
+    if not low_fx:
+        _effect("flash", G + Vector2(0, -45), Vector2.ZERO, 11.0, CYAN, 0.10)
+
+func _beam_target_ids() -> Array[int]:
+    # The primary beam always aims through its target center. On the dual-beam
+    # tier, the other beam selects a second valid enemy or converges on the first.
+    var chosen: Array[int] = []
+    var primary: int = _target_index(_range(1160.0))
+    if primary < 0:
+        return chosen
+    chosen.append(int(enemies[primary]["id"]))
+    if int(levels["beam"]) < 3:
+        return chosen
+    var second := -1
+    var highest_y := -100000.0
+    for enemy in enemies:
+        if int(enemy["id"]) == chosen[0]:
+            continue
+        if Vector2(enemy["pos"]).distance_to(G) > _range(1160.0):
+            continue
+        if float(Vector2(enemy["pos"]).y) > highest_y:
+            highest_y = Vector2(enemy["pos"]).y
+            second = int(enemy["id"])
+    chosen.append(second if second >= 0 else chosen[0])
+    return chosen
+
+func _fire_beam() -> void:
+    if int(levels["beam"]) <= 0:
+        return
+    var targets: Array[int] = _beam_target_ids()
+    if targets.is_empty():
+        return
+    for lane in range(targets.size()):
+        var idx: int = _index_by_id(targets[lane])
+        if idx < 0:
+            continue
+        var muzzle_offset := 0.0
+        if targets.size() == 2:
+            muzzle_offset = -25.0 if lane == 0 else 25.0
+        var start: Vector2 = G + Vector2(muzzle_offset, -42.0)
+        var destination: Vector2 = enemies[idx]["pos"]
+        var direction: Vector2 = (destination - start).normalized()
+        var end: Vector2 = start + direction * 1300.0
+        _effect("beam", start, end, 4.0 + int(levels["beam"]), CYAN, 0.16)
         var hits: Array[Dictionary] = []
         for enemy in enemies:
-            var offset: Vector2 = Vector2(enemy["pos"]) - G
+            var offset: Vector2 = Vector2(enemy["pos"]) - start
             var projection: float = offset.dot(direction)
             if projection <= 0.0 or projection > 1300.0:
                 continue
             var lateral: float = (offset - direction * projection).length()
-            if lateral < float(enemy["radius"]) + 11.0:
+            if lateral <= float(enemy["radius"]) + 7.0:
                 hits.append({"id": int(enemy["id"]), "distance": projection})
-        hits.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["distance"]) < float(b["distance"]))
+        hits.sort_custom(func(x: Dictionary, y: Dictionary) -> bool: return float(x["distance"]) < float(y["distance"]))
         var pierce: int = 1 + int(levels["beam"])
         for i in range(mini(pierce, hits.size())):
             _damage_by_id(int(hits[i]["id"]), _power(28.0 + int(levels["beam"]) * 8.0), "beam")
-
 func _fire_volley() -> void:
     var target_idx: int = _target_index(_range(1070.0))
     if target_idx < 0:
@@ -589,9 +652,13 @@ func _draw() -> void:
             draw_arc(at, radius + 18.0, 0, TAU, 36, GOLD, 3.0, true)
     for bullet in projectiles:
         var pos: Vector2 = bullet["pos"]
-        draw_circle(pos, 9.0 if bullet["kind"] == "rocket" else 4.0, GOLD)
-        if bullet["kind"] == "rocket":
-            draw_line(pos, pos - Vector2(bullet["velocity"]).normalized() * 24.0, Color("#d55686"), 3.0, true)
+        if bullet["kind"] == "gun":
+            draw_line(pos, pos - Vector2(bullet["velocity"]).normalized() * 18.0, CYAN, 2.8, true)
+            draw_circle(pos, 3.0, Color.WHITE)
+        else:
+            draw_circle(pos, 9.0 if bullet["kind"] == "rocket" else 4.0, GOLD)
+            if bullet["kind"] == "rocket":
+                draw_line(pos, pos - Vector2(bullet["velocity"]).normalized() * 24.0, Color("#d55686"), 3.0, true)
     for fx in effects:
         var alpha: float = clampf(float(fx["ttl"]) / float(fx["duration"]), 0.0, 1.0)
         var shade: Color = fx["color"]

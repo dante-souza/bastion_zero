@@ -2,7 +2,7 @@ class_name GameCatalog
 extends RefCounted
 
 ## Bastion Zero's original combat balance; no third-party game resources.
-const GAME_VERSION := "0.2.1-combat"
+const GAME_VERSION := "0.2.2-primary-gun"
 const WORLD_SIZE := Vector2(720.0, 1280.0)
 const GUARDIAN := Vector2(360.0, 1080.0)
 const BREACH_Y := 1040.0
@@ -12,9 +12,9 @@ const STARTING_HEALTH := 100
 const UPGRADE_CAP := 4
 const META_CAP := 8
 const UPGRADE_ORDER: Array[String] = [
-    "beam", "volley", "arc", "nova", "hull", "rate", "power", "reach"
+    "gun", "beam", "volley", "arc", "nova", "hull", "rate", "power", "reach"
 ]
-const WEAPON_ORDER: Array[String] = ["beam", "volley", "arc", "nova"]
+const WEAPON_ORDER: Array[String] = ["gun", "beam", "volley", "arc", "nova"]
 
 ## Enemy/weapon interactions are explicit, stable, and independent of monetization.
 ## Multipliers are applied before HP-capped accounting.
@@ -42,6 +42,7 @@ static func stage_duration(stage: int) -> float:
 
 static func upgrade_name(key: String) -> String:
     match key:
+        "gun": return "SENTINEL AUTOCANNON"
         "beam": return "PRISM BEAM"
         "volley": return "COMET VOLLEY"
         "arc": return "ARC RELAY"
@@ -54,7 +55,12 @@ static func upgrade_name(key: String) -> String:
 
 static func upgrade_description(key: String, rank: int) -> String:
     match key:
-        "beam": return "Unlock beam / +pierce, then a second beam. Rank %d" % rank
+        "gun":
+            match rank:
+                2: return "Faster automatic fire (+30% cadence)."
+                3: return "Dual-barrel bursts: two aimed rounds per volley."
+                _: return "Smart tracers: faster rounds and improved tracking."
+        "beam": return "Unlock pinpoint beam / +pierce; twin beam acquires another enemy."
         "volley": return "Unlock rockets / add lanes, then split + blast. Rank %d" % rank
         "arc": return "Unlock chain lightning / more jumps and stun. Rank %d" % rank
         "nova": return "Unlock field / bigger slow pulse and detonation. Rank %d" % rank

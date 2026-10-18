@@ -117,6 +117,7 @@ func _hangar() -> void:
     record = SaveData.validated(record)
     var content := _screen("BASTION ZERO", "GUARDIAN HANGAR  •  M1R")
     content.add_child(_label("Hold the lower defense line. Build evolving weapon combinations and survive the enemy advance.", 20, PALE, true))
+    content.add_child(_label("STARTER: SENTINEL AUTOCANNON. Unlock Prism Beam from level-up cards.", 16, GREEN, true))
     content.add_child(_label("TANKS: RESIST PRISM; COMET/NOVA HIT HARD. RUNNERS: WEAK TO ARC.", 15, GREEN, true))
     content.add_child(_label("ALLOY BANK: %d" % int(record["bank"]), 27, GOLD, true))
     content.add_child(_label("RUNS %d   •   WINS %d   •   BEST STAGE %d" % [
