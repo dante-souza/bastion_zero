@@ -16,6 +16,11 @@ func _run() -> void:
     _expect(GameCatalog.TOTAL_STAGES == 2, "normal and elite stages")
     _expect(load("res://assets/branding/last_horizon_boot.png") is Texture2D,
         "native Godot boot splash imports as a PNG texture")
+    _expect(load("res://assets/branding/guardian_launcher_192.png") is Texture2D,
+        "Android launcher icon is an imported 192px PNG")
+    _expect(load("res://assets/branding/guardian_adaptive_foreground_432.png") is Texture2D
+        and load("res://assets/branding/guardian_adaptive_background_432.png") is Texture2D,
+        "Android 8+ adaptive icon foreground/background resources import")
     _expect(load("res://assets/branding/guardian_icon.svg") != null,
         "Last Horizon app icon resource imports")
     _expect(HangarView.HERO != null and HangarView.HERO.get_size().x >= 680.0,

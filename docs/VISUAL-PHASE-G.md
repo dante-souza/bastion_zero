@@ -62,3 +62,15 @@ make phase-g-logs
 A physical screenshot after cold start verifies the Hangar but cannot
 fully validate the *transient* native boot splash; a short screen recording
 is more appropriate for that part.
+
+## Android launcher integration
+
+The Phase G **Android** export preset explicitly supplies native launcher PNGs,
+not only the desktop-facing `icon.svg`:
+
+- `guardian_launcher_192.png` — 192×192 complete emblem;
+- `guardian_adaptive_foreground_432.png` — 432×432 transparent Guardian layer;
+- `guardian_adaptive_background_432.png` — 432×432 navy background.
+
+This gives Android 10 launchers the correct adaptive icon. Other milestone
+presets remain unchanged, so old test builds are not unexpectedly rebranded.
