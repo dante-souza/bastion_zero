@@ -125,8 +125,19 @@ def run(serial: str) -> None:
 
 
 def download(apk: Path, run_id: str, artifact: str, repo: str) -> None:
+    if run_id == "latest":
+        # Prefer the most recent successful Android build, not a stale hardcoded
+        # artifact. Developer can still pin RUN_ID=<number> when required.
+        listed = execute([
+            "gh", "run", "list", "--repo", repo,
+            "--workflow", "android-j8.yml", "--branch", "feature/m1-playable-game",
+            "--status", "success", "--limit", "1",
+            "--json", "databaseId", "--jq", ".[0].databaseId"
+        ], capture=True)
+        run_id = listed.stdout.strip()
+        print(f"Latest successful J8 CI run: {run_id}", flush=True)
     if not re.fullmatch(r"\d+", run_id):
-        raise RuntimeError("RUN_ID must be a numeric GitHub Actions workflow run ID.")
+        raise RuntimeError("RUN_ID must be 'latest' or a numeric GitHub Actions workflow run ID.")
     if not shutil.which("gh"):
         raise RuntimeError("GitHub CLI 'gh' is unavailable. Install gh and run 'gh auth login', or download the artifact manually.")
     if apk.exists():
@@ -151,7 +162,8 @@ def help_text() -> None:
         print(f"  make {key:<15} {info}")
     print("  make sync            Safely update local main/dev/feature branches from origin")
     print("  make check-tools     Check developer scripts (offline)")
-    print("  make apk RUN_ID=...  Choose a different GitHub Actions artifact")
+    print("  make apk             Download latest successful J8 APK")
+    print("  make apk RUN_ID=...  Choose a specific GitHub Actions run")
     print("  make doctor DEVICE=... APK=...  Override device or APK path")
     print("\nDefaults: DEVICE=38c19745; APK=dist/bastion-zero-j8-debug.apk")
     print("Reinstall actions are destructive for the game's local saved progress.")
@@ -162,7 +174,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--device", default=DEFAULT_DEVICE)
     parser.add_argument("--apk", default=DEFAULT_APK)
     parser.add_argument("command", choices=[*COMMANDS, "help"])
-    parser.add_argument("--run-id", default="39086343483")
+    parser.add_argument("--run-id", default="latest")
     parser.add_argument("--artifact", default="Bastion-Zero-M1R-J8-ARMv7")
     parser.add_argument("--repo", default="dante-souza/bastion_zero")
     args = parser.parse_args(argv)

@@ -31,9 +31,9 @@ resolve an ordinary local divergence.
 
 ## Get the correct M1R combat APK
 
-The last confirmed v0.2.1 Android CI run is
-[39086343483](https://github.com/dante-souza/bastion_zero/actions/runs/39086343483).
-The artifact name is `Bastion-Zero-M1R-J8-ARMv7`.
+The v0.2.2 built-in autocannon Android APK can be found in
+[successful J8 workflow runs](https://github.com/dante-souza/bastion_zero/actions/workflows/android-j8.yml).
+By default, `make apk` chooses the most recent **successful** run from the feature branch, rather than an old hardcoded artifact. The artifact name is `Bastion-Zero-M1R-J8-ARMv7`.
 Download and unzip the archive so these files are present:
 
 ```text
@@ -51,7 +51,7 @@ Alternatively, if `gh auth login` has been completed:
 ```powershell
 make apk
 # or choose a specific Actions run
-make apk RUN_ID=39086343483
+make apk RUN_ID=39139851446
 ```
 
 `make apk` refuses to overwrite an existing APK. Move a prior build aside first

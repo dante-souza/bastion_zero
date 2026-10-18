@@ -3,7 +3,7 @@
 PYTHON ?= python
 DEVICE ?= 38c19745
 APK ?= dist/bastion-zero-j8-debug.apk
-RUN_ID ?= 39086343483
+RUN_ID ?= latest
 ARTIFACT ?= Bastion-Zero-M1R-J8-ARMv7
 REPO ?= dante-souza/bastion_zero
 ADB_CMD = $(PYTHON) scripts/android_j8.py --device "$(DEVICE)" --apk "$(APK)"

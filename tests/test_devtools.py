@@ -47,6 +47,29 @@ class J8ToolsTests(unittest.TestCase):
             with contextlib.redirect_stdout(io.StringIO()):
                 self.assertEqual(android_j8.apk_ready(apk), apk)
 
+    def test_latest_run_selection_uses_successful_j8_branch(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            apk = folder / "bastion-zero-j8-debug.apk"
+            def fake_exec(command, **kwargs):
+                if "run" in command and "list" in command:
+                    return mock.Mock(stdout="39139851446\n")
+                # Simulate gh extracting the expected artifact with its checksum.
+                apk.write_bytes(b"apk")
+                import hashlib
+                (folder / "SHA256SUMS.txt").write_text(
+                    hashlib.sha256(b"apk").hexdigest() + "  dist/bastion-zero-j8-debug.apk\n",
+                    encoding="utf-8",
+                )
+                return mock.Mock(stdout="")
+            with mock.patch.object(android_j8, "shutil") as util, \
+                 mock.patch.object(android_j8, "execute", side_effect=fake_exec) as exec_mock, \
+                 contextlib.redirect_stdout(io.StringIO()):
+                util.which.return_value = "gh"
+                android_j8.download(apk, "latest", "Bastion-Zero-M1R-J8-ARMv7", "dante-souza/bastion_zero")
+            command = exec_mock.call_args_list[-1].args[0]
+            self.assertIn("39139851446", command)
+
     def test_installed_version_parsing(self):
         result = mock.Mock(stdout="  versionCode=4 minSdk=21 targetSdk=34\n  versionName=0.2.1-combat-debug\n")
         with mock.patch.object(android_j8, "adb", return_value=result):
