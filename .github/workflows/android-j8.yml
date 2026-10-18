@@ -50,6 +50,8 @@ jobs:
 
       - name: Configure Godot Android paths
         shell: bash
+        env:
+          BASTION_DEBUG_KEYSTORE_BASE64: ${{ secrets.BASTION_DEBUG_KEYSTORE_BASE64 }}
         run: |
           mkdir -p "$HOME/.config/godot"
           cat > "$HOME/.config/godot/editor_settings-4.tres" <<EOF
@@ -59,9 +61,15 @@ jobs:
           export/android/java_sdk_path = "${JAVA_HOME}"
           export/android/android_sdk_path = "${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
           EOF
-          keytool -genkeypair -noprompt -keystore "$RUNNER_TEMP/bastion-zero-debug.keystore" \
-            -storepass android -alias androiddebugkey -keypass android \
-            -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Bastion Zero,C=BR"
+          if [ -n "$BASTION_DEBUG_KEYSTORE_BASE64" ]; then
+            printf '%s' "$BASTION_DEBUG_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/bastion-zero-debug.keystore"
+            echo "Using stable secret-provided CI debug keystore."
+          else
+            echo "::warning::No BASTION_DEBUG_KEYSTORE_BASE64 secret: generating ephemeral key; updates will require uninstall."
+            keytool -genkeypair -noprompt -keystore "$RUNNER_TEMP/bastion-zero-debug.keystore" \
+              -storepass android -alias androiddebugkey -keypass android \
+              -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Bastion Zero,C=BR"
+          fi
           echo "GODOT_ANDROID_KEYSTORE_DEBUG_PATH=$RUNNER_TEMP/bastion-zero-debug.keystore" >> "$GITHUB_ENV"
           echo "GODOT_ANDROID_KEYSTORE_DEBUG_USER=androiddebugkey" >> "$GITHUB_ENV"
           echo "GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=android" >> "$GITHUB_ENV"
@@ -81,7 +89,7 @@ jobs:
       - name: Upload J8 APK
         uses: actions/upload-artifact@v4
         with:
-          name: Bastion-Zero-M1-J8-ARMv7-v0.1.1-touchfix
+          name: Bastion-Zero-M1R-J8-ARMv7
           path: |
             dist/bastion-zero-j8-debug.apk
             dist/SHA256SUMS.txt
