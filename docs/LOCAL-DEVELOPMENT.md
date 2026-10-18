@@ -251,3 +251,34 @@ make phase-g-logs
 reinstalling and launching. Phase G test saves are disposable. For launch-logo
 review, observe the *actual cold start* as well as the Hangar and launcher icon.
 See `docs/VISUAL-PHASE-G.md` for acceptance criteria and asset provenance.
+
+## Phase H — premium art and native cinematic Hangar
+
+Branch: `feature/m1-visual-phase-h-premium`, stacked on Phase G. Android
+package: `com.dantesouza.bastionzero.phaseh`.
+
+The six final, approved premium images (splash, hero, atmospheric background,
+launcher/adaptive icons) are **tracked in GitHub**. The project and Phase H
+Android export preset already point to the premium assets. There is no
+separate asset-import/download step required for developers.
+
+```powershell
+git fetch origin --prune
+git switch feature/m1-visual-phase-h-premium
+git merge --ff-only origin/feature/m1-visual-phase-h-premium
+make profile
+make check-tools
+make phase-h
+make phase-h-doctor
+make phase-h-screenshot
+```
+
+`make phase-h` selects a successful *Phase H* CI APK, verifies checksum,
+reinstalls and launches the isolated J8 package. CI verifies the exact
+premium image SHA-256 values and performs the Godot import/build. Local
+`make check` requires a local Godot executable; it is optional for J8
+deployment because the remote CI has equivalent Godot checks.
+
+`make phase-h-art` is retained only for replacing the approved images in
+future art revisions, not for Phase H installation. See
+`docs/VISUAL-PHASE-H.md`.

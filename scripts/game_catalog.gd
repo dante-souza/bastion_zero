@@ -2,7 +2,7 @@ class_name GameCatalog
 extends RefCounted
 
 ## Bastion Zero's original combat balance; no third-party game resources.
-const GAME_VERSION := "0.7.1-last-horizon-hangar"
+const GAME_VERSION := "0.8.1-premium-hangar-layout"
 ## Phase F: temporary stress showcase on NORMAL 01 only. Not production balance.
 const STAGE_ONE_SHOWCASE := true
 const SHOWCASE_START_LEVEL := 12
