@@ -204,8 +204,10 @@ func _choose_system(offers: Array[String]) -> void:
     if eligible.is_empty():
         push_warning("System Evolution received no eligible upgrade cards.")
         return
-    var content := _screen("SYSTEM EVOLUTION", "LEVEL %d  •  CHOOSE ONE" % arena.level, true)
-    content.add_child(_label("Choose your next tactical evolution.", 21, PALE, true))
+    var content := _screen("SYSTEM EVOLUTION",
+        "LV %d   •   %d THREATS   •   %d KILLS" % [
+            arena.level, arena.enemies.size(), arena.kills], true)
+    content.add_child(_label("SELECT ONE UPGRADE • THE BATTLE IS PAUSED", 18, PALE, true))
     for kind in eligible:
         var card := _upgrade_card(kind, int(arena.levels.get(kind, 0)))
         card.pressed.connect(_apply_upgrade.bind(kind))
@@ -214,14 +216,29 @@ func _choose_system(offers: Array[String]) -> void:
     spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
     spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
     content.add_child(spacer)
-    content.add_child(_label("SYNERGIES: PRISM + ARC   /   COMET + NOVA", 19, GOLD, true))
+    content.add_child(_label(EvolutionProfile.synergy_summary(arena.levels), 18, GREEN, true))
 
 func _upgrade_card(kind: String, current_rank: int) -> Button:
     var cap: int = GameCatalog.upgrade_cap(kind)
     var next_rank: int = current_rank + 1
     var card := _button("", false)
-    card.custom_minimum_size.y = 192.0
+    card.custom_minimum_size.y = 186.0
     card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    var accent: Color = EvolutionProfile.accent(kind)
+    for variant in ["normal", "hover", "pressed"]:
+        var card_style := StyleBoxFlat.new()
+        card_style.bg_color = Color("#10263C") if variant == "normal" else Color("#1A3B55")
+        card_style.border_color = accent
+        card_style.border_width_left = 6
+        card_style.border_width_right = 2
+        card_style.border_width_top = 2
+        card_style.border_width_bottom = 2
+        card_style.set_corner_radius_all(9)
+        card_style.content_margin_left = 12
+        card_style.content_margin_right = 12
+        card_style.content_margin_top = 7
+        card_style.content_margin_bottom = 7
+        card.add_theme_stylebox_override(variant, card_style)
     card.set_meta("upgrade_key", kind)
     card.tooltip_text = GameCatalog.upgrade_description(kind, next_rank)
 
@@ -241,11 +258,13 @@ func _upgrade_card(kind: String, current_rank: int) -> Button:
     text_stack.add_theme_constant_override("separation", 4)
     padding.add_child(text_stack)
 
-    var category := _label("[" + GameCatalog.upgrade_category(kind, current_rank) + "]", 18, GREEN)
+    var category := _label(
+        GameCatalog.upgrade_category(kind, current_rank) + "   •   " + EvolutionProfile.tactical_role(kind),
+        15, accent)
     category.mouse_filter = Control.MOUSE_FILTER_IGNORE
     text_stack.add_child(category)
 
-    var title_text := _label(GameCatalog.upgrade_name(kind), 28, CYAN)
+    var title_text := _label(GameCatalog.upgrade_name(kind), 27, CYAN)
     title_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
     text_stack.add_child(title_text)
 
@@ -255,11 +274,12 @@ func _upgrade_card(kind: String, current_rank: int) -> Button:
     ]
     if next_rank == cap:
         progress += "  (FINAL)"
-    var rank_text := _label(progress, 18, GOLD)
+    progress += "    " + EvolutionProfile.rank_marks(next_rank, cap)
+    var rank_text := _label(progress, 17, GOLD)
     rank_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
     text_stack.add_child(rank_text)
 
-    var description := _label(GameCatalog.upgrade_description(kind, next_rank), 21, PALE)
+    var description := _label(GameCatalog.upgrade_description(kind, next_rank), 19, PALE)
     description.mouse_filter = Control.MOUSE_FILTER_IGNORE
     text_stack.add_child(description)
     return card

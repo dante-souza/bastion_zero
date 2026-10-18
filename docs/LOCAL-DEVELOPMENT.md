@@ -199,3 +199,29 @@ make phase-e-logs
 ```
 
 Progress can be erased in this debug package. See `docs/VISUAL-PHASE-E.md`.
+
+## Phase F — pressure stress test and tactical System Evolution
+
+Phase F branch: `feature/m1-visual-phase-f-evolution`, stacked on Phase E.
+The Android build installs separately as `com.dantesouza.bastionzero.phasef`
+and caches under `dist/phase-f/`.
+
+NORMAL 01 visual QA starts with nine enemies, delivers five larger scripted
+follow-up groups, and runs original formations every approximately 1.2 sec
+from 12 sec. Extra enemy HP, speed and breach damage affect only the QA
+showcase; regular NORMAL 01 and ELITE 01 rules are untouched. Upgrade selection
+now uses weapon-specific accent colors and true current/next rank progress.
+
+```powershell
+make profile
+make check-tools
+make check
+make phase-f
+make phase-f-doctor
+make phase-f-screenshot
+make phase-f-logs
+```
+
+`make phase-f` uses the latest successful Phase F GitHub Actions build,
+verifies SHA-256, reinstalls and launches on the J8. Development saves
+remain disposable. See `docs/VISUAL-PHASE-F.md`.

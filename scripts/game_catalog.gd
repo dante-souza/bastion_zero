@@ -2,48 +2,110 @@ class_name GameCatalog
 extends RefCounted
 
 ## Bastion Zero's original combat balance; no third-party game resources.
-const GAME_VERSION := "0.5.1-showcase-hud"
-## D.1: temporary, isolated visual-QA progression for NORMAL 01 only.
-## Does not change any normal run or ELITE 01 gameplay.
+const GAME_VERSION := "0.6.0-pressure-evolution"
+## Phase F: temporary stress showcase on NORMAL 01 only. Not production balance.
 const STAGE_ONE_SHOWCASE := true
 const SHOWCASE_START_LEVEL := 12
 const SHOWCASE_LOADOUT := {
     "gun": 4, "beam": 2, "volley": 2, "arc": 2, "nova": 2,
     "rate": 1, "power": 1, "reach": 1
 }
-const SHOWCASE_ELITE_TIME := 20.0
-const SHOWCASE_FORMATIONS_START := 24.0
-const SHOWCASE_INTRO_HP_SCALE := 3.0
+const SHOWCASE_ELITE_TIME := 18.0
+const SHOWCASE_FORMATIONS_START := 12.0
+const SHOWCASE_HP_SCALE := 1.65
+const SHOWCASE_INTRO_HP_SCALE := 2.8
+const SHOWCASE_ELITE_HP_SCALE := 2.0
+const SHOWCASE_SPEED_SCALE := 1.18
+const SHOWCASE_DAMAGE_SCALE := 1.35
+const SHOWCASE_FORMATION_INTERVAL := 1.20
 const SHOWCASE_SCRIPT := [
     {
-        "at": 0.0, "label": "IDENTIFY • GRUNT / RUNNER / TANK",
+        "at": 0.0, "label": "PRESSURE • THREE FRONTS",
         "spawns": [
-            ["grunt", 145.0, 445.0], ["runner", 360.0, 415.0],
-            ["tank", 565.0, 470.0]
+            ["grunt", 95.0, 390.0],
+            ["runner", 185.0, 430.0],
+            ["grunt", 270.0, 385.0],
+            ["tank", 370.0, 465.0],
+            ["runner", 455.0, 370.0],
+            ["grunt", 550.0, 390.0],
+            ["tank", 625.0, 495.0],
+            ["runner", 325.0, 260.0],
+            ["grunt", 510.0, 255.0]
         ]
     },
     {
-        "at": 4.0, "label": "ARC RELAY • RUNNER PAIR",
+        "at": 4.0, "label": "SWARM • FAST FLANKS",
         "spawns": [
-            ["runner", 260.0, 350.0], ["runner", 465.0, 350.0]
+            ["runner", 85.0, 295.0],
+            ["runner", 170.0, 325.0],
+            ["runner", 245.0, 300.0],
+            ["grunt", 315.0, 350.0],
+            ["grunt", 410.0, 335.0],
+            ["runner", 500.0, 290.0],
+            ["runner", 575.0, 315.0],
+            ["runner", 650.0, 295.0]
         ]
     },
     {
-        "at": 8.0, "label": "PRISM + COMET • ARMOR",
+        "at": 8.0, "label": "SIEGE • ARMORED WALL",
         "spawns": [
-            ["tank", 235.0, 340.0], ["tank", 475.0, 355.0]
+            ["tank", 90.0, 350.0],
+            ["tank", 190.0, 365.0],
+            ["tank", 290.0, 325.0],
+            ["tank", 395.0, 335.0],
+            ["tank", 495.0, 360.0],
+            ["tank", 605.0, 340.0],
+            ["grunt", 140.0, 240.0],
+            ["runner", 350.0, 270.0],
+            ["grunt", 555.0, 240.0],
+            ["runner", 640.0, 255.0]
         ]
     },
     {
-        "at": 12.0, "label": "NOVA • MIXED CLUSTER",
+        "at": 12.0, "label": "OVERRUN • MIXED SWARM",
         "spawns": [
-            ["grunt", 250.0, 360.0], ["runner", 310.0, 340.0],
-            ["grunt", 395.0, 350.0], ["tank", 455.0, 390.0]
+            ["grunt", 88.0, 370.0],
+            ["runner", 155.0, 355.0],
+            ["tank", 225.0, 365.0],
+            ["grunt", 290.0, 350.0],
+            ["runner", 355.0, 345.0],
+            ["grunt", 420.0, 360.0],
+            ["tank", 490.0, 355.0],
+            ["runner", 555.0, 370.0],
+            ["grunt", 630.0, 360.0],
+            ["runner", 220.0, 220.0],
+            ["runner", 430.0, 230.0],
+            ["tank", 350.0, 220.0]
         ]
     },
     {
-        "at": 20.0, "label": "ELITE • VISUAL TARGET",
-        "spawns": [["elite", 360.0, 240.0]]
+        "at": 18.0, "label": "ELITE • ESCORTED ASSAULT",
+        "spawns": [
+            ["elite", 360.0, 225.0],
+            ["runner", 105.0, 260.0],
+            ["runner", 195.0, 290.0],
+            ["grunt", 260.0, 315.0],
+            ["tank", 465.0, 315.0],
+            ["runner", 530.0, 290.0],
+            ["runner", 625.0, 260.0],
+            ["grunt", 145.0, 360.0],
+            ["grunt", 575.0, 365.0]
+        ]
+    },
+    {
+        "at": 22.0, "label": "COUNTERATTACK • DOUBLE FLANK",
+        "spawns": [
+            ["runner", 90.0, 285.0],
+            ["runner", 160.0, 310.0],
+            ["grunt", 235.0, 325.0],
+            ["tank", 315.0, 340.0],
+            ["tank", 415.0, 335.0],
+            ["grunt", 485.0, 315.0],
+            ["runner", 555.0, 300.0],
+            ["runner", 635.0, 285.0],
+            ["grunt", 270.0, 230.0],
+            ["grunt", 440.0, 235.0]
+        ]
     }
 ]
 const WORLD_SIZE := Vector2(720.0, 1280.0)

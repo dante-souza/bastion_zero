@@ -146,3 +146,16 @@ Documentation: `docs/VISUAL-PHASE-E.md`.
 **D.1 + E:** `feature/m1-visual-phase-e-hud` implements the level-12 guided
 showcase, longer contrast-rich FX and compact HUD. Install via `make phase-e`.
 See `docs/VISUAL-PHASE-E.md` for temporary QA restrictions.
+
+## Phase F — stronger NORMAL 01 QA and System Evolution UI
+
+The isolated Phase F showcase starts with **nine foes**, schedules an additional
+8/10/12/9/10 threats at seconds 4/8/12/18/22, and re-enables standard
+formations at second 12 on a 1.2-second cadence. Stress-only enemies have
+stronger HP/speed/breach damage. The real player upgrades remain available,
+but baseline combat, stage 2, hitboxes and economy are unchanged. The System
+Evolution selection UI is also upgraded. See `docs/VISUAL-PHASE-F.md`.
+
+Phase F deployment: `make phase-f` on
+`feature/m1-visual-phase-f-evolution`. Dedicated J8 package
+`com.dantesouza.bastionzero.phasef`.
