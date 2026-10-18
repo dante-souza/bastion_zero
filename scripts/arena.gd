@@ -41,6 +41,12 @@ var _nova_timer := 0.0
 var _hud_timer := 0.0
 var _visual_clock := 0.0
 var _elite_spawned := false
+var _elite_enraged := false
+var formation_index := 0
+var formation_name := "LINE"
+var breaches := 0
+var combat_event := "DEFENSE ONLINE"
+var event_time := 0.0
 
 func _ready() -> void:
     rng.randomize()
@@ -76,6 +82,12 @@ func begin_run(permanent_upgrades: Dictionary, selected_stage: int = 1, reduced_
     _hud_timer = 0.0
     _visual_clock = 0.0
     _elite_spawned = false
+    _elite_enraged = false
+    formation_index = 0
+    formation_name = "LINE"
+    breaches = 0
+    combat_event = "DEFENSE ONLINE"
+    event_time = 3.0
     state = "running"
     stats_changed.emit(snapshot())
     queue_redraw()
@@ -88,7 +100,9 @@ func snapshot() -> Dictionary:
         "level": level, "xp": xp, "next_xp": GameCatalog.next_level_xp(level),
         "kills": kills, "hull": hull, "max_hull": max_hull,
         "weapons": levels.duplicate(), "focus": focused_id,
-        "enemies": enemies.size(), "damage": weapon_damage.duplicate()
+        "enemies": enemies.size(), "damage": weapon_damage.duplicate(),
+        "formation": formation_name, "breaches": breaches,
+        "event": combat_event if event_time > 0.0 else ""
     }
 
 func toggle_pause() -> void:
@@ -132,17 +146,21 @@ func _physics_process(delta: float) -> void:
     if state != "running":
         return
     elapsed += delta
+    event_time = maxf(0.0, event_time - delta)
     _spawn_timer -= delta
     if elapsed < GameCatalog.stage_duration(stage) and _spawn_timer <= 0.0:
         _spawn_formation()
         var progress: float = minf(1.0, elapsed / GameCatalog.stage_duration(stage))
-        _spawn_timer = (1.32 - 0.59 * progress - float(stage - 1) * 0.12) * rng.randf_range(0.83, 1.2)
+        _spawn_timer = maxf(1.30, 2.55 - 0.74 * progress - float(stage - 1) * 0.24) * rng.randf_range(0.85, 1.15)
     if stage == 2 and not _elite_spawned and elapsed > GameCatalog.stage_duration(stage) * 0.60:
         _elite_spawned = true
         _spawn_enemy("elite", 360.0, 155.0)
+        combat_event = "ELITE SIGNATURE DETECTED"
+        event_time = 4.0
     _move_enemies(delta)
     if state != "running":
         return
+    _process_elite_phase()
     _move_projectiles(delta)
     _update_effects(delta)
     _tick_weapons(delta)
@@ -158,24 +176,19 @@ func _physics_process(delta: float) -> void:
 func _spawn_formation() -> void:
     if enemies.size() >= MAX_ENEMIES:
         return
-    var phase: float = elapsed / GameCatalog.stage_duration(stage)
-    var count := 1
-    if phase > 0.28:
-        count = 2
-    if phase > 0.65 or stage == 2 and phase > 0.40:
-        count = 3
-    var origin_x: float = rng.randf_range(140.0, 570.0)
-    for i in range(count):
+    formation_name = CombatDirector.pattern_for(stage, elapsed, formation_index)
+    var members: Array[Dictionary] = CombatDirector.formation(stage, elapsed, formation_index, rng)
+    var created := 0
+    for member in members:
         if enemies.size() >= MAX_ENEMIES:
             break
-        var choice: float = rng.randf()
-        var kind := "grunt"
-        if choice < 0.29 + (0.08 if stage == 2 else 0.0):
-            kind = "runner"
-        elif choice > 0.85 - phase * 0.20:
-            kind = "tank"
-        var x: float = clampf(origin_x + (i - (count - 1.0) / 2.0) * 92.0, 35.0, 685.0)
-        _spawn_enemy(kind, x, 170.0 - i * 46.0)
+        _spawn_enemy(String(member["kind"]), float(member["x"]), float(member["y"]))
+        created += 1
+    if created > 0:
+        combat_event = "THREATS: %s" % formation_name
+        event_time = 2.4
+        formation_index += 1
+
 
 func _spawn_enemy(kind: String, x: float = 360.0, y: float = 150.0) -> void:
     var hp := 29.0
@@ -208,7 +221,7 @@ func _spawn_enemy(kind: String, x: float = 360.0, y: float = 150.0) -> void:
         "origin_x": x, "hp": hp * scaling, "max_hp": hp * scaling,
         "speed": speed, "radius": radius, "damage": hit,
         "xp": reward_xp, "slow": 0.0, "stun": 0.0,
-        "phase": rng.randf_range(0.0, TAU)
+        "phase": rng.randf_range(0.0, TAU), "flash": 0.0
     })
     next_enemy_id += 1
 
@@ -220,12 +233,29 @@ func _move_enemies(delta: float) -> void:
         var stun: float = float(enemy["stun"])
         enemy["slow"] = maxf(0.0, slow - delta)
         enemy["stun"] = maxf(0.0, stun - delta)
+        enemy["flash"] = maxf(0.0, float(enemy["flash"]) - delta)
         if stun <= 0.0:
-            pos.y += float(enemy["speed"]) * (0.48 if slow > 0.0 else 1.0) * delta
-            pos.x = clampf(float(enemy["origin_x"]) + sin(pos.y * 0.010 + float(enemy["phase"])) * 22.0, 24.0, 696.0)
+            var kind: String = String(enemy["kind"])
+            var pace: float = float(enemy["speed"])
+            if kind == "elite" and _elite_enraged:
+                pace *= 1.35
+            pos.y += pace * (0.48 if slow > 0.0 else 1.0) * delta
+            var amplitude: float = 18.0
+            var frequency: float = 0.010
+            if kind == "runner":
+                amplitude = 66.0
+                frequency = 0.023
+            elif kind == "tank":
+                amplitude = 7.0
+            elif kind == "elite":
+                amplitude = 19.0
+            pos.x = clampf(float(enemy["origin_x"]) + sin(pos.y * frequency + float(enemy["phase"])) * amplitude, 24.0, 696.0)
             enemy["pos"] = pos
         if pos.y >= GameCatalog.BREACH_Y:
             hull = maxf(0.0, hull - float(enemy["damage"]))
+            breaches += 1
+            combat_event = "BREACH!  -%d HULL" % roundi(float(enemy["damage"]))
+            event_time = 2.0
             _effect("ring", Vector2(pos.x, GameCatalog.BREACH_Y), Vector2.ZERO, 76.0, RED, 0.42)
             if int(enemy["id"]) == focused_id:
                 focused_id = -1
@@ -233,6 +263,25 @@ func _move_enemies(delta: float) -> void:
             if hull <= 0.0:
                 _finish(false)
                 return
+
+func _process_elite_phase() -> void:
+    if stage != 2 or not _elite_spawned or _elite_enraged:
+        return
+    for enemy in enemies:
+        if String(enemy["kind"]) != "elite":
+            continue
+        if float(enemy["hp"]) / maxf(1.0, float(enemy["max_hp"])) > 0.55:
+            return
+        _elite_enraged = true
+        combat_event = "ELITE PHASE II - ESCORTS"
+        event_time = 5.0
+        var at: Vector2 = enemy["pos"]
+        _effect("ring", at, Vector2.ZERO, 148.0, RED, 0.80)
+        if enemies.size() <= MAX_ENEMIES - 2:
+            _spawn_enemy("runner", clampf(at.x - 150.0, 40.0, 680.0), at.y - 35.0)
+            _spawn_enemy("runner", clampf(at.x + 150.0, 40.0, 680.0), at.y - 35.0)
+        return
+
 
 func _move_projectiles(delta: float) -> void:
     for i in range(projectiles.size() - 1, -1, -1):
@@ -287,7 +336,7 @@ func _tick_weapons(delta: float) -> void:
     _arc_timer -= delta
     _nova_timer -= delta
     if _beam_timer <= 0.0:
-        _beam_timer = maxf(0.37, 0.78 - 0.07 * int(levels["beam"])) / cadence
+        _beam_timer = maxf(0.49, 0.87 - 0.055 * int(levels["beam"])) / cadence
         _fire_beam()
     if int(levels["volley"]) > 0 and _volley_timer <= 0.0:
         _volley_timer = maxf(0.75, 2.35 - 0.19 * int(levels["volley"])) / cadence
@@ -331,7 +380,7 @@ func _fire_beam() -> void:
         var angle: float = base_angle + (float(lane) - (beams - 1.0) / 2.0) * 0.13
         var direction := Vector2.from_angle(angle)
         var end: Vector2 = G + direction * 1300.0
-        _effect("beam", G + Vector2(0.0, -42.0), end, 6.0 + int(levels["beam"]), CYAN, 0.22)
+        _effect("beam", G + Vector2(0.0, -42.0), end, 4.0 + int(levels["beam"]), CYAN, 0.16)
         var hits: Array[Dictionary] = []
         for enemy in enemies:
             var offset: Vector2 = Vector2(enemy["pos"]) - G
@@ -344,7 +393,7 @@ func _fire_beam() -> void:
         hits.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["distance"]) < float(b["distance"]))
         var pierce: int = 1 + int(levels["beam"])
         for i in range(mini(pierce, hits.size())):
-            _damage_by_id(int(hits[i]["id"]), _power(32.0 + int(levels["beam"]) * 12.0), "beam")
+            _damage_by_id(int(hits[i]["id"]), _power(28.0 + int(levels["beam"]) * 8.0), "beam")
 
 func _fire_volley() -> void:
     var target_idx: int = _target_index(_range(1070.0))
@@ -435,7 +484,9 @@ func _damage_by_id(id: int, amount: float, source: String) -> float:
     if idx < 0:
         return 0.0
     var enemy: Dictionary = enemies[idx]
-    var actual: float = minf(maxf(0.0, amount), maxf(0.0, float(enemy["hp"])))
+    var effective: float = amount * GameCatalog.damage_factor(String(enemy["kind"]), source)
+    var actual: float = minf(maxf(0.0, effective), maxf(0.0, float(enemy["hp"])))
+    enemy["flash"] = 0.16
     enemy["hp"] = float(enemy["hp"]) - actual
     weapon_damage[source] = float(weapon_damage.get(source, 0.0)) + actual
     if not low_fx:
@@ -476,7 +527,8 @@ func _finish(victory: bool) -> void:
     run_completed.emit(victory, {
         "stage": stage, "kills": kills, "time": elapsed, "level": level,
         "reward": GameCatalog.reward(kills, stage, victory),
-        "damage": weapon_damage.duplicate()
+        "damage": weapon_damage.duplicate(), "breaches": breaches,
+        "formations": formation_index
     })
 
 func _effect(kind: String, a: Vector2, b: Vector2, radius: float, color: Color, duration: float) -> void:
@@ -524,6 +576,12 @@ func _draw() -> void:
             _:
                 draw_circle(at, radius, shade)
                 draw_circle(at, radius * 0.44, DARK)
+        if float(enemy["flash"]) > 0.0:
+            draw_arc(at, radius + 5.0, 0, TAU, 26, Color(1, 1, 1, 0.8), 2.4, true)
+        if enemy["kind"] == "tank":
+            draw_arc(at, radius + 7.0, 0, TAU, 24, Color("#8a9ee2"), 2.0, true)
+        if enemy["kind"] == "elite" and _elite_enraged:
+            draw_arc(at, radius + 21.0, 0, TAU, 36, RED, 4.0, true)
         var fraction: float = clampf(float(enemy["hp"]) / float(enemy["max_hp"]), 0.0, 1.0)
         draw_rect(Rect2(at + Vector2(-radius, -radius - 16), Vector2(radius * 2.0, 5)), Color("#29374b"), true)
         draw_rect(Rect2(at + Vector2(-radius, -radius - 16), Vector2(radius * 2.0 * fraction, 5)), GREEN, true)
@@ -540,8 +598,8 @@ func _draw() -> void:
         shade.a = alpha
         match String(fx["kind"]):
             "beam":
-                draw_line(fx["a"], fx["b"], shade, float(fx["radius"]) + 4.0 * alpha, true)
-                draw_line(fx["a"], fx["b"], Color(1, 1, 1, alpha), 2.0, true)
+                draw_line(fx["a"], fx["b"], shade, float(fx["radius"]) + 2.0 * alpha, true)
+                draw_line(fx["a"], fx["b"], Color(1, 1, 1, alpha * 0.50), 1.4, true)
             "ring":
                 draw_arc(fx["a"], float(fx["radius"]) * (1.0 - 0.35 * alpha), 0, TAU, 28, shade, 4.0, true)
             "flash":
