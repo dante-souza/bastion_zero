@@ -14,6 +14,36 @@ func _expect(ok: bool, label: String) -> void:
 
 func _run() -> void:
     _expect(GameCatalog.TOTAL_STAGES == 2, "normal and elite stages")
+    _expect(VisualProfile.PRISM_BEAM == Color("#FF56DD"), "Phase D Prism uses magenta identity")
+    _expect(VisualProfile.NOVA_FIELD == Color("#47E7A8"), "Phase D Nova uses jade identity")
+    _expect(VisualProfile.COMET_TRAIL != VisualProfile.GUN_TRACER, "Comet trails differ from gun tracers")
+    _expect(VisualProfile.ARC_BOLT != VisualProfile.PRISM_BEAM, "Arc relay distinct from Prism")
+    var lightning_low: PackedVector2Array = WeaponEffects.lightning_points(Vector2(10, 20), Vector2(210, 220), true)
+    var lightning_full: PackedVector2Array = WeaponEffects.lightning_points(Vector2(10, 20), Vector2(210, 220), false)
+    _expect(lightning_low.size() < lightning_full.size(), "J8 low-FX lightning uses fewer vertices")
+    _expect(lightning_full[0] == Vector2(10, 20) and lightning_full[lightning_full.size() - 1] == Vector2(210, 220), "lightning shares exact real chain endpoints")
+    _expect(GameCatalog.STAGE_ONE_SHOWCASE and GameCatalog.SHOWCASE_START_LEVEL >= 6, "NORMAL 01 has explicit test-only higher-level start")
+    var preview := Arena.new()
+    root.add_child(preview)
+    preview.begin_run({}, 1, true, true)
+    _expect(preview.showcase_active and preview.level == GameCatalog.SHOWCASE_START_LEVEL, "showcase initializes higher player level immediately")
+    _expect(preview.enemies.size() == 3 and String(preview.enemies[2]["kind"]) == "tank", "showcase starts with mixed visible enemies")
+    _expect(int(preview.levels["gun"]) >= 3 and int(preview.levels["beam"]) > 0 and int(preview.levels["volley"]) > 0 and int(preview.levels["arc"]) > 0 and int(preview.levels["nova"]) > 0, "showcase starts with all five active weapons")
+    preview.elapsed = GameCatalog.SHOWCASE_ELITE_TIME
+    preview._showcase_elite_spawned = false
+    preview._physics_process(0.0)
+    _expect(preview._showcase_elite_spawned and preview.enemies.any(func(e: Dictionary) -> bool: return e["kind"] == "elite"), "visual preview spawns real elite before stage midpoint")
+    preview.queue_free()
+    var normal_preview := Arena.new()
+    root.add_child(normal_preview)
+    normal_preview.begin_run({}, 1, true, false)
+    _expect(not normal_preview.showcase_active and normal_preview.level == 1 and int(normal_preview.levels["beam"]) == 0 and normal_preview.enemies.is_empty(), "ordinary run remains unchanged when showcase disabled")
+    normal_preview.queue_free()
+    var stage2_preview := Arena.new()
+    root.add_child(stage2_preview)
+    stage2_preview.begin_run({}, 2, true, true)
+    _expect(not stage2_preview.showcase_active and stage2_preview.level == 1 and int(stage2_preview.levels["nova"]) == 0, "ELITE 01 never receives the NORMAL 01 showcase")
+    stage2_preview.queue_free()
     _expect(GameCatalog.stage_name(1) == "NORMAL 01", "stage one name")
     _expect(GameCatalog.stage_name(2) == "ELITE 01", "stage two name")
     _expect(GameCatalog.stage_duration(2) > GameCatalog.stage_duration(1), "elite lasts longer")
@@ -136,6 +166,9 @@ func _run() -> void:
     gun_battle.levels["beam"] = 1
     gun_battle._fire_beam()
     _expect(float(gun_battle.weapon_damage["beam"]) > 0.0, "unlocked Prism hits target center")
+    _expect(gun_battle.effects.any(func(e: Dictionary) -> bool:
+        return String(e["kind"]) == "beam" and Color(e["color"]) == VisualProfile.PRISM_BEAM),
+        "live Prism effect stores magenta ray from damage simulation")
     gun_battle.enemies.clear()
     gun_battle._spawn_enemy("tank", 160.0, 650.0)
     gun_battle._spawn_enemy("tank", 565.0, 635.0)
@@ -220,6 +253,27 @@ func _run() -> void:
             all_aligned = all_aligned and Vector2(volley_battle.gun_visual_lanes[lane]["muzzle"]) == Vector2(volley_battle.projectiles[lane]["pos"])
         _expect(all_aligned, "all Saturation barrels launch actual rounds")
     _expect(targeted.size() == 2, "Saturation Burst targets separate threats")
+    var effect_battle := Arena.new()
+    root.add_child(effect_battle)
+    effect_battle.begin_run({}, 1, true, false)
+    effect_battle.levels["volley"] = 1
+    effect_battle.levels["arc"] = 1
+    effect_battle.levels["nova"] = 1
+    effect_battle._spawn_enemy("tank", 360.0, 560.0)
+    effect_battle._spawn_enemy("tank", 430.0, 570.0)
+    effect_battle._fire_volley()
+    _expect(effect_battle.projectiles.size() == 3 and String(effect_battle.projectiles[0]["kind"]) == "rocket",
+        "Phase D Comet still emits real three-lane missiles")
+    effect_battle._fire_arc()
+    _expect(effect_battle.effects.any(func(e: Dictionary) -> bool: return String(e["kind"]) == "arc"),
+        "live Arc Relay uses lightning-specific effect")
+    effect_battle._fire_nova()
+    _expect(effect_battle.effects.any(func(e: Dictionary) -> bool:
+        return String(e["kind"]) == "nova" and Color(e["color"]) == VisualProfile.NOVA_FIELD),
+        "live Nova Field uses jade pulse at real blast position")
+    _expect(float(effect_battle.weapon_damage["arc"]) > 0.0 and float(effect_battle.weapon_damage["nova"]) > 0.0,
+        "Arc and Nova presentation changes do not prevent real damage")
+    effect_battle.queue_free()
     volley_battle.queue_free()
     var arena := Arena.new()
     root.add_child(arena)

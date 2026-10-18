@@ -111,3 +111,25 @@ unchanged. Health-bar noise is reduced for undamaged basic enemies. See
 **Phase C J8 installation:** `make phase-c` after checking out
 `feature/m1-visual-phase-c-enemies`. The APK's isolated package keeps existing
 M1R/Phase A/Phase B installations independent.
+
+### Phase D visual showcase (temporary QA)
+
+To let us review all weapons and enemy types immediately in the Android build,
+NORMAL 01 in the Phase D branch starts at **player LEVEL 7**, with the Sentinel
+at rank 3 and Prism Beam, Comet Volley, Arc Relay and Nova Field at rank 1.
+Three starter enemy types appear immediately; an elite visual test encounter
+spawns at 14 seconds. Only this showcase launch has the boost; Stage 2 and
+normal non-showcase logic are unchanged. `GameCatalog.STAGE_ONE_SHOWCASE` is
+an explicit, temporary testing switch to disable before normal game balancing.
+
+### Phase D — weapon effects
+
+Prism Beam now draws magenta rays directly over its existing physical hit
+segments; Arc Relay gets electric-blue zigzags through the same exact chain
+endpoints; Comet Volley has amber rockets and short orange impact sparks; and
+Nova Field paints a translucent jade pulse at its real area-damage center.
+J8 LOW FX keeps only inexpensive shapes and shorter electrical paths.
+See `docs/VISUAL-PHASE-D.md`.
+
+**Phase D J8 deployment:** switch to the `feature/m1-visual-phase-d-weapons`
+branch and run `make phase-d`. Isolated install: `com.dantesouza.bastionzero.phased`.

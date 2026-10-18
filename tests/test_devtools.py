@@ -26,7 +26,8 @@ class J8ToolsTests(unittest.TestCase):
             ("m1r", "feature/m1-playable-game"),
             ("phase-a", "feature/m1-visual-phase-a"),
             ("phase-b", "feature/m1-visual-phase-b-guardian"),
-            ("phase-c", "feature/m1-visual-phase-c-enemies")
+            ("phase-c", "feature/m1-visual-phase-c-enemies"),
+            ("phase-d", "feature/m1-visual-phase-d-weapons")
         ]:
             with self.subTest(key=key), mock.patch.object(
                 android_j8, "execute", return_value=mock.Mock(stdout=branch + "\n")
@@ -72,6 +73,18 @@ class J8ToolsTests(unittest.TestCase):
         self.assertIn("dist", str(android_j8.resolve_apk("auto", c)))
         with self.assertRaisesRegex(RuntimeError, "cross-profile"):
             android_j8.resolve_apk("dist/phase-b/bastion-zero-phase-b-j8-debug.apk", c)
+
+    def test_phase_d_isolated_showcase_apk_profile(self):
+        d = android_j8.resolve_profile("phase-d")
+        c = android_j8.resolve_profile("phase-c")
+        self.assertEqual(d.branch, "feature/m1-visual-phase-d-weapons")
+        self.assertEqual(d.artifact, "Bastion-Zero-Phase-D-J8-ARMv7")
+        self.assertEqual(d.package, "com.dantesouza.bastionzero.phased")
+        self.assertNotEqual(d.package, c.package)
+        self.assertNotEqual(d.apk_name, c.apk_name)
+        self.assertIn("phase-d", str(android_j8.resolve_apk("auto", d)))
+        with self.assertRaisesRegex(RuntimeError, "cross-profile"):
+            android_j8.resolve_apk("dist/phase-c/bastion-zero-phase-c-j8-debug.apk", d)
 
     def test_reject_cross_profile_apk_basename(self):
         with self.assertRaisesRegex(RuntimeError, "cross-profile"):
@@ -196,6 +209,7 @@ class J8ToolsTests(unittest.TestCase):
         self.assertIn("feature/m1-visual-phase-a", repo_sync.BRANCHES)
         self.assertIn("feature/m1-visual-phase-b-guardian", repo_sync.BRANCHES)
         self.assertIn("feature/m1-visual-phase-c-enemies", repo_sync.BRANCHES)
+        self.assertIn("feature/m1-visual-phase-d-weapons", repo_sync.BRANCHES)
 
 
 if __name__ == "__main__":
