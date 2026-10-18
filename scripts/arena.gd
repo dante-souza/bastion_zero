@@ -686,35 +686,8 @@ func _draw() -> void:
         GuardianRenderer.sentinel_barrel_count(int(levels.get("gun", 1)), int(levels.get("gun_volley", 0))),
         gun_visual_lanes, damage_fraction)
     for enemy in enemies:
-        var at: Vector2 = enemy["pos"]
-        var radius: float = enemy["radius"]
-        var shade: Color = VisualProfile.enemy_tint(String(enemy["kind"]))
-        if float(enemy["slow"]) > 0.0:
-            draw_arc(at, radius + 10.0, 0, TAU, 22, GREEN, 2.0, true)
-        match String(enemy["kind"]):
-            "runner":
-                draw_colored_polygon(PackedVector2Array([at + Vector2(0, -radius), at + Vector2(radius, radius), at + Vector2(-radius, radius)]), shade)
-            "tank":
-                draw_rect(Rect2(at - Vector2(radius, radius), Vector2(radius * 2, radius * 2)), shade, true)
-                draw_rect(Rect2(at - Vector2(radius * 0.5, radius * 0.5), Vector2(radius, radius)), DARK, true)
-            "elite":
-                draw_arc(at, radius + 12 + sin(_visual_clock * 3.0) * 3.0, 0, TAU, 48, shade, 3.0, true)
-                draw_circle(at, radius, shade)
-                draw_circle(at, radius * 0.48, DARK)
-            _:
-                draw_circle(at, radius, shade)
-                draw_circle(at, radius * 0.44, DARK)
-        if float(enemy["flash"]) > 0.0:
-            draw_arc(at, radius + 5.0, 0, TAU, 26, Color(1, 1, 1, 0.8), 2.4, true)
-        if enemy["kind"] == "tank":
-            draw_arc(at, radius + 7.0, 0, TAU, 24, Color("#8a9ee2"), 2.0, true)
-        if enemy["kind"] == "elite" and _elite_enraged:
-            draw_arc(at, radius + 21.0, 0, TAU, 36, RED, 4.0, true)
-        var fraction: float = clampf(float(enemy["hp"]) / float(enemy["max_hp"]), 0.0, 1.0)
-        draw_rect(Rect2(at + Vector2(-radius, -radius - 16), Vector2(radius * 2.0, 5)), Color("#29374b"), true)
-        draw_rect(Rect2(at + Vector2(-radius, -radius - 16), Vector2(radius * 2.0 * fraction, 5)), GREEN, true)
-        if int(enemy["id"]) == focused_id:
-            draw_arc(at, radius + 18.0, 0, TAU, 36, GOLD, 3.0, true)
+        EnemyRenderer.draw_to(self, enemy, low_fx, _visual_clock,
+            int(enemy["id"]) == focused_id, _elite_enraged)
     for bullet in projectiles:
         var pos: Vector2 = bullet["pos"]
         if bullet["kind"] == "gun":
