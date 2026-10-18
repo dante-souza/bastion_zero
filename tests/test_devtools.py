@@ -36,7 +36,8 @@ class J8ToolsTests(unittest.TestCase):
             ("phase-h", "feature/m1-visual-phase-h-premium"),
             ("phase-i1", "feature/m1-visual-phase-i1-combat-hud"),
             ("phase-i2", "feature/m1-visual-phase-i2-evolution"),
-            ("phase-i3", "feature/m1-visual-phase-i3-title-menu")
+            ("phase-i3", "feature/m1-visual-phase-i3-title-menu"),
+            ("phase-i4", "feature/m1-visual-phase-i4-threat-language")
         ]:
             with self.subTest(key=key), mock.patch.object(
                 android_j8, "execute", return_value=mock.Mock(stdout=branch + "\n")
@@ -229,6 +230,19 @@ class J8ToolsTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "cross-profile"):
             android_j8.resolve_apk("dist/phase-i2/bastion-zero-phase-i2-j8-debug.apk", i3)
 
+    def test_phase_i4_threat_guide_reuses_premium_app(self):
+        h = android_j8.resolve_profile("phase-h")
+        i3 = android_j8.resolve_profile("phase-i3")
+        i4 = android_j8.resolve_profile("phase-i4")
+        self.assertEqual(i4.branch, "feature/m1-visual-phase-i4-threat-language")
+        self.assertEqual(i4.artifact, "Bastion-Zero-Phase-I4-J8-ARMv7")
+        self.assertEqual(i4.package, h.package)
+        self.assertEqual(i4.package, i3.package)
+        self.assertNotEqual(i4.apk_name, i3.apk_name)
+        self.assertIn("phase-i4", str(android_j8.resolve_apk("auto", i4)))
+        with self.assertRaisesRegex(RuntimeError, "cross-profile"):
+            android_j8.resolve_apk("dist/phase-i3/bastion-zero-phase-i3-j8-debug.apk", i4)
+
     def test_reject_cross_profile_apk_basename(self):
         with self.assertRaisesRegex(RuntimeError, "cross-profile"):
             android_j8.resolve_apk("dist/bastion-zero-j8-debug.apk", android_j8.PROFILES["phase-a"])
@@ -360,6 +374,7 @@ class J8ToolsTests(unittest.TestCase):
         self.assertIn("feature/m1-visual-phase-i1-combat-hud", repo_sync.BRANCHES)
         self.assertIn("feature/m1-visual-phase-i2-evolution", repo_sync.BRANCHES)
         self.assertIn("feature/m1-visual-phase-i3-title-menu", repo_sync.BRANCHES)
+        self.assertIn("feature/m1-visual-phase-i4-threat-language", repo_sync.BRANCHES)
 
 
 if __name__ == "__main__":
