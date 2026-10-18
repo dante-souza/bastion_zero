@@ -417,7 +417,7 @@ func _move_projectiles(delta: float) -> void:
             _effect("flash" if kind == "gun" else "impact",
                 hit_at, Vector2.ZERO, 12.0 if kind == "gun" else 22.0,
                 VisualProfile.GUN_TRACER if kind == "gun" else VisualProfile.COMET_IMPACT,
-                0.14 if kind == "gun" else 0.22)
+                0.14 if kind == "gun" else (0.34 if showcase_active else 0.24))
         elif float(bullet["life"]) <= 0.0 or next.y < 110.0 or next.y > 1180.0:
             projectiles.remove_at(i)
 
@@ -577,7 +577,8 @@ func _fire_beam() -> void:
         var destination: Vector2 = enemies[idx]["pos"]
         var direction: Vector2 = (destination - start).normalized()
         var end: Vector2 = start + direction * 1300.0
-        _effect("beam", start, end, 4.0 + int(levels["beam"]), VisualProfile.PRISM_BEAM, 0.16)
+        _effect("beam", start, end, 4.0 + int(levels["beam"]), VisualProfile.PRISM_BEAM,
+            0.36 if showcase_active else 0.21)
         var hits: Array[Dictionary] = []
         for enemy in enemies:
             var offset: Vector2 = Vector2(enemy["pos"]) - start
@@ -617,7 +618,8 @@ func _fire_arc() -> void:
         if idx < 0:
             break
         var pos: Vector2 = enemies[idx]["pos"]
-        _effect("arc", point, pos, 3.0, VisualProfile.ARC_BOLT, 0.27)
+        _effect("arc", point, pos, 3.0, VisualProfile.ARC_BOLT,
+            0.48 if showcase_active else 0.32)
         if int(levels["arc"]) >= 3:
             enemies[idx]["stun"] = maxf(float(enemies[idx]["stun"]), 0.33)
         _damage_by_id(next_id, _power(26.0 + int(levels["arc"]) * 8.0) * pow(0.82, jump), "arc")
@@ -651,7 +653,8 @@ func _fire_nova() -> void:
         if neighbors > best_score:
             best_score = neighbors
             center = pos
-    _effect("nova", center, Vector2.ZERO, radius, VisualProfile.NOVA_FIELD, 0.65)
+    _effect("nova", center, Vector2.ZERO, radius, VisualProfile.NOVA_FIELD,
+        1.05 if showcase_active else 0.76)
     _blast(center, radius, _power(17.0 + int(levels["nova"]) * 12.0), "nova", VisualProfile.NOVA_FIELD)
     for enemy in enemies:
         if Vector2(enemy["pos"]).distance_to(center) <= radius:

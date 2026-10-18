@@ -14,6 +14,15 @@ func _expect(ok: bool, label: String) -> void:
 
 func _run() -> void:
     _expect(GameCatalog.TOTAL_STAGES == 2, "normal and elite stages")
+    _expect(HudProfile.top_height() <= 110.0 and HudProfile.top_height() >= 100.0,
+        "Phase E compacts top HUD by roughly 30 percent")
+    _expect(HudProfile.bottom_height() <= 82.0,
+        "Phase E compacts bottom HUD by roughly 27 percent")
+    _expect(HudProfile.PAUSE_SIZE.x >= 44.0 and HudProfile.PAUSE_SIZE.y >= 44.0,
+        "pause remains a touch-safe control")
+    _expect(HudProfile.XP_HEIGHT <= 12.0, "XP progress bar is slimmer")
+    _expect(WeaponEffects.ARC_SEGMENTS_LOW < WeaponEffects.ARC_SEGMENTS_FULL,
+        "J8 low-FX chain lighting remains cheaper after readability pass")
     _expect(VisualProfile.PRISM_BEAM == Color("#FF56DD"), "Phase D Prism uses magenta identity")
     _expect(VisualProfile.NOVA_FIELD == Color("#47E7A8"), "Phase D Nova uses jade identity")
     _expect(VisualProfile.COMET_TRAIL != VisualProfile.GUN_TRACER, "Comet trails differ from gun tracers")
@@ -60,7 +69,7 @@ func _run() -> void:
     root.add_child(normal_preview)
     normal_preview.begin_run({}, 1, true, false)
     _expect(not normal_preview.showcase_active and normal_preview.level == 1 and int(normal_preview.levels["beam"]) == 0 and normal_preview.enemies.is_empty(), "ordinary run remains unchanged when showcase disabled")
-    _expect(not normal_preview.showcase_regular_spawns_unlocked == false, "normal runs allow immediate formations")
+    _expect(normal_preview.showcase_regular_spawns_unlocked, "normal runs allow immediate formations")
     normal_preview._spawn_enemy("grunt", 145.0, 445.0)
     _expect(is_equal_approx(float(normal_preview.enemies[0]["hp"]), 29.0), "normal grunt HP never receives temporary showcase multiplier")
     normal_preview.queue_free()

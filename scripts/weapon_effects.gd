@@ -4,8 +4,8 @@ extends RefCounted
 ## Phase D — weapon identities with cheap, CanvasItem-only rendering.
 ## All endpoints/velocities are obtained from actual combat simulation events.
 ## The damage model stays in Arena; these helpers never deal damage.
-const ARC_SEGMENTS_LOW := 6
-const ARC_SEGMENTS_FULL := 10
+const ARC_SEGMENTS_LOW := 7
+const ARC_SEGMENTS_FULL := 12
 
 static func draw_projectile(canvas: CanvasItem, bullet: Dictionary, reduced_fx: bool) -> void:
     var pos: Vector2 = bullet["pos"]
@@ -18,10 +18,10 @@ static func draw_projectile(canvas: CanvasItem, bullet: Dictionary, reduced_fx: 
         "rocket":
             # Amber nose / orange exhaust are recognizably different from
             # cyan Sentinel rounds even in crowded J8 low-FX screenshots.
-            canvas.draw_line(pos, pos - motion * (20.0 if reduced_fx else 27.0),
-                VisualProfile.COMET_TRAIL, 3.0 if reduced_fx else 4.2, true)
-            canvas.draw_circle(pos, 7.0, VisualProfile.COMET_BODY)
-            canvas.draw_circle(pos, 2.5, VisualProfile.COMET_HOT)
+            canvas.draw_line(pos, pos - motion * (28.0 if reduced_fx else 35.0),
+                VisualProfile.COMET_TRAIL, 3.6 if reduced_fx else 4.6, true)
+            canvas.draw_circle(pos, 8.0, VisualProfile.COMET_BODY)
+            canvas.draw_circle(pos, 3.3, VisualProfile.COMET_HOT)
         _:
             canvas.draw_line(pos, pos - motion * 13.0, VisualProfile.COMET_TRAIL, 2.4, true)
             canvas.draw_circle(pos, 3.4, VisualProfile.COMET_BODY)
@@ -40,11 +40,15 @@ static func draw_effect(canvas: CanvasItem, effect: Dictionary, reduced_fx: bool
             # Prism stays exactly on the ray used by Arena._fire_beam().
             if not reduced_fx:
                 canvas.draw_line(at, destination,
-                    Color(color.r, color.g, color.b, color.a * 0.16),
-                    radius + 11.0 * alpha, true)
-            canvas.draw_line(at, destination, color, radius + 1.0 * alpha, true)
-            canvas.draw_line(at, destination, Color(1, 0.88, 1, 0.72 * alpha),
-                1.3, true)
+                    Color(color.r, color.g, color.b, color.a * 0.20),
+                    radius + 14.0 * alpha, true)
+            canvas.draw_line(at, destination, color, radius + 2.0 * alpha, true)
+            canvas.draw_line(at, destination, Color(1, 0.92, 1, 0.80 * alpha),
+                1.7, true)
+            canvas.draw_circle(at, 4.0 * alpha,
+                Color(1.0, 0.60, 0.95, 0.55 * alpha))
+            canvas.draw_circle(destination, 5.0 * alpha,
+                Color(1.0, 0.60, 0.95, 0.45 * alpha))
         "arc":
             # Jagged lightning decorates the same collision-resolved chain
             # endpoints; faint straight centerline explains its actual path.
@@ -53,20 +57,23 @@ static func draw_effect(canvas: CanvasItem, effect: Dictionary, reduced_fx: bool
                 canvas.draw_polyline(points, Color(color.r, color.g, color.b, color.a * 0.30), 8.0 * alpha, true)
             canvas.draw_line(at, destination,
                 Color(color.r, color.g, color.b, color.a * 0.26), 1.0, true)
-            canvas.draw_polyline(points, color, 2.8 if reduced_fx else 3.6, true)
+            canvas.draw_polyline(points, color, 3.3 if reduced_fx else 4.2, true)
+            canvas.draw_circle(destination, 5.2 * alpha,
+                Color(0.82, 0.92, 1.0, 0.85 * alpha))
             if not reduced_fx:
-                canvas.draw_circle(destination, 4.0 * alpha, VisualProfile.ARC_HOT)
+                canvas.draw_circle(at, 3.5 * alpha, VisualProfile.ARC_HOT)
         "nova":
             var expanding: float = radius * (0.82 + (1.0 - alpha) * 0.18)
             if not reduced_fx:
-                canvas.draw_circle(at, expanding, Color(color.r, color.g, color.b, 0.035 * alpha))
-                canvas.draw_arc(at, expanding * 0.73, 0.0, TAU, 34,
-                    Color(color.r, color.g, color.b, 0.22 * alpha), 2.0, true)
-            canvas.draw_arc(at, expanding, 0.0, TAU, 44, color, 3.2, true)
+                canvas.draw_circle(at, expanding,
+                    Color(color.r, color.g, color.b, 0.055 * alpha))
+            canvas.draw_arc(at, expanding * 0.68, 0.0, TAU, 32,
+                Color(color.r, color.g, color.b, 0.40 * alpha), 2.4, true)
+            canvas.draw_arc(at, expanding, 0.0, TAU, 44, color, 4.0, true)
         "impact":
             # Rocket burst / fragments: short, warm, non-opaque sparks.
             var grow: float = radius * (1.0 - 0.35 * alpha)
-            canvas.draw_arc(at, grow, 0.0, TAU, 20, color, 2.8 * alpha, true)
+            canvas.draw_arc(at, grow, 0.0, TAU, 24, color, 3.3 * alpha, true)
             canvas.draw_circle(at, 5.0 * alpha, VisualProfile.COMET_HOT)
             if not reduced_fx:
                 for i in range(4):
