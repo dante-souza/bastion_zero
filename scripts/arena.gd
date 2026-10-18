@@ -668,15 +668,7 @@ func _effect(kind: String, a: Vector2, b: Vector2, radius: float, color: Color, 
     effects.append({"kind": kind, "a": a, "b": b, "radius": radius, "color": color, "ttl": duration, "duration": duration})
 
 func _draw() -> void:
-    draw_rect(Rect2(Vector2.ZERO, GameCatalog.WORLD_SIZE), DARK, true)
-    for x in range(80, 721, 80):
-        draw_line(Vector2(x, 140), Vector2(x, GameCatalog.BREACH_Y), VisualProfile.GRID, 1.0)
-    for y in range(180, 1100, 100):
-        draw_line(Vector2(0, y), Vector2(720, y), VisualProfile.GRID, 1.0)
-    draw_rect(Rect2(0, 125, 720, 55), VisualProfile.SPAWN_BAND, true)
-    draw_line(Vector2(0, GameCatalog.BREACH_Y), Vector2(720, GameCatalog.BREACH_Y), RED, 4.0)
-    draw_rect(Rect2(0, 1052, 720, 110), VisualProfile.LOWER_ZONE, true)
-    draw_arc(G, 72.0 + sin(_visual_clock * 3.0) * 4.0, PI, TAU, 32, Color(0.2, 0.76, 0.88, 0.25), 2.0, true)
+    ArenaBackground.draw_to(self, low_fx, _visual_clock)
     draw_circle(G, 48.0, VisualProfile.GUARDIAN_HULL)
     draw_arc(G, 45.0, 0, TAU, 36, CYAN, 5.0, true)
     draw_colored_polygon(PackedVector2Array([

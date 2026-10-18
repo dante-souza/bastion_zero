@@ -1,48 +1,85 @@
-# Bastion Zero developer commands (GNU Make + Python + ADB).
-# Device is pinned: the Moto G41 may be connected at the same time.
+# Bastion Zero — Android-first workflows. All routine operations go through make.
+# PROFILE=auto selects current supported Git branch; phase-a targets work from any branch.
 PYTHON ?= python
 DEVICE ?= 38c19745
-APK ?= dist/bastion-zero-j8-debug.apk
+PROFILE ?= auto
+APK ?= auto
 RUN_ID ?= latest
-ARTIFACT ?= Bastion-Zero-M1R-J8-ARMv7
 REPO ?= dante-souza/bastion_zero
-ADB_CMD = $(PYTHON) scripts/android_j8.py --device "$(DEVICE)" --apk "$(APK)"
+GODOT ?= godot
+J8 = $(PYTHON) scripts/android_j8.py --device "$(DEVICE)" --profile "$(PROFILE)" --apk "$(APK)"
 
 .DEFAULT_GOAL := help
-.PHONY: help doctor installed version apk install uninstall reinstall run reinstall-run deploy logs sync git-status check-tools
+.PHONY: help profile doctor installed version apk install uninstall reinstall run reinstall-run deploy fresh logs screenshot sync git-status check-tools check phase-a phase-a-apk phase-a-install phase-a-reinstall-run phase-a-run phase-a-doctor phase-a-logs phase-a-screenshot
 
 help:
-	@$(PYTHON) scripts/android_j8.py help
+	@$(J8) help
+
+profile:
+	@$(J8) profile
 
 doctor:
-	@$(ADB_CMD) doctor
+	@$(J8) doctor
 
 installed version:
-	@$(ADB_CMD) installed
+	@$(J8) installed
 
 apk:
-	@$(ADB_CMD) download --run-id "$(RUN_ID)" --artifact "$(ARTIFACT)" --repo "$(REPO)"
+	@$(J8) download --run-id "$(RUN_ID)" --repo "$(REPO)"
 
 install:
-	@$(ADB_CMD) install
+	@$(J8) install
 
 uninstall:
-	@$(ADB_CMD) uninstall
+	@$(J8) uninstall
 
 reinstall:
-	@$(ADB_CMD) reinstall
+	@$(J8) reinstall
 
 run:
-	@$(ADB_CMD) run
+	@$(J8) run
 
-# Explicitly destructive: requires APK preflight before removing old app/data.
+# Destructive for the selected package's local save only.
 reinstall-run deploy:
-	@$(ADB_CMD) reinstall-run
+	@$(J8) reinstall-run
+
+# Fresh build: fetch most recent successful APK, reinstall and launch.
+fresh:
+	@$(MAKE) apk PROFILE="$(PROFILE)"
+	@$(MAKE) reinstall-run PROFILE="$(PROFILE)"
 
 logs:
-	@$(ADB_CMD) logs
+	@$(J8) logs
 
-# Fast-forward only, never stash/reset/force-push or auto-merge unrelated branches.
+screenshot:
+	@$(J8) screenshot
+
+# Explicit Phase A aliases avoid accidentally using the older M1R build.
+phase-a:
+	@$(MAKE) fresh PROFILE=phase-a
+
+phase-a-apk:
+	@$(MAKE) apk PROFILE=phase-a
+
+phase-a-install:
+	@$(MAKE) install PROFILE=phase-a
+
+phase-a-reinstall-run:
+	@$(MAKE) reinstall-run PROFILE=phase-a
+
+phase-a-run:
+	@$(MAKE) run PROFILE=phase-a
+
+phase-a-doctor:
+	@$(MAKE) doctor PROFILE=phase-a
+
+phase-a-logs:
+	@$(MAKE) logs PROFILE=phase-a
+
+phase-a-screenshot:
+	@$(MAKE) screenshot PROFILE=phase-a
+
+# Fast-forward only; no reset, forced checkout or stash.
 sync:
 	@$(PYTHON) scripts/repo_sync.py
 
@@ -53,3 +90,8 @@ git-status:
 check-tools:
 	@$(PYTHON) -m compileall -q scripts
 	@$(PYTHON) -m unittest discover -s tests -p "test_devtools.py" -v
+
+check: check-tools
+	@$(GODOT) --headless --path . --editor --quit --quit-after 240
+	@$(GODOT) --headless --path . --script res://tests/test_smoke.gd
+	@$(GODOT) --headless --path . --quit-after 10

@@ -1,6 +1,6 @@
 # Bastion Zero — early Rogue-inspired visual direction (next build)
 
-**Status:** 13:36.9 video directly inspected on 2026-10-18. Sentinel upgrades v0.2.3 implemented; the visual overhaul **has not** been applied.
+**Status:** 13:36.9 video directly inspected on 2026-10-18. Phase A (near-black arena and blue horizon) implemented on `feature/m1-visual-phase-a`; Phases B–F remain planned. Sentinel upgrades remain as in M1R.
 **Reference package:** User-supplied six-frame board `Bastion_Zero_Rogue_Reference_Board(1).jpg` and 2026-10-18 timestamped Markdown analysis `Bastion_Zero_Rogue_Visual_Reference_2026-10-18(1).md`. The original MP4 was subsequently uploaded here and directly analyzed (H.264, 384×854 portrait, 30 fps). The six stills accurately capture the art direction. Derived contact sheets and a timestamped analysis report were generated for local review, and are not imported as game assets.
 
 Reference: [early Rogue gameplay](https://www.youtube.com/watch?v=9o4noNCPi-I). Third-party source material is used **only to study broad aesthetics and gameplay presentation**. No copied artwork, UI imagery, logos, sounds, Unity bundles, visual effects or proprietary text are incorporated.
@@ -44,7 +44,7 @@ The following are supported by the user-provided board **and** direct sampling o
 
 ## Existing gameplay work and non-goals
 
-Already implemented in v0.2.3: Sentinel Autocannon built-in, selectable **Kinetic Payload**, **Sabot Piercer**, **Ricochet Routing**, **Saturation Burst** upgrades, guaranteed Sentinel evolution in offers while unmaxed, Prism Beam separately unlockable, independently aimed twin beams, 2 stages and local saves. **The new visual treatment itself has not been shipped.**
+Already implemented in v0.2.3: Sentinel Autocannon built-in, selectable **Kinetic Payload**, **Sabot Piercer**, **Ricochet Routing**, **Saturation Burst** upgrades, guaranteed Sentinel evolution in offers while unmaxed, Prism Beam separately unlockable, independently aimed twin beams, 2 stages and local saves. **Only visual Phase A is implemented on its dedicated branch; later visual phases are not yet shipped.**
 
 No change to research currency, wave formulas, in-app purchases, online data, or original game save assets is authorized by this brief. Do not ship screenshot references inside the public game package or git repo.
 

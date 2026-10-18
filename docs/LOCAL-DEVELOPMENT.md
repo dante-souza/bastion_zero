@@ -1,95 +1,93 @@
-# Local developer workflow (Windows PowerShell + Galaxy J8)
+# Bastion Zero — Makefile-first Galaxy J8 workflow
 
-This project uses GNU Make as a convenient wrapper around two Python scripts.
-**Python 3.10+**, **ADB** and **Git** must be on your Windows PATH. An authenticated
-GitHub CLI (`gh`) is only necessary for automatic APK artifact downloading.
+**Policy (2026-10-18):** all routine Android operations are invoked through `make`. Git and GitHub CLI commands may be used for branch management, authentication or diagnosis. Do not need to type raw ADB, Python, or Godot commands for routine operation.
 
-## First-time local repository refresh
+## Requirements
 
-From your existing project folder (for example
-`M:\ATOL\GitProjects\bastion_zero`):
+From PowerShell in `M:\ATOL\GitProjects\bastion_zero`, have GNU Make, Python 3.10+, ADB, Git, and authenticated `gh` available in PATH. The default device is Samsung Galaxy J8 serial `38c19745`; use `DEVICE=...` to override.
+
+## Get Phase A Makefile locally
+
+The code lives on `feature/m1-visual-phase-a` (PR #2 targets `feature/m1-playable-game`). Switching branches is allowed; do not reset or discard local edits.
 
 ```powershell
 git status --short --branch
 git fetch origin --prune
-git switch feature/m1-playable-game
-git pull --ff-only origin feature/m1-playable-game
+git switch --track origin/feature/m1-visual-phase-a
+# If branch already exists: git switch feature/m1-visual-phase-a
+git pull --ff-only origin feature/m1-visual-phase-a
 make help
-make sync
 ```
 
-If `git switch feature/m1-playable-game` reports the branch does not exist,
-run `git switch --track origin/feature/m1-playable-game` instead. **Do not
-discard local edits**: commit them or stash them deliberately before syncing.
-`make sync` refuses a dirty working tree, fetches origin, updates local
-`main`, `dev` and `feature/m1-playable-game` using fast-forward-only,
-and restores the previously checked-out branch. It will not merge the unreviewed
-feature PR into `dev` or `main`.
+`make sync` fast-forwards `main`, `dev`, M1R and Phase A safely, restoring the initial branch when finished.
 
-Check `git status -sb` after syncing. Do not use `git reset --hard` just to
-resolve an ordinary local divergence.
+## One-command Phase A installation on J8
 
-## Get the correct M1R combat APK
+```powershell
+make phase-a
+```
 
-The v0.2.2 built-in autocannon Android APK can be found in
-[successful J8 workflow runs](https://github.com/dante-souza/bastion_zero/actions/workflows/android-j8.yml).
-By default, `make apk` chooses the most recent **successful** run from the feature branch, rather than an old hardcoded artifact. The artifact name is `Bastion-Zero-M1R-J8-ARMv7`.
-Download and unzip the archive so these files are present:
+The target downloads the **latest successful** Phase A Android build, verifies its SHA-256 checksum, reinstalls only `com.dantesouza.bastionzero.phasea` and launches it. It does not uninstall the original M1R app.
+
+As requested, Phase A development saves are disposable; `reinstall-run` and `phase-a` intentionally erase only the target package's saves.
+
+## Individual routines
+
+| Make target | Behavior |
+|---|---|
+| `make help` | List routines and supported profiles |
+| `make profile` | Show profile selected from the current Git branch |
+| `make phase-a` | Download latest Phase A, reinstall and launch |
+| `make phase-a-apk` | Download/verify Phase A APK only |
+| `make phase-a-doctor` | Check connected J8, installed Phase A and local APK |
+| `make phase-a-install` | Update Phase A without deleting saves; matching signature required |
+| `make phase-a-reinstall-run` | Reinstall cached Phase A APK and launch |
+| `make phase-a-run` | Launch installed Phase A |
+| `make phase-a-logs` | Inspect Android/Godot logs |
+| `make phase-a-screenshot` | Capture current screen into `screenshots/` |
+| `make apk` | Download selected current-branch profile's latest successful build |
+| `make fresh` | Download/reinstall/launch selected current-branch profile |
+| `make doctor`, `make installed` | Check selected package/J8 status |
+| `make install` | Install without erasing data (signature permitting) |
+| `make reinstall` | Verify/reinstall, deleting only selected package's saves |
+| `make reinstall-run`, `make deploy` | Reinstall and launch cached APK |
+| `make run` | Launch selected package |
+| `make logs`, `make screenshot` | Diagnostics and PNG capture |
+| `make sync` | Update local branches via fast-forward only |
+| `make check-tools`, `make check` | Local Python/Godot tests |
+| `make git-status` | Print local Git branch and status |
+
+Profiles are `phase-a` and `m1r`; `PROFILE=auto` selects the matching current Git branch or fails closed if unsupported. The Android package is never chosen independently of the profile.
+
+`make apk` places builds in distinct directories so older `dist/bastion-zero-j8-debug.apk` cannot interfere:
 
 ```text
-bastion_zero/
-  dist/
-    bastion-zero-j8-debug.apk
-    SHA256SUMS.txt
+dist/
+  m1r/bastion-zero-j8-debug.apk
+  phase-a/bastion-zero-phase-a-j8-debug.apk
 ```
 
-`dist/` is ignored by Git; APKs are never committed. The checksum file is
-recommended and checked automatically before any installation.
+Each directory also contains a `SHA256SUMS.txt` and a cached run-id. Re-running `make apk` against the same successful run verifies and reuses the existing APK; when a new run succeeds, the target downloads and replaces only that profile's cached artifact.
 
-Alternatively, if `gh auth login` has been completed:
+## Use the already downloaded Phase A APK
+
+The artifact downloaded manually to `C:\Users\dante\Downloads\BastionZero-PhaseA` can be installed via **Make**, too:
 
 ```powershell
-make apk
-# or choose a specific Actions run
-make apk RUN_ID=39139851446
+make phase-a-reinstall-run APK="C:/Users/dante/Downloads/BastionZero-PhaseA/bastion-zero-phase-a-j8-debug.apk"
 ```
 
-`make apk` refuses to overwrite an existing APK. Move a prior build aside first
-when downloading a different run. The artifact is retained for a limited period
-by GitHub Actions.
+Its `SHA256SUMS.txt` should be alongside the APK. The standard `make phase-a` workflow is preferred going forward.
 
-## Developer commands
-
-| Command | Behavior |
-|---|---|
-| `make help` | List commands |
-| `make doctor` | Check selected device, installed version and available APK |
-| `make installed` | Read installed Bastion Zero version/code (no changes) |
-| `make apk` | Fetch CI APK using authenticated GitHub CLI |
-| `make install` | Non-destructive `adb install -r`; requires matching signature |
-| `make uninstall` | **DELETES** the Bastion Zero installation and local save |
-| `make reinstall` | Verify local APK, then uninstall and install (**erases save**) |
-| `make reinstall-run` | Verify APK, uninstall, install and launch (**erases save**) |
-| `make deploy` | Alias for `make reinstall-run` |
-| `make run` | Start installed game without reinstalling |
-| `make logs` | Show recent relevant logcat output |
-| `make sync` | Safely fast-forward local Gitflow branches |
-| `make git-status` | Show short status and local branch tracking |
-| `make check-tools` | Check Python CLI scripts and run their offline unit tests |
-
-**The default serial is `38c19745` (Samsung Galaxy J8).** Since a Moto G41
-may also be connected, every ADB command is targeted explicitly. Override it
-for diagnostics with `make doctor DEVICE=0077860711`.
-
-To use a different APK path:
+## Select a specific successful run
 
 ```powershell
-make reinstall-run APK="C:/Users/dante/Downloads/bastion-zero-j8-debug.apk"
+make phase-a-apk RUN_ID=39149399652
+make phase-a-reinstall-run
 ```
 
-**Important:** CI builds currently use an ephemeral debug signing key unless
-a stable `BASTION_DEBUG_KEYSTORE_BASE64` GitHub Actions secret is configured.
-A signature mismatch prevents `make install` from updating; `make
-reinstall-run` resolves that by uninstalling but permanently erases local game
-progress. See [signing setup](ANDROID-SIGNING.md) before you start keeping
-meaningful progress on the J8.
+The helper verifies the selected run belongs to Phase A and refuses a different branch's artifact.
+
+## Build signing
+
+Unless `BASTION_DEBUG_KEYSTORE_BASE64` is configured in GitHub Actions, the CI workflow signs each APK with an ephemeral key. Android will reject in-place upgrades with mismatching certificates. Use `make phase-a` (reinstall) until stable signing and meaningful save persistence become requirements. See `docs/ANDROID-SIGNING.md`.

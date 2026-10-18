@@ -2,7 +2,7 @@ name: Android J8 debug APK
 
 on:
   push:
-    branches: ['feature/m1-playable-game']
+    branches: ['feature/m1-playable-game', 'feature/m1-visual-phase-a']
   workflow_dispatch:
 
 permissions:
@@ -82,15 +82,23 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          godot --headless --path . --export-debug "Android J8 Debug" "dist/bastion-zero-j8-debug.apk"
-          test -s dist/bastion-zero-j8-debug.apk
-          sha256sum dist/bastion-zero-j8-debug.apk | tee dist/SHA256SUMS.txt
+          if [[ "$GITHUB_REF_NAME" == "feature/m1-visual-phase-a" ]]; then
+            PRESET="Android J8 Phase A Debug"
+            APK="dist/bastion-zero-phase-a-j8-debug.apk"
+          else
+            PRESET="Android J8 Debug"
+            APK="dist/bastion-zero-j8-debug.apk"
+          fi
+          godot --headless --path . --export-debug "$PRESET" "$APK"
+          test -s "$APK"
+          sha256sum "$APK" | tee dist/SHA256SUMS.txt
 
       - name: Upload J8 APK
         uses: actions/upload-artifact@v4
         with:
-          name: Bastion-Zero-M1R-J8-ARMv7
+          name: ${{ github.ref_name == 'feature/m1-visual-phase-a' && 'Bastion-Zero-Phase-A-J8-ARMv7' || 'Bastion-Zero-M1R-J8-ARMv7' }}
           path: |
+            dist/bastion-zero-*-j8-debug.apk
             dist/bastion-zero-j8-debug.apk
             dist/SHA256SUMS.txt
           if-no-files-found: error
