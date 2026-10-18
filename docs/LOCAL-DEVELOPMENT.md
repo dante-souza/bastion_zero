@@ -177,3 +177,25 @@ make phase-d-logs
 `make phase-d` selects the latest successful *Phase D* Android workflow run,
 verifies the SHA-256, downloads to `dist/phase-d/`, reinstalls its isolated
 package and launches. Saves are disposable. See [Phase D](VISUAL-PHASE-D.md).
+
+## D.1 + E: level-12 demo and compact HUD
+
+Phase E is stacked on Phase D in `feature/m1-visual-phase-e-hud` with
+an isolated J8 package `com.dantesouza.bastionzero.phasee` and APK cache
+in `dist/phase-e/`.
+
+NORMAL 01 uses higher test starting ranks and guided targets at seconds
+0/4/8/12/20; standard wave formations resume at second 24. Top HUD is
+106 logical px (was 150); bottom HUD is 80 px (was 110).
+
+```powershell
+make profile
+make check-tools
+make check
+make phase-e
+make phase-e-doctor
+make phase-e-screenshot
+make phase-e-logs
+```
+
+Progress can be erased in this debug package. See `docs/VISUAL-PHASE-E.md`.

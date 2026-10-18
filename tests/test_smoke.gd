@@ -14,6 +14,15 @@ func _expect(ok: bool, label: String) -> void:
 
 func _run() -> void:
     _expect(GameCatalog.TOTAL_STAGES == 2, "normal and elite stages")
+    _expect(HudProfile.top_height() <= 110.0 and HudProfile.top_height() >= 100.0,
+        "Phase E compacts top HUD by roughly 30 percent")
+    _expect(HudProfile.bottom_height() <= 82.0,
+        "Phase E compacts bottom HUD by roughly 27 percent")
+    _expect(HudProfile.PAUSE_SIZE.x >= 44.0 and HudProfile.PAUSE_SIZE.y >= 44.0,
+        "pause remains a touch-safe control")
+    _expect(HudProfile.XP_HEIGHT <= 12.0, "XP progress bar is slimmer")
+    _expect(WeaponEffects.ARC_SEGMENTS_LOW < WeaponEffects.ARC_SEGMENTS_FULL,
+        "J8 low-FX chain lighting remains cheaper after readability pass")
     _expect(VisualProfile.PRISM_BEAM == Color("#FF56DD"), "Phase D Prism uses magenta identity")
     _expect(VisualProfile.NOVA_FIELD == Color("#47E7A8"), "Phase D Nova uses jade identity")
     _expect(VisualProfile.COMET_TRAIL != VisualProfile.GUN_TRACER, "Comet trails differ from gun tracers")
@@ -22,22 +31,47 @@ func _run() -> void:
     var lightning_full: PackedVector2Array = WeaponEffects.lightning_points(Vector2(10, 20), Vector2(210, 220), false)
     _expect(lightning_low.size() < lightning_full.size(), "J8 low-FX lightning uses fewer vertices")
     _expect(lightning_full[0] == Vector2(10, 20) and lightning_full[lightning_full.size() - 1] == Vector2(210, 220), "lightning shares exact real chain endpoints")
-    _expect(GameCatalog.STAGE_ONE_SHOWCASE and GameCatalog.SHOWCASE_START_LEVEL >= 6, "NORMAL 01 has explicit test-only higher-level start")
+    _expect(GameCatalog.STAGE_ONE_SHOWCASE and GameCatalog.SHOWCASE_START_LEVEL == 12, "NORMAL 01 D.1 starts at level 12 for visual QA")
+    _expect(GameCatalog.SHOWCASE_SCRIPT.size() == 5 and GameCatalog.SHOWCASE_ELITE_TIME == 20.0, "five timed visual beats with elite at 20 sec")
+    _expect(GameCatalog.SHOWCASE_FORMATIONS_START >= 24.0, "ordinary formations wait until after scripted showcase")
     var preview := Arena.new()
     root.add_child(preview)
     preview.begin_run({}, 1, true, true)
     _expect(preview.showcase_active and preview.level == GameCatalog.SHOWCASE_START_LEVEL, "showcase initializes higher player level immediately")
     _expect(preview.enemies.size() == 3 and String(preview.enemies[2]["kind"]) == "tank", "showcase starts with mixed visible enemies")
+    _expect(preview.showcase_script_index == 1 and not preview.showcase_regular_spawns_unlocked, "only first scripted beat starts immediately")
+    _expect(int(preview.levels["gun"]) == 4 and int(preview.levels["rate"]) == 1 and int(preview.levels["reach"]) == 1, "showcase grants enhanced Sentinel and support systems")
+    var preview_hp: float = float(preview.enemies[0]["hp"])
+    _expect(preview_hp > 29.0 * 2.5, "intro targets have temporary durability to remain visible")
+    preview.elapsed = 4.0
+    preview._tick_showcase_script()
+    _expect(preview.showcase_script_index == 2 and preview.enemies.size() == 5, "4 sec runner pair arrives without normal formations")
+    preview.elapsed = 8.0
+    preview._tick_showcase_script()
+    _expect(preview.showcase_script_index == 3 and preview.enemies.size() == 7, "8 sec tank pair introduced")
+    preview.elapsed = 12.0
+    preview._tick_showcase_script()
+    _expect(preview.showcase_script_index == 4 and preview.enemies.size() == 11, "12 sec mixed cluster introduced")
     _expect(int(preview.levels["gun"]) >= 3 and int(preview.levels["beam"]) > 0 and int(preview.levels["volley"]) > 0 and int(preview.levels["arc"]) > 0 and int(preview.levels["nova"]) > 0, "showcase starts with all five active weapons")
     preview.elapsed = GameCatalog.SHOWCASE_ELITE_TIME
-    preview._showcase_elite_spawned = false
-    preview._physics_process(0.0)
-    _expect(preview._showcase_elite_spawned and preview.enemies.any(func(e: Dictionary) -> bool: return e["kind"] == "elite"), "visual preview spawns real elite before stage midpoint")
+    preview._tick_showcase_script()
+    _expect(preview._showcase_elite_spawned and preview.showcase_script_index == 5
+        and preview.enemies.any(func(e: Dictionary) -> bool: return e["kind"] == "elite"),
+        "20 sec beat introduces the real elite once")
+    preview._tick_showcase_script()
+    _expect(preview.showcase_script_index == 5, "no duplicate elite after beat completes")
+    preview.elapsed = 24.0
+    preview._tick_showcase_script()
+    _expect(preview.showcase_regular_spawns_unlocked and is_equal_approx(preview._spawn_timer, 0.55),
+        "standard formations resume after 24 sec")
     preview.queue_free()
     var normal_preview := Arena.new()
     root.add_child(normal_preview)
     normal_preview.begin_run({}, 1, true, false)
     _expect(not normal_preview.showcase_active and normal_preview.level == 1 and int(normal_preview.levels["beam"]) == 0 and normal_preview.enemies.is_empty(), "ordinary run remains unchanged when showcase disabled")
+    _expect(normal_preview.showcase_regular_spawns_unlocked, "normal runs allow immediate formations")
+    normal_preview._spawn_enemy("grunt", 145.0, 445.0)
+    _expect(is_equal_approx(float(normal_preview.enemies[0]["hp"]), 29.0), "normal grunt HP never receives temporary showcase multiplier")
     normal_preview.queue_free()
     var stage2_preview := Arena.new()
     root.add_child(stage2_preview)
@@ -359,7 +393,8 @@ func _run() -> void:
         _expect(live_arena.state == "running" and live_arena.stage == 1, "deployment opens Normal 1")
         live_arena.state = "upgrade"
         live_arena.levels["gun_payload"] = 2
-        var menu_offers: Array[String] = ["gun_payload", "gun", "volley"]
+        # LV12 has maxed gun; test with three eligible upgrades.
+        var menu_offers: Array[String] = ["gun_payload", "gun_pierce", "gun_ricochet"]
         game.call("_choose_system", menu_offers)
         var ui_cards: Array[Node] = []
         var rank_label_found := false

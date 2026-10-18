@@ -49,44 +49,52 @@ func _build_hud() -> void:
     hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
     hud.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     add_child(hud)
-    var top := _panel()
+    var top := _panel(true)
     top.anchor_left = 0.02
     top.anchor_right = 0.98
-    top.offset_top = 8
-    top.offset_bottom = 158
+    top.offset_top = HudProfile.TOP_START
+    top.offset_bottom = HudProfile.TOP_END
     hud.add_child(top)
     var stack := VBoxContainer.new()
-    stack.add_theme_constant_override("separation", 6)
+    stack.add_theme_constant_override("separation", 2)
     top.add_child(stack)
     var title_row := HBoxContainer.new()
     stack.add_child(title_row)
-    hud_title = _label("NORMAL 01 • 00:00", 23, CYAN)
+    hud_title = _label("NORMAL 01 • 00:00", 21, CYAN)
     hud_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     title_row.add_child(hud_title)
     var pause_button := _button("II", false)
-    pause_button.custom_minimum_size = Vector2(78, 43)
+    pause_button.custom_minimum_size = HudProfile.PAUSE_SIZE
     pause_button.pressed.connect(_pause)
     title_row.add_child(pause_button)
-    hud_detail = _label("HULL 100/100  •  LV 1", 18, GOLD)
+    hud_detail = _label("HULL 100/100  •  LV 1", 17, GOLD)
     stack.add_child(hud_detail)
-    hud_cue = _label("Tap a threat to prioritize it.", 17, PALE)
+    hud_cue = _label("Tap a threat to prioritize it.", 15, PALE)
     stack.add_child(hud_cue)
-    var bottom := _panel()
+    var bottom := _panel(true)
     bottom.anchor_left = 0.02
     bottom.anchor_right = 0.98
     bottom.anchor_top = 1.0
     bottom.anchor_bottom = 1.0
-    bottom.offset_top = -122
-    bottom.offset_bottom = -12
+    bottom.offset_top = HudProfile.BOTTOM_START
+    bottom.offset_bottom = HudProfile.BOTTOM_END
     hud.add_child(bottom)
     var bottom_stack := VBoxContainer.new()
     bottom_stack.add_theme_constant_override("separation", 4)
     bottom.add_child(bottom_stack)
-    hud_tools = _label("PRISM • 0 KILLS • 0 FPS", 16, GREEN)
+    hud_tools = _label("WEAPONS • FPS", 15, GREEN)
     bottom_stack.add_child(hud_tools)
     xp_bar = ProgressBar.new()
-    xp_bar.custom_minimum_size = Vector2(0, 18)
+    xp_bar.custom_minimum_size = Vector2(0, HudProfile.XP_HEIGHT)
     xp_bar.show_percentage = false
+    var xp_background := StyleBoxFlat.new()
+    xp_background.bg_color = Color("#0A1C2B")
+    xp_background.set_corner_radius_all(4)
+    xp_bar.add_theme_stylebox_override("background", xp_background)
+    var xp_fill := StyleBoxFlat.new()
+    xp_fill.bg_color = Color("#439DCC")
+    xp_fill.set_corner_radius_all(4)
+    xp_bar.add_theme_stylebox_override("fill", xp_fill)
     bottom_stack.add_child(xp_bar)
     hud.hide()
 
@@ -95,7 +103,7 @@ func _stats(info: Dictionary) -> void:
         info["stage_name"], GameCatalog.format_time(float(info["time"])),
         GameCatalog.format_time(float(info["duration"]))
     ]
-    hud_detail.text = "HULL %d/%d   •   LEVEL %d   •   %d KILLS" % [
+    hud_detail.text = "HULL %d/%d  •  LV %d  •  %d KILLS" % [
         ceili(float(info["hull"])), ceili(float(info["max_hull"])),
         int(info["level"]), int(info["kills"])
     ]
@@ -104,7 +112,7 @@ func _stats(info: Dictionary) -> void:
         if int(info["weapons"].get(key, 0)) > 0:
             unlocked.append(GameCatalog.upgrade_name(key))
     if bool(info.get("showcase", false)):
-        hud_tools.text = "SHOWCASE • %d ACTIVE WEAPONS • FPS %d" % [
+        hud_tools.text = "QA LV12 • %d WEAPONS • FPS %d" % [
             unlocked.size(), Engine.get_frames_per_second()]
     else:
         hud_tools.text = " + ".join(unlocked) + "  •  FPS %d" % Engine.get_frames_per_second()
@@ -122,7 +130,7 @@ func _hangar() -> void:
     var content := _screen("BASTION ZERO", "GUARDIAN HANGAR  •  M1R")
     content.add_child(_label("Hold the lower defense line. Build evolving weapon combinations and survive the enemy advance.", 20, PALE, true))
     content.add_child(_label(
-        "NORMAL 01 QA SHOWCASE: START LEVEL 7 + ALL WEAPONS."
+        "NORMAL 01 QA: LEVEL 12 + 5 WEAPONS + GUIDED WAVES."
         if GameCatalog.STAGE_ONE_SHOWCASE else
         "STARTER: SENTINEL AUTOCANNON. Unlock Prism Beam from level-up cards.",
         16, GREEN, true))
@@ -327,17 +335,17 @@ func _screen(heading: String, subheading: String, tall: bool = false) -> VBoxCon
     body.add_child(HSeparator.new())
     return body
 
-func _panel() -> PanelContainer:
+func _panel(compact: bool = false) -> PanelContainer:
     var p := PanelContainer.new()
     var style := StyleBoxFlat.new()
     style.bg_color = Color("#122940")
     style.border_color = Color("#367b9b")
     style.set_border_width_all(2)
     style.set_corner_radius_all(13)
-    style.content_margin_left = 18
-    style.content_margin_right = 18
-    style.content_margin_top = 15
-    style.content_margin_bottom = 15
+    style.content_margin_left = HudProfile.HUD_MARGIN_HORIZONTAL if compact else 18
+    style.content_margin_right = HudProfile.HUD_MARGIN_HORIZONTAL if compact else 18
+    style.content_margin_top = HudProfile.HUD_MARGIN_VERTICAL if compact else 15
+    style.content_margin_bottom = HudProfile.HUD_MARGIN_VERTICAL if compact else 15
     p.add_theme_stylebox_override("panel", style)
     return p
 

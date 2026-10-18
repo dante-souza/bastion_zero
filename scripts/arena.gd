@@ -52,6 +52,8 @@ var breaches := 0
 var combat_event := "DEFENSE ONLINE"
 var event_time := 0.0
 var showcase_active := false
+var showcase_script_index := 0
+var showcase_regular_spawns_unlocked := false
 var _showcase_elite_spawned := false
 
 func _ready() -> void:
@@ -99,17 +101,16 @@ func begin_run(permanent_upgrades: Dictionary, selected_stage: int = 1, reduced_
     _elite_spawned = false
     _elite_enraged = false
     _showcase_elite_spawned = false
+    showcase_script_index = 0
+    showcase_regular_spawns_unlocked = not showcase_active
     formation_index = 0
     formation_name = "LINE"
     breaches = 0
     combat_event = "DEFENSE ONLINE"
     event_time = 3.0
     if showcase_active:
-        combat_event = "VISUAL SHOWCASE • ALL WEAPONS ONLINE"
-        _spawn_enemy("grunt", 145.0, 455.0)
-        _spawn_enemy("runner", 340.0, 395.0)
-        _spawn_enemy("tank", 555.0, 470.0)
-        _spawn_timer = 1.60
+        _tick_showcase_script()
+        _spawn_timer = 0.55
     state = "running"
     stats_changed.emit(snapshot())
     queue_redraw()
@@ -125,6 +126,7 @@ func snapshot() -> Dictionary:
         "enemies": enemies.size(), "damage": weapon_damage.duplicate(),
         "formation": formation_name, "breaches": breaches,
         "showcase": showcase_active,
+        "showcase_beat": showcase_script_index,
         "event": combat_event if event_time > 0.0 else ""
     }
 
@@ -173,17 +175,14 @@ func _physics_process(delta: float) -> void:
         return
     elapsed += delta
     event_time = maxf(0.0, event_time - delta)
-    _spawn_timer -= delta
-    if elapsed < GameCatalog.stage_duration(stage) and _spawn_timer <= 0.0:
-        _spawn_formation()
-        var progress: float = minf(1.0, elapsed / GameCatalog.stage_duration(stage))
-        _spawn_timer = maxf(1.30, 2.55 - 0.74 * progress - float(stage - 1) * 0.24) * rng.randf_range(0.85, 1.15)
-    if showcase_active and not _showcase_elite_spawned and elapsed >= GameCatalog.SHOWCASE_ELITE_TIME:
-        _showcase_elite_spawned = true
-        if enemies.size() < MAX_ENEMIES:
-            _spawn_enemy("elite", 360.0, 215.0)
-            combat_event = "SHOWCASE • ELITE SIGNATURE"
-            event_time = 3.0
+    if showcase_active:
+        _tick_showcase_script()
+    if not showcase_active or showcase_regular_spawns_unlocked:
+        _spawn_timer -= delta
+        if elapsed < GameCatalog.stage_duration(stage) and _spawn_timer <= 0.0:
+            _spawn_formation()
+            var progress: float = minf(1.0, elapsed / GameCatalog.stage_duration(stage))
+            _spawn_timer = maxf(1.30, 2.55 - 0.74 * progress - float(stage - 1) * 0.24) * rng.randf_range(0.85, 1.15)
     if stage == 2 and not _elite_spawned and elapsed > GameCatalog.stage_duration(stage) * 0.60:
         _elite_spawned = true
         _spawn_enemy("elite", 360.0, 155.0)
@@ -205,6 +204,32 @@ func _physics_process(delta: float) -> void:
         _hud_timer = 0.15
         stats_changed.emit(snapshot())
 
+## Scripted visual demonstration: fixed, spaced beats before normal wave pressure.
+## Time is simulation time (so pause/upgrade screens pause the sequence).
+func _tick_showcase_script() -> void:
+    if not showcase_active:
+        return
+    while showcase_script_index < GameCatalog.SHOWCASE_SCRIPT.size():
+        var beat: Dictionary = GameCatalog.SHOWCASE_SCRIPT[showcase_script_index]
+        if elapsed < float(beat["at"]):
+            break
+        for spec in beat["spawns"]:
+            if enemies.size() >= MAX_ENEMIES:
+                break
+            var kind: String = String(spec[0])
+            _spawn_enemy(kind, float(spec[1]), float(spec[2]), true)
+            if kind == "elite":
+                _showcase_elite_spawned = true
+        combat_event = "SHOWCASE • " + String(beat["label"])
+        event_time = 3.2
+        showcase_script_index += 1
+    if not showcase_regular_spawns_unlocked and elapsed >= GameCatalog.SHOWCASE_FORMATIONS_START:
+        showcase_regular_spawns_unlocked = true
+        _spawn_timer = 0.55
+        combat_event = "SHOWCASE • FORMATIONS ONLINE"
+        event_time = 2.6
+
+
 func _spawn_formation() -> void:
     if enemies.size() >= MAX_ENEMIES:
         return
@@ -222,7 +247,7 @@ func _spawn_formation() -> void:
         formation_index += 1
 
 
-func _spawn_enemy(kind: String, x: float = 360.0, y: float = 150.0) -> void:
+func _spawn_enemy(kind: String, x: float = 360.0, y: float = 150.0, intro_only: bool = false) -> void:
     var hp := 29.0
     var speed := 82.0
     var radius := 16.0
@@ -248,6 +273,10 @@ func _spawn_enemy(kind: String, x: float = 360.0, y: float = 150.0) -> void:
             hit = 28.0
             reward_xp = 95
     var scaling: float = 1.0 + (stage - 1) * 0.33 + (elapsed / GameCatalog.stage_duration(stage)) * 0.55
+    # Extra HP ONLY for scripted visual targets, so Lv12's real attacks
+    # do not erase them before a human can recognize their silhouettes.
+    if intro_only and showcase_active and kind != "elite":
+        scaling *= GameCatalog.SHOWCASE_INTRO_HP_SCALE
     enemies.append({
         "id": next_enemy_id, "kind": kind, "pos": Vector2(x, y),
         "origin_x": x, "hp": hp * scaling, "max_hp": hp * scaling,
@@ -388,7 +417,7 @@ func _move_projectiles(delta: float) -> void:
             _effect("flash" if kind == "gun" else "impact",
                 hit_at, Vector2.ZERO, 12.0 if kind == "gun" else 22.0,
                 VisualProfile.GUN_TRACER if kind == "gun" else VisualProfile.COMET_IMPACT,
-                0.14 if kind == "gun" else 0.22)
+                0.14 if kind == "gun" else (0.34 if showcase_active else 0.24))
         elif float(bullet["life"]) <= 0.0 or next.y < 110.0 or next.y > 1180.0:
             projectiles.remove_at(i)
 
@@ -548,7 +577,8 @@ func _fire_beam() -> void:
         var destination: Vector2 = enemies[idx]["pos"]
         var direction: Vector2 = (destination - start).normalized()
         var end: Vector2 = start + direction * 1300.0
-        _effect("beam", start, end, 4.0 + int(levels["beam"]), VisualProfile.PRISM_BEAM, 0.16)
+        _effect("beam", start, end, 4.0 + int(levels["beam"]), VisualProfile.PRISM_BEAM,
+            0.36 if showcase_active else 0.21)
         var hits: Array[Dictionary] = []
         for enemy in enemies:
             var offset: Vector2 = Vector2(enemy["pos"]) - start
@@ -588,7 +618,8 @@ func _fire_arc() -> void:
         if idx < 0:
             break
         var pos: Vector2 = enemies[idx]["pos"]
-        _effect("arc", point, pos, 3.0, VisualProfile.ARC_BOLT, 0.27)
+        _effect("arc", point, pos, 3.0, VisualProfile.ARC_BOLT,
+            0.48 if showcase_active else 0.32)
         if int(levels["arc"]) >= 3:
             enemies[idx]["stun"] = maxf(float(enemies[idx]["stun"]), 0.33)
         _damage_by_id(next_id, _power(26.0 + int(levels["arc"]) * 8.0) * pow(0.82, jump), "arc")
@@ -622,7 +653,8 @@ func _fire_nova() -> void:
         if neighbors > best_score:
             best_score = neighbors
             center = pos
-    _effect("nova", center, Vector2.ZERO, radius, VisualProfile.NOVA_FIELD, 0.65)
+    _effect("nova", center, Vector2.ZERO, radius, VisualProfile.NOVA_FIELD,
+        1.05 if showcase_active else 0.76)
     _blast(center, radius, _power(17.0 + int(levels["nova"]) * 12.0), "nova", VisualProfile.NOVA_FIELD)
     for enemy in enemies:
         if Vector2(enemy["pos"]).distance_to(center) <= radius:
