@@ -133,3 +133,12 @@ See `docs/VISUAL-PHASE-D.md`.
 
 **Phase D J8 deployment:** switch to the `feature/m1-visual-phase-d-weapons`
 branch and run `make phase-d`. Isolated install: `com.dantesouza.bastionzero.phased`.
+
+### Phase D.1 + E: guided visual QA and compact HUD
+
+A separate follow-up branch starts NORMAL 01 at **level 12**, with gun 4,
+beam/volley/arc/nova 2, and rate/reach/power 1. Timed enemy groups appear
+at 0, 4, 8, 12, and 20 seconds, followed by regular waves at 24 seconds.
+Intro-only normal enemies have 3x HP for **visibility**, not difficulty
+balance. Phase E reduces the obstructive HUD margins and heights for J8.
+Documentation: `docs/VISUAL-PHASE-E.md`.

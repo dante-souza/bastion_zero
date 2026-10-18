@@ -122,7 +122,7 @@ func _hangar() -> void:
     var content := _screen("BASTION ZERO", "GUARDIAN HANGAR  •  M1R")
     content.add_child(_label("Hold the lower defense line. Build evolving weapon combinations and survive the enemy advance.", 20, PALE, true))
     content.add_child(_label(
-        "NORMAL 01 QA SHOWCASE: START LEVEL 7 + ALL WEAPONS."
+        "NORMAL 01 QA: LEVEL 12 + 5 WEAPONS + GUIDED WAVES."
         if GameCatalog.STAGE_ONE_SHOWCASE else
         "STARTER: SENTINEL AUTOCANNON. Unlock Prism Beam from level-up cards.",
         16, GREEN, true))
