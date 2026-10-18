@@ -28,7 +28,8 @@ class J8ToolsTests(unittest.TestCase):
             ("phase-b", "feature/m1-visual-phase-b-guardian"),
             ("phase-c", "feature/m1-visual-phase-c-enemies"),
             ("phase-d", "feature/m1-visual-phase-d-weapons"),
-            ("phase-e", "feature/m1-visual-phase-e-hud")
+            ("phase-e", "feature/m1-visual-phase-e-hud"),
+            ("phase-f", "feature/m1-visual-phase-f-evolution")
         ]:
             with self.subTest(key=key), mock.patch.object(
                 android_j8, "execute", return_value=mock.Mock(stdout=branch + "\n")
@@ -98,6 +99,18 @@ class J8ToolsTests(unittest.TestCase):
         self.assertIn("phase-e", str(android_j8.resolve_apk("auto", e)))
         with self.assertRaisesRegex(RuntimeError, "cross-profile"):
             android_j8.resolve_apk("dist/phase-d/bastion-zero-phase-d-j8-debug.apk", e)
+
+    def test_phase_f_isolated_stress_apk_profile(self):
+        f = android_j8.resolve_profile("phase-f")
+        e = android_j8.resolve_profile("phase-e")
+        self.assertEqual(f.branch, "feature/m1-visual-phase-f-evolution")
+        self.assertEqual(f.artifact, "Bastion-Zero-Phase-F-J8-ARMv7")
+        self.assertEqual(f.package, "com.dantesouza.bastionzero.phasef")
+        self.assertNotEqual(f.package, e.package)
+        self.assertNotEqual(f.apk_name, e.apk_name)
+        self.assertIn("phase-f", str(android_j8.resolve_apk("auto", f)))
+        with self.assertRaisesRegex(RuntimeError, "cross-profile"):
+            android_j8.resolve_apk("dist/phase-e/bastion-zero-phase-e-j8-debug.apk", f)
 
     def test_reject_cross_profile_apk_basename(self):
         with self.assertRaisesRegex(RuntimeError, "cross-profile"):
@@ -224,6 +237,7 @@ class J8ToolsTests(unittest.TestCase):
         self.assertIn("feature/m1-visual-phase-c-enemies", repo_sync.BRANCHES)
         self.assertIn("feature/m1-visual-phase-d-weapons", repo_sync.BRANCHES)
         self.assertIn("feature/m1-visual-phase-e-hud", repo_sync.BRANCHES)
+        self.assertIn("feature/m1-visual-phase-f-evolution", repo_sync.BRANCHES)
 
 
 if __name__ == "__main__":

@@ -155,3 +155,7 @@ formations at second 12 on a 1.2-second cadence. Stress-only enemies have
 stronger HP/speed/breach damage. The real player upgrades remain available,
 but baseline combat, stage 2, hitboxes and economy are unchanged. The System
 Evolution selection UI is also upgraded. See `docs/VISUAL-PHASE-F.md`.
+
+Phase F deployment: `make phase-f` on
+`feature/m1-visual-phase-f-evolution`. Dedicated J8 package
+`com.dantesouza.bastionzero.phasef`.

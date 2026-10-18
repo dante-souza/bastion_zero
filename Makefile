@@ -10,7 +10,7 @@ GODOT ?= godot
 J8 = $(PYTHON) scripts/android_j8.py --device "$(DEVICE)" --profile "$(PROFILE)" --apk "$(APK)"
 
 .DEFAULT_GOAL := help
-.PHONY: help profile doctor installed version apk install uninstall reinstall run reinstall-run deploy fresh logs screenshot sync git-status check-tools check phase-a phase-a-apk phase-a-install phase-a-reinstall-run phase-a-run phase-a-doctor phase-a-logs phase-a-screenshot phase-b phase-b-apk phase-b-install phase-b-reinstall-run phase-b-run phase-b-doctor phase-b-logs phase-b-screenshot phase-c phase-c-apk phase-c-install phase-c-reinstall-run phase-c-run phase-c-doctor phase-c-logs phase-c-screenshot phase-d phase-d-apk phase-d-install phase-d-reinstall-run phase-d-run phase-d-doctor phase-d-logs phase-d-screenshot phase-e phase-e-apk phase-e-install phase-e-reinstall-run phase-e-run phase-e-doctor phase-e-logs phase-e-screenshot
+.PHONY: help profile doctor installed version apk install uninstall reinstall run reinstall-run deploy fresh logs screenshot sync git-status check-tools check phase-a phase-a-apk phase-a-install phase-a-reinstall-run phase-a-run phase-a-doctor phase-a-logs phase-a-screenshot phase-b phase-b-apk phase-b-install phase-b-reinstall-run phase-b-run phase-b-doctor phase-b-logs phase-b-screenshot phase-c phase-c-apk phase-c-install phase-c-reinstall-run phase-c-run phase-c-doctor phase-c-logs phase-c-screenshot phase-d phase-d-apk phase-d-install phase-d-reinstall-run phase-d-run phase-d-doctor phase-d-logs phase-d-screenshot phase-e phase-e-apk phase-e-install phase-e-reinstall-run phase-e-run phase-e-doctor phase-e-logs phase-e-screenshot phase-f phase-f-apk phase-f-install phase-f-reinstall-run phase-f-run phase-f-doctor phase-f-logs phase-f-screenshot
 
 help:
 	@$(J8) help
@@ -178,6 +178,31 @@ phase-e-logs:
 
 phase-e-screenshot:
 	@$(MAKE) screenshot PROFILE=phase-e
+
+# Phase F stress-demo + System Evolution UI, isolated J8 package.
+phase-f:
+	@$(MAKE) fresh PROFILE=phase-f
+
+phase-f-apk:
+	@$(MAKE) apk PROFILE=phase-f
+
+phase-f-install:
+	@$(MAKE) install PROFILE=phase-f
+
+phase-f-reinstall-run:
+	@$(MAKE) reinstall-run PROFILE=phase-f
+
+phase-f-run:
+	@$(MAKE) run PROFILE=phase-f
+
+phase-f-doctor:
+	@$(MAKE) doctor PROFILE=phase-f
+
+phase-f-logs:
+	@$(MAKE) logs PROFILE=phase-f
+
+phase-f-screenshot:
+	@$(MAKE) screenshot PROFILE=phase-f
 
 # Fast-forward only; no reset, forced checkout or stash.
 sync:
