@@ -14,6 +14,17 @@ func _expect(ok: bool, label: String) -> void:
 
 func _run() -> void:
     _expect(GameCatalog.TOTAL_STAGES == 2, "normal and elite stages")
+    _expect(EvolutionProfile.tactical_role("beam") == "PRECISE ENERGY LANE",
+        "Phase F labels Prism role clearly")
+    _expect(EvolutionProfile.accent("beam") == VisualProfile.PRISM_BEAM and
+        EvolutionProfile.accent("nova") == VisualProfile.NOVA_FIELD,
+        "Evolution card accents use actual weapon colors")
+    _expect(EvolutionProfile.rank_marks(2, 4) == "●●○○" and
+        EvolutionProfile.rank_marks(3, 3) == "●●●",
+        "Upgrade rank pips accurately show progress and cap")
+    _expect(EvolutionProfile.synergy_summary(GameCatalog.SHOWCASE_LOADOUT).contains("PRISM + ARC") and
+        EvolutionProfile.synergy_summary(GameCatalog.SHOWCASE_LOADOUT).contains("COMET + NOVA"),
+        "Synergy labels reflect real unlocked weapon pairs")
     _expect(HudProfile.top_height() <= 110.0 and HudProfile.top_height() >= 100.0,
         "Phase E compacts top HUD by roughly 30 percent")
     _expect(HudProfile.bottom_height() <= 82.0,
@@ -422,6 +433,9 @@ func _run() -> void:
                         if String(lbl.text).contains("OWNED 2/3") and String(lbl.text).contains("NEXT 3/3"):
                             rank_label_found = true
                     _expect(float(node.custom_minimum_size.y) >= 180.0, "evolution choice cards have tall readable touch targets")
+                    var normal_style: StyleBoxFlat = node.get_theme_stylebox("normal") as StyleBoxFlat
+                    _expect(normal_style != null and normal_style.border_width_left >= 6,
+                        "evolution cards have distinct colored tactical edge")
         _expect(ui_cards.size() == 3 and rank_label_found, "system evolution shows correct owned-to-next rank")
         game.call("_apply_upgrade", "gun_payload")
         _expect(int(live_arena.levels["gun_payload"]) == 3, "UI confirms final Kinetic Payload rank")
