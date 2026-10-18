@@ -6,6 +6,7 @@ import hashlib
 import io
 import json
 from pathlib import Path
+from zipfile import ZipFile
 import sys
 import tempfile
 import unittest
@@ -14,6 +15,7 @@ from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 import android_j8
 import repo_sync
+import phase_h_assets
 
 
 class J8ToolsTests(unittest.TestCase):
@@ -125,6 +127,55 @@ class J8ToolsTests(unittest.TestCase):
         self.assertIn("phase-g", str(android_j8.resolve_apk("auto", g)))
         with self.assertRaisesRegex(RuntimeError, "cross-profile"):
             android_j8.resolve_apk("dist/phase-f/bastion-zero-phase-f-j8-debug.apk", g)
+
+    def test_phase_h_bundle_is_verified_and_idempotent(self):
+        data = b"pretend-synthetic-image"
+        sha = hashlib.sha256(data).hexdigest()
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "project.godot").write_text(
+                'boot_splash/image="res://assets/branding/last_horizon_boot.png"\n',
+                encoding="utf-8"
+            )
+            (root / "export_presets.cfg").write_text(
+                '[preset.7.options]\n'
+                'launcher_icons/main_192x192="other-preserved.png"\n'
+                '[preset.8.options]\n'
+                'launcher_icons/main_192x192="res://assets/branding/guardian_launcher_192.png"\n'
+                'launcher_icons/adaptive_foreground_432x432="res://assets/branding/guardian_adaptive_foreground_432.png"\n'
+                'launcher_icons/adaptive_background_432x432="res://assets/branding/guardian_adaptive_background_432.png"\n',
+                encoding="utf-8"
+            )
+            bundle = root / "approved.zip"
+            with ZipFile(bundle, "w") as z:
+                z.writestr("assets/branding/sample.webp", data)
+            with mock.patch.dict(phase_h_assets.EXPECTED, {"sample.webp": sha}, clear=True):
+                self.assertFalse(phase_h_assets.verify(root))
+                with contextlib.redirect_stdout(io.StringIO()):
+                    phase_h_assets.install_bundle(bundle, root)
+                    phase_h_assets.install_bundle(bundle, root)
+                self.assertTrue(phase_h_assets.verify(root))
+                self.assertEqual((root / "assets/branding/sample.webp").read_bytes(), data)
+                self.assertIn("premium_splash_720.png", (root / "project.godot").read_text())
+                preset = (root / "export_presets.cfg").read_text()
+                self.assertIn("premium_guardian_launcher_192.png", preset)
+                self.assertIn("other-preserved.png", preset)
+                (root / "assets/branding/sample.webp").write_bytes(b"tampered")
+                self.assertFalse(phase_h_assets.verify(root))
+
+    def test_phase_h_bundle_rejects_tampering_before_install(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            bundle = root / "bad.zip"
+            with ZipFile(bundle, "w") as z:
+                z.writestr("assets/branding/sample.webp", b"tampered")
+            with mock.patch.dict(
+                phase_h_assets.EXPECTED, {"sample.webp": hashlib.sha256(b"good").hexdigest()},
+                clear=True
+            ):
+                with self.assertRaisesRegex(RuntimeError, "SHA-256 mismatch"):
+                    phase_h_assets.install_bundle(bundle, root)
+                self.assertFalse((root / "assets/branding/sample.webp").exists())
 
     def test_phase_h_independent_premium_profile(self):
         h = android_j8.resolve_profile("phase-h")
