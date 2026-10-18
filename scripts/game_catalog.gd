@@ -104,20 +104,27 @@ static func next_level_xp(level: int) -> int:
 static func upgrade_offers(levels: Dictionary, rng: RandomNumberGenerator, count: int = 3) -> Array[String]:
     var available: Array[String] = []
     var locked: Array[String] = []
+    var sentinel_options: Array[String] = []
     for key in UPGRADE_ORDER:
         if int(levels.get(key, 0)) < upgrade_cap(key):
             available.append(key)
             if WEAPON_ORDER.has(key) and int(levels.get(key, 0)) == 0:
                 locked.append(key)
+            if key == "gun" or GUN_MODS.has(key):
+                sentinel_options.append(key)
     if available.is_empty():
         return []
     _shuffle(available, rng)
     _shuffle(locked, rng)
+    _shuffle(sentinel_options, rng)
     var offers: Array[String] = []
     # Always offer an undiscovered weapon, where possible, to avoid an
     # upgrade-only run with no access to the four combat systems.
-    if not locked.is_empty():
+    if not locked.is_empty() and offers.size() < count:
         offers.append(locked[0])
+    # At least one Sentinel evolution while there is an unmaxed gun card.
+    if not sentinel_options.is_empty() and offers.size() < count:
+        offers.append(sentinel_options[0])
     for key in available:
         if offers.size() >= count:
             break

@@ -1,13 +1,13 @@
 # Bastion Zero — early Rogue-inspired visual direction (next build)
 
-**Status:** visual research complete for a first implementation pass; game implementation **not yet applied**.
-**Reference package:** User-supplied six-frame board `Bastion_Zero_Rogue_Reference_Board(1).jpg` and 2026-10-18 timestamped Markdown analysis `Bastion_Zero_Rogue_Visual_Reference_2026-10-18(1).md`. The original 13:36.9 MP4 exists in another Bastion_0 conversation but is **not mounted in this one**. The six stills and report are sufficient to start; request MP4 only for motion/animation or fine-detail verification.
+**Status:** 13:36.9 video directly inspected on 2026-10-18. Sentinel upgrades v0.2.3 implemented; the visual overhaul **has not** been applied.
+**Reference package:** User-supplied six-frame board `Bastion_Zero_Rogue_Reference_Board(1).jpg` and 2026-10-18 timestamped Markdown analysis `Bastion_Zero_Rogue_Visual_Reference_2026-10-18(1).md`. The original MP4 was subsequently uploaded here and directly analyzed (H.264, 384×854 portrait, 30 fps). The six stills accurately capture the art direction. Derived contact sheets and a timestamped analysis report were generated for local review, and are not imported as game assets.
 
 Reference: [early Rogue gameplay](https://www.youtube.com/watch?v=9o4noNCPi-I). Third-party source material is used **only to study broad aesthetics and gameplay presentation**. No copied artwork, UI imagery, logos, sounds, Unity bundles, visual effects or proprietary text are incorporated.
 
 ## Observed reference features
 
-The following are supported by the six provided stills; timestamps refer to the user-supplied analysis of the original recording.
+The following are supported by the user-provided board **and** direct sampling of the complete uploaded recording. These are visible observations, not inferred combat formulas.
 
 | Reference frame | Observation | Original Bastion Zero treatment |
 |---|---|---|
@@ -44,10 +44,29 @@ The following are supported by the six provided stills; timestamps refer to the 
 
 ## Existing gameplay work and non-goals
 
-Already implemented in v0.2.2: Sentinel Autocannon as built-in, Prism Beam as upgrade-card unlock, independently aimed twin beams, basic upgrade selection, enemy formation logic, 2 stages, local save. **The new visual treatment itself has not been shipped.**
+Already implemented in v0.2.3: Sentinel Autocannon built-in, selectable **Kinetic Payload**, **Sabot Piercer**, **Ricochet Routing**, **Saturation Burst** upgrades, guaranteed Sentinel evolution in offers while unmaxed, Prism Beam separately unlockable, independently aimed twin beams, 2 stages and local saves. **The new visual treatment itself has not been shipped.**
 
 No change to research currency, wave formulas, in-app purchases, online data, or original game save assets is authorized by this brief. Do not ship screenshot references inside the public game package or git repo.
 
 ## Remaining optional evidence
 
-If possible, bring the raw 13:37 video into this specific chat before animation-specific work (muzzle cadence, beam motion, particles). A 384×854 source already suffices for composition; a higher-resolution recording would help typography and effect details but is not a blocker for visual shell implementation.
+**Resolved:** the source video is now accessible for direct inspection. A higher resolution would help small font details but is not a blocker. Do not commit the copyrighted footage or reference stills.
+
+## Direct video review — verified moments
+
+| Time | Visible detail |
+|---|---|
+| 00:15 | Default cyan bullets from a blue core striking green circle outlines |
+| 00:38 | Distortion Field (New), Volley Shot and Bullets Boost upgrade choices |
+| 01:24 | Magenta laser separately active alongside cyan bullets |
+| 03:19 | Beam Amplification, Volley Shot and Piercing Bullet choices |
+| 04:05 | Large orange boss emblem with multiple weapons simultaneously active |
+| 05:00–05:26 | Penetration Boost, Volley Missile, Bullets Boost, Flame Bullet choices |
+| 06:18 | Per-weapon DPS and damage statistics after the stage |
+| 07:10–08:02 | New stage starts with basic bullets; Beam and Flame Missile offered as New |
+| 09:34–09:58 | Magenta beam and cyan bullets remain distinct channels |
+| 11:34–11:58 | Translucent jade control field among green circles and yellow squares |
+| 13:10 | Impact Enhancement, Explosion Spread and Shotgun Barrage (Chain) |
+
+The original UI offers ad-based refresh; Bastion Zero does not reproduce monetization. All graphics and gameplay behaviors must be original.
+

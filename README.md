@@ -10,7 +10,7 @@
 - **ELITE 01**: unlocked after winning NORMAL 01; ~115-second stage with tougher formations, an elite encounter that gains speed and summons escorts below 55% HP.
 - Your **Guardian** starts with the **Sentinel Autocannon**. It fires fast individually simulated cyan rounds and remains viable with independent Kinetic Payload (damage), Sabot Piercer (pass-through), Ricochet Routing (bounces), Saturation Burst (separately aimed extra shots), plus the original cadence/dual-barrel/smart-tracking ranks. **Prism Beam** is separately acquired from level-up cards. Touch an enemy to prioritize it temporarily.
 - Evolve four **original** weapons: Prism Beam (unlockable penetration + accurately targeted twin beam), Comet Volley (homing multi-rocket salvo + explosive/splitting missiles), Arc Relay (chains + stun), and Nova Field (slow pulse + blast).
-- Every XP level-up pauses battle to offer three distinct build choices. Synergies: Prism/Arc and Comet/Nova.
+- Every XP level-up pauses battle to offer three distinct build choices, including a Sentinel evolution and a new-weapon unlock while each is available. Synergies: Prism/Arc and Comet/Nova.
 - Local alloy rewards and permanent hull/damage research; stage unlocks and graphics settings persist.
 - Battle HUD shows hull, stage timer, XP, selected weapons and approximate FPS. After each run: damage breakdown by weapon.
 - **Enemy counterplay:** tanks resist Prism Beam but take more Comet Volley and Nova Field damage; agile runners are vulnerable to Arc Relay. Hit feedback, wave cues and breach statistics are visible during combat.

@@ -37,6 +37,11 @@ func _run() -> void:
         if GameCatalog.WEAPON_ORDER.has(key) and int(upgrades[key]) == 0:
             has_unlock = true
     _expect(has_unlock, "unlock available during early build")
+    var sentinel_in_offers := false
+    for offered in offers:
+        if offered == "gun" or GameCatalog.GUN_MODS.has(offered):
+            sentinel_in_offers = true
+    _expect(sentinel_in_offers, "early card offers include a Sentinel evolution")
 
     var legacy := SaveData.validated({"bank": 12, "meta": {"hull": 2}, "runs": 3, "wins": 2})
     _expect(legacy["bank"] == 12 and legacy["meta"]["hull"] == 2, "v1 player progress migrates")
