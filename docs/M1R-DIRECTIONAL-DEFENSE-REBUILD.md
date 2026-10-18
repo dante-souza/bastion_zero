@@ -1,6 +1,6 @@
 # Bastion Zero — Milestone 1R: directional defense rebuild
 
-Status: **design baseline / implementation pending** · 2026-10-17
+Status: **M1R implementation in progress** · 2026-10-17
 
 ## Why the first vertical slice is not acceptable
 
@@ -99,3 +99,17 @@ Only a **candidate**, with no proof it is a complete or transferable game save. 
 ## Definition of done
 
 `M1R` is done when someone can install the J8 APK, play two real directional-defense stages, choose tactical upgrades, see results, and accurately recognize the intended **type of gameplay** without being shown the reference game. The previous arena-survival prototype fails this gate and must not be merged unchanged.
+
+## M1R implementation status
+
+- [x] Bottom Guardian and upper-edge directional enemy field implemented.
+- [x] Normal 01 and Elite 01 scenario director with stage unlock and elite encounter.
+- [x] Prism Beam, Comet Volley, Arc Relay and Nova Field (with pattern evolution).
+- [x] Three upgrade choices per level and two weapon synergies.
+- [x] After-action per-weapon applied damage, earned alloy, persistent research.
+- [x] Low-effects mode, FPS readout, touch-target preference.
+- [ ] CI smoke tests and Android artifact confirmed on M1R head commit.
+- [ ] Physical J8 QA for visual/readability, performance, touch and victory/loss.
+- [ ] Stable debug signing secret provisioned and upgrade install verified.
+
+Design tuning in this milestone is independent and provisional. Weapon balance must be playtested and reworked from feedback, not assumed from the reference game.
