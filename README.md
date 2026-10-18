@@ -2,17 +2,18 @@
 
 **Bastion Zero** is an original Android-first, offline, no-ads, no-IAP directional tower-defense roguelite made with **Godot 4.4.1** (GDScript, GL Compatibility).
 
-> **M1R — Directional Defense Rebuild.** The early radial-arena M1 design was rejected after comparing gameplay reference recordings. M1R contains a new combat runtime. GitHub CI validates code/export; only a physical J8 playtest can validate tactile gameplay and performance.
+> **M1R combat refinement v0.2.1.** The early radial-arena M1 design was rejected after comparing gameplay reference recordings. M1R contains a new combat runtime. GitHub CI validates code/export; only a physical J8 playtest can validate tactile gameplay and performance.
 
 ## Play the M1R demo
 
-- **NORMAL 01**: defend the lower breach line against upper-edge enemy formations in a ~96-second stage.
-- **ELITE 01**: unlocked after winning NORMAL 01; ~115-second stage with heavier formations and a unique elite defender-breaking threat.
+- **NORMAL 01**: defend the lower breach line against authored line, wedge, pincer, rush and armored formations in a ~96-second stage.
+- **ELITE 01**: unlocked after winning NORMAL 01; ~115-second stage with tougher formations, an elite encounter that gains speed and summons escorts below 55% HP.
 - Your **Guardian** is anchored at the bottom; weapons fire automatically. Touch an enemy to prioritize it temporarily.
 - Evolve four **original** weapons: Prism Beam (penetration + twin beam), Comet Volley (homing multi-rocket salvo + explosive/splitting missiles), Arc Relay (chains + stun), and Nova Field (slow pulse + blast).
 - Every XP level-up pauses battle to offer three distinct build choices. Synergies: Prism/Arc and Comet/Nova.
 - Local alloy rewards and permanent hull/damage research; stage unlocks and graphics settings persist.
 - Battle HUD shows hull, stage timer, XP, selected weapons and approximate FPS. After each run: damage breakdown by weapon.
+- **Enemy counterplay:** tanks resist Prism Beam but take more Comet Volley and Nova Field damage; agile runners are vulnerable to Arc Relay. Hit feedback, wave cues and breach statistics are visible during combat.
 - Low-effects mode is enabled by default for the **Samsung Galaxy J8 (Android 10, ARMv7)**.
 - No reference-game assets, code or accounts are included. See [M1R design and acceptance](docs/M1R-DIRECTIONAL-DEFENSE-REBUILD.md).
 

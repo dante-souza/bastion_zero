@@ -11,6 +11,7 @@ var modal: ColorRect
 var hud_title: Label
 var hud_detail: Label
 var hud_tools: Label
+var hud_cue: Label
 var xp_bar: ProgressBar
 var current_stage := 1
 
@@ -52,7 +53,7 @@ func _build_hud() -> void:
     top.anchor_left = 0.02
     top.anchor_right = 0.98
     top.offset_top = 8
-    top.offset_bottom = 132
+    top.offset_bottom = 158
     hud.add_child(top)
     var stack := VBoxContainer.new()
     stack.add_theme_constant_override("separation", 6)
@@ -68,7 +69,8 @@ func _build_hud() -> void:
     title_row.add_child(pause_button)
     hud_detail = _label("HULL 100/100  •  LV 1", 18, GOLD)
     stack.add_child(hud_detail)
-    stack.add_child(_label("Tap a threat to prioritize it. Default: closest to breach.", 15, PALE))
+    hud_cue = _label("Tap a threat to prioritize it.", 17, PALE)
+    stack.add_child(hud_cue)
     var bottom := _panel()
     bottom.anchor_left = 0.02
     bottom.anchor_right = 0.98
@@ -102,6 +104,10 @@ func _stats(info: Dictionary) -> void:
         if int(info["weapons"].get(key, 0)) > 0:
             unlocked.append(GameCatalog.upgrade_name(key))
     hud_tools.text = " + ".join(unlocked) + "  •  FPS %d" % Engine.get_frames_per_second()
+    var current_event: String = String(info.get("event", ""))
+    hud_cue.text = current_event if not current_event.is_empty() else "FORMATION: %s  •  BREACHES: %d" % [
+        String(info.get("formation", "LINE")), int(info.get("breaches", 0))
+    ]
     xp_bar.max_value = int(info["next_xp"])
     xp_bar.value = int(info["xp"])
 
@@ -111,6 +117,7 @@ func _hangar() -> void:
     record = SaveData.validated(record)
     var content := _screen("BASTION ZERO", "GUARDIAN HANGAR  •  M1R")
     content.add_child(_label("Hold the lower defense line. Build evolving weapon combinations and survive the enemy advance.", 20, PALE, true))
+    content.add_child(_label("TANKS: RESIST PRISM; COMET/NOVA HIT HARD. RUNNERS: WEAK TO ARC.", 15, GREEN, true))
     content.add_child(_label("ALLOY BANK: %d" % int(record["bank"]), 27, GOLD, true))
     content.add_child(_label("RUNS %d   •   WINS %d   •   BEST STAGE %d" % [
         record["runs"], record["wins"], record["best_stage"]
@@ -195,6 +202,9 @@ func _results(victory: bool, stats: Dictionary) -> void:
         GameCatalog.format_time(float(stats["time"])), int(stats["kills"]), int(stats["level"])
     ], 20, PALE, true))
     content.add_child(_label("+%d ALLOY" % int(stats["reward"]), 31, GOLD, true))
+    content.add_child(_label("BREACHES: %d  •  FORMATIONS: %d" % [
+        int(stats.get("breaches", 0)), int(stats.get("formations", 0))
+    ], 17, PALE, true))
     content.add_child(_label("DAMAGE BY WEAPON", 22, CYAN, true))
     for key in GameCatalog.WEAPON_ORDER:
         var dmg: float = float(stats["damage"].get(key, 0.0))

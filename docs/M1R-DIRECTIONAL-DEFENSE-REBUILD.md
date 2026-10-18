@@ -113,3 +113,13 @@ Only a **candidate**, with no proof it is a complete or transferable game save. 
 - [ ] Stable debug signing secret provisioned and upgrade install verified.
 
 Design tuning in this milestone is independent and provisional. Weapon balance must be playtested and reworked from feedback, not assumed from the reference game.
+
+## M1R combat refinement — v0.2.1
+
+- Original formation director: LINE, PINCER, WEDGE, ARMORED, RUSH and PHALANX; deterministic for seeded stage, time and index, and capped by the mobile entity budget.
+- Distinct movement: zigzag runners, steady armored tanks, ordinary grunts; elite enters an enraged second phase and summons two escorts on reaching 55% HP.
+- Weapon counterplay: tanks resist Prism Beam but are vulnerable to Comet/Nova; Arc Relay excels against runners. Multipliers live in GameCatalog, and after-action damage counts HP actually removed.
+- Prism Beam damage, timing and brightness adjusted to encourage multi-weapon builds rather than beam-only domination.
+- Added formation/event HUD feedback, low-cost impact flashes and breach counts; reduced effects remains default on J8.
+- Validation includes authored formation invariants, armor multipliers, combat damage metering and one-shot elite escort trigger. Physical J8 combat/balance testing is still needed.
+

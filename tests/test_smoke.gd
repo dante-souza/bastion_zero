@@ -48,6 +48,19 @@ func _run() -> void:
     SaveData.record_run(wallet, 1, true, {"reward": 94, "kills": 5})
     _expect(wallet["stage_unlocked"] == 2 and wallet["best_stage"] == 1, "victory unlocks elite")
     _expect(wallet["wins"] == 1 and wallet["bank"] == 94, "reward and victory tracked")
+    _expect(CombatDirector.pattern_for(1, 0.0, 0) == "LINE", "Normal opens with line formation")
+    _expect(CombatDirector.pattern_for(2, 0.0, 0) == "PINCER", "Elite opens with pincer")
+    _expect(CombatDirector.pattern_for(2, 40.0, 0) != CombatDirector.pattern_for(1, 40.0, 0), "stages use distinct encounter pacing")
+    var formations: Array[Dictionary] = CombatDirector.formation(2, 85.0, 3, rng)
+    _expect(formations.size() >= 3, "authored late-game formations have multiple enemies")
+    var formation_safe := true
+    for member in formations:
+        if float(member["x"]) < 40.0 or float(member["x"]) > 680.0:
+            formation_safe = false
+    _expect(formation_safe, "spawned enemies remain in battlefield lanes")
+    _expect(is_equal_approx(GameCatalog.damage_factor("tank", "beam"), 0.72), "tank armor resists beams")
+    _expect(GameCatalog.damage_factor("tank", "volley") > 1.0, "Comet Volley counters tank armor")
+    _expect(GameCatalog.damage_factor("runner", "arc") > 1.0, "Arc Relay counters runners")
     var arena := Arena.new()
     root.add_child(arena)
     arena.begin_run({"hull": 1, "damage": 2}, 1, true)
@@ -67,6 +80,22 @@ func _run() -> void:
     _expect(arena.state == "paused", "pause")
     arena.toggle_pause()
     _expect(arena.state == "running", "resume")
+    arena._spawn_enemy("tank", 450.0, 170.0)
+    var tank_id: int = int(arena.enemies.back()["id"])
+    var tank_dealt := arena._damage_by_id(tank_id, 10.0, "beam")
+    _expect(is_equal_approx(tank_dealt, 7.2), "armor applies during actual damage calculation")
+    _expect(arena.weapon_damage["beam"] >= 18.7, "damage meter tracks armor-adjusted results")
+    var elite_battle := Arena.new()
+    root.add_child(elite_battle)
+    elite_battle.begin_run({"hull": 0, "damage": 0}, 2, true)
+    elite_battle._elite_spawned = true
+    elite_battle._spawn_enemy("elite", 360.0, 195.0)
+    elite_battle.enemies[0]["hp"] = float(elite_battle.enemies[0]["max_hp"]) * 0.49
+    elite_battle._process_elite_phase()
+    _expect(elite_battle._elite_enraged and elite_battle.enemies.size() == 3, "elite summons escorts at half health")
+    elite_battle._process_elite_phase()
+    _expect(elite_battle.enemies.size() == 3, "elite escorts summon only once")
+    elite_battle.queue_free()
     arena._finish(false)
     _expect(arena.state == "finished", "stage loss ends battle")
     arena.queue_free()
