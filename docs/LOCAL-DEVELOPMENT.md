@@ -350,3 +350,26 @@ make check-tools
 make phase-i3
 make phase-i3-screenshot
 ```
+
+## Phase I.4 — Threat Language / Field Guide
+
+Branch `feature/m1-visual-phase-i4-threat-language`, stacked on I.3.
+An offline native Threat Guide explains the original four hostile shapes and
+actual status effects. Reach it from Title or Pause; returning from Pause
+keeps the battle paused. HUD warning colors now reflect live elite,
+armored, breach and incoming events, without adding mechanics.
+
+J8 ARMv7 version `0.9.3-phase-i4-threat-language-debug`, code 23, same
+`com.dantesouza.bastionzero.phaseh` premium app package. Source/art on
+GitHub, local Godot not required:
+
+```powershell
+git fetch origin --prune
+git switch feature/m1-visual-phase-i4-threat-language
+git merge --ff-only origin/feature/m1-visual-phase-i4-threat-language
+make profile
+make check-tools
+make phase-i4
+make phase-i4-doctor
+make phase-i4-screenshot
+```

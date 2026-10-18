@@ -7,6 +7,7 @@ signal deploy_requested(stage: int)
 signal hangar_requested
 signal sectors_requested
 signal settings_requested
+signal codex_requested
 
 const BG := Color("#020911")
 const GOLD := Color("#EFC187")
@@ -97,6 +98,13 @@ func _build() -> void:
     settings.name = "OpenSettings"
     settings.pressed.connect(func() -> void: settings_requested.emit())
     nav.add_child(settings)
+
+    # The approved three-button navigation row remains intact.
+    var guide := _button("THREAT GUIDE  •  KNOW YOUR ENEMIES", false, 56.0)
+    guide.name = "OpenThreatGuide"
+    guide.add_theme_font_size_override("font_size", 16)
+    guide.pressed.connect(func() -> void: codex_requested.emit())
+    stack.add_child(guide)
 
     stack.add_child(_text("OFFLINE  •  NO ADS  •  NO PURCHASES", 13, MINT, true))
     stack.add_child(_text("BUILD " + GameCatalog.GAME_VERSION, 12, MUTED, true))
