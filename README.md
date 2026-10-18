@@ -195,3 +195,7 @@ make phase-h
 it is not part of installation or normal development. Local `make check`
 requires a Godot executable; GitHub CI runs Godot automatically. See
 [Phase H](docs/VISUAL-PHASE-H.md) for approved assets and QA notes.
+
+**Phase H.1 (0.8.1):** J8 Hangar layout repaired: headings stop wrapping
+vertically, giant colored dividers and the duplicate Guardian backdrop are gone.
+The Phase H package is reused; update branch and run `make phase-h`.

@@ -35,16 +35,8 @@ func _ready() -> void:
     color = Color("#020814")
     mouse_filter = Control.MOUSE_FILTER_STOP
     set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-    if ResourceLoader.exists(PREMIUM_BACKGROUND_PATH):
-        var bg := TextureRect.new()
-        bg.name = "PremiumBackdrop"
-        bg.texture = load(PREMIUM_BACKGROUND_PATH) as Texture2D
-        bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-        bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-        bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-        bg.modulate.a = 0.23
-        bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-        add_child(bg)
+    # The old background repeated the Guardian behind the deploy controls.
+    # Show the approved image once, inside HorizonHero: cleaner and cheaper.
     _build()
 
 
@@ -55,28 +47,26 @@ func _build() -> void:
     scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
     add_child(scroll)
 
-    var centered := CenterContainer.new()
-    centered.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    centered.custom_minimum_size = Vector2(720.0, 1220.0)
-    scroll.add_child(centered)
-
+    # Content-driven scrolling: never impose a 720x1220 CenterContainer
+    # that overflows the portrait J8 viewport.
     var margin := MarginContainer.new()
-    margin.custom_minimum_size.x = 666.0
-    margin.add_theme_constant_override("margin_left", 8)
-    margin.add_theme_constant_override("margin_right", 8)
-    margin.add_theme_constant_override("margin_top", 15)
-    margin.add_theme_constant_override("margin_bottom", 15)
-    centered.add_child(margin)
+    margin.name = "HangarMargins"
+    margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    margin.add_theme_constant_override("margin_left", 25)
+    margin.add_theme_constant_override("margin_right", 25)
+    margin.add_theme_constant_override("margin_top", 12)
+    margin.add_theme_constant_override("margin_bottom", 20)
+    scroll.add_child(margin)
 
     var stack := VBoxContainer.new()
     stack.name = "HangarContent"
-    stack.add_theme_constant_override("separation", 11)
+    stack.add_theme_constant_override("separation", 9)
     margin.add_child(stack)
 
-    var header := _text("BASTION ZERO", 44, CYAN, true)
+    var header := _text("BASTION ZERO", 40, CYAN, true)
     header.name = "HangarTitle"
     stack.add_child(header)
-    stack.add_child(_text("THE LAST HORIZON  •  GUARDIAN COMMAND", 16, PALE, true))
+    stack.add_child(_text("THE LAST HORIZON  •  GUARDIAN COMMAND", 15, PALE, true))
     stack.add_child(_rule(CYAN))
 
     var hero := PanelContainer.new()
@@ -94,7 +84,7 @@ func _build() -> void:
     art.texture = load(branded_hero_path()) as Texture2D
     art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
     art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-    art.custom_minimum_size = Vector2(620, 342)
+    art.custom_minimum_size = Vector2(620, 305)
     art.mouse_filter = Control.MOUSE_FILTER_IGNORE
     hero.add_child(art)
 
@@ -103,12 +93,12 @@ func _build() -> void:
     stack.add_child(_text(showcase_title, 15, PALE, true))
 
     stack.add_child(_section("MISSION CONTROL"))
-    var normal := _button("DEPLOY • NORMAL 01    ›", true, 72.0)
+    var normal := _button("DEPLOY • NORMAL 01    ›", true, 66.0)
     normal.name = "DeployNormal"
     normal.pressed.connect(func() -> void: deploy_requested.emit(1))
     stack.add_child(normal)
 
-    var elite := _button("DEPLOY • ELITE 01", false, 60.0)
+    var elite := _button("DEPLOY • ELITE 01", false, 55.0)
     elite.name = "DeployElite"
     elite.disabled = int(record.get("stage_unlocked", 1)) < 2
     if elite.disabled:
@@ -144,7 +134,7 @@ func _build() -> void:
         var label: String = "HULL" if kind == "hull" else "DAMAGE"
         var cost_label: String = "MAX" if cost < 0 else "%d ALLOY" % cost
         var btn := _button("%s  %d/%d\n%s" % [
-            label, rank, GameCatalog.META_CAP, cost_label], false, 71.0)
+            label, rank, GameCatalog.META_CAP, cost_label], false, 66.0)
         btn.name = "Research" + kind.capitalize()
         btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
         btn.disabled = cost < 0 or int(record.get("bank", 0)) < cost
@@ -154,7 +144,7 @@ func _build() -> void:
     var settings := _button(
         "SYSTEMS  •  VISUAL FX: LOW (J8)" if bool(record.get("low_fx", true)) else
         "SYSTEMS  •  VISUAL FX: FULL",
-        false, 54.0)
+        false, 50.0)
     settings.name = "VisualFx"
     settings.pressed.connect(func() -> void: fx_requested.emit())
     stack.add_child(settings)
@@ -164,22 +154,28 @@ func _build() -> void:
     stack.add_child(_text("BUILD  %s" % GameCatalog.GAME_VERSION, 13, PALE, true))
 
 
-func _section(title: String) -> HBoxContainer:
-    var row := HBoxContainer.new()
-    row.name = "MissionControlHeading" if title == "MISSION CONTROL" else "ResearchLabHeading"
-    row.add_theme_constant_override("separation", 10)
-    var name_label := _text(title, 18, CYAN)
-    row.add_child(name_label)
-    var rule := _rule(BORDER)
-    rule.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    row.add_child(rule)
-    return row
+## A label beside a horizontally expanding ColorRect in an HBox can shrink
+## to one-character width and make its divider hundreds of pixels tall.
+func _section(title: String) -> VBoxContainer:
+    var section := VBoxContainer.new()
+    section.name = "MissionControlHeading" if title == "MISSION CONTROL" else "ResearchLabHeading"
+    section.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    section.add_theme_constant_override("separation", 5)
+    var heading := _text(title, 18, CYAN)
+    heading.name = "SectionLabel"
+    heading.autowrap_mode = TextServer.AUTOWRAP_OFF
+    section.add_child(heading)
+    section.add_child(_rule(BORDER))
+    return section
 
 
 func _rule(tint: Color) -> ColorRect:
     var line := ColorRect.new()
+    line.name = "Hairline"
     line.color = Color(tint.r, tint.g, tint.b, 0.48)
-    line.custom_minimum_size.y = 1
+    line.custom_minimum_size.y = 2
+    line.size_flags_horizontal = Control.SIZE_FILL
+    line.size_flags_vertical = Control.SIZE_SHRINK_CENTER
     line.mouse_filter = Control.MOUSE_FILTER_IGNORE
     return line
 

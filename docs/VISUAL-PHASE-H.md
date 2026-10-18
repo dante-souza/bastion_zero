@@ -66,3 +66,20 @@ For an *optional later image revision* only, the checksum-verified
 3. Hangar art includes the complete Guardian and horizon, behind real controls.
 4. Alloy, research, deploy and FX remain legible and functional.
 5. Dense combat is unchanged from Phase F; performance is measured separately.
+
+## Phase H.1 — J8 Hangar layout repair (0.8.1)
+
+Real J8 screenshots reveal that horizontally expanding colored divider rectangles
+compress MISSION CONTROL and RESEARCH LAB headings into vertical letters and
+stretch into enormous translucent panels. A full-screen premium background also
+repeats the Guardian behind mission controls.
+
+Fixed by replacing each heading HBox with a full-width VBox and 2px hairline,
+explicitly disabling word-wrap on headings. Removed duplicate background and
+fixed 720x1220 CenterContainer; content now flows through a scrolling
+MarginContainer with 25px safe side margins. Shortened the hero and button
+heights slightly while preserving 50px+ touch targets. Regression smoke checks
+assert the proper UI hierarchy. Version incremented to 0.8.1/code 19.
+
+**Same Phase H Android package, no new launcher icon.** Update the existing
+`feature/m1-visual-phase-h-premium` branch and run `make phase-h`.

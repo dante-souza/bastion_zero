@@ -421,9 +421,24 @@ func _run() -> void:
     var hangar_view: HangarView = game.get("modal") as HangarView
     _expect(hangar_view != null, "Phase G uses dedicated Last Horizon Hangar")
     if hangar_view != null:
-        _expect(hangar_view.find_child("MissionControlHeading", true, false) != null
-            and hangar_view.find_child("ResearchLabHeading", true, false) != null,
-            "premium Hangar section headings retain hierarchy")
+        var mission: VBoxContainer = hangar_view.find_child("MissionControlHeading", true, false) as VBoxContainer
+        var research_heading: VBoxContainer = hangar_view.find_child("ResearchLabHeading", true, false) as VBoxContainer
+        _expect(mission != null and research_heading != null,
+            "Hangar section titles stack vertically rather than sharing stretchable HBox rows")
+        if mission != null and research_heading != null:
+            for section in [mission, research_heading]:
+                var heading: Label = section.find_child("SectionLabel", true, false) as Label
+                var hairline: ColorRect = section.find_child("Hairline", true, false) as ColorRect
+                _expect(heading != null and hairline != null,
+                    "Each heading has a dedicated fixed-height divider")
+                if heading != null and hairline != null:
+                    _expect(heading.autowrap_mode == TextServer.AUTOWRAP_OFF
+                        and hairline.custom_minimum_size.y <= 2.0
+                        and hairline.size_flags_vertical == Control.SIZE_SHRINK_CENTER,
+                        "Hangar headings cannot turn into vertical letters or huge blue blocks")
+        _expect(hangar_view.find_child("PremiumBackdrop", true, false) == null
+            and hangar_view.find_child("HangarMargins", true, false) != null,
+            "Hangar uses one Guardian hero and content-driven portrait scrolling")
         var hero_art: TextureRect = hangar_view.find_child("HorizonArtwork", true, false) as TextureRect
         _expect(hero_art != null and hero_art.texture != null,
             "Hangar shows real Guardian/Horizon hero illustration")
@@ -447,7 +462,7 @@ func _run() -> void:
         for label_node in hangar_view.find_children("*", "Label", true, false):
             if String((label_node as Label).text) == "BUILD  " + GameCatalog.GAME_VERSION:
                 build_label_visible = true
-        _expect(GameCatalog.GAME_VERSION.begins_with("0.8.0") and build_label_visible,
+        _expect(GameCatalog.GAME_VERSION.begins_with("0.8.1") and build_label_visible,
             "Hangar footer displays current Phase G patch version")
     var deploy: Button
     for node in game.find_children("*", "Button", true, false):
