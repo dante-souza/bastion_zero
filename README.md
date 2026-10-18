@@ -173,15 +173,25 @@ remain real. Run `make phase-g` on
 
 ## Phase H — premium identity and Hangar
 
-Phase H uses the user-approved cinematic Last Horizon artwork and keeps all
-buttons as actual Godot controls. High-resolution PNG/WebP art is delivered as
-a separate local import bundle and can be installed with `make phase-h-art`,
-then committed normally and built by GitHub Actions. Until imported, the
-Phase G vector hero remains a safe fallback. The same phase upgrades the
-Hangar panel hierarchy, decorative accents and button styling; Phase F combat
-is unchanged. See `docs/VISUAL-PHASE-H.md`.
+The user-approved **Last Horizon** premium splash, Hangar hero/backdrop and
+Guardian launcher/adaptive icons are committed directly in
+`assets/branding/premium_*` on `feature/m1-visual-phase-h-premium`.
+The Hangar retains all native Godot deploy/research/FX controls; Phase F
+combat remains unchanged. Android CI validates every image's SHA-256 before
+building a self-contained ARMv7 APK. The exact artwork is checked in and
+requires **no manual asset downloads or imports**.
 
-**Phase H J8:** import the approved artwork ZIP using `make phase-h-art` and
-verify with `make phase-h-art-check`, commit/push the imported assets, then
-`make phase-h` downloads the built package. CI blocks placeholder Phase H
-APKs until the approved art is present.
+**Deploy on J8:**
+```powershell
+git fetch origin --prune
+git switch feature/m1-visual-phase-h-premium
+git merge --ff-only origin/feature/m1-visual-phase-h-premium
+make profile
+make check-tools
+make phase-h
+```
+
+`make phase-h-art` is kept for optional *future art replacement* workflows;
+it is not part of installation or normal development. Local `make check`
+requires a Godot executable; GitHub CI runs Godot automatically. See
+[Phase H](docs/VISUAL-PHASE-H.md) for approved assets and QA notes.
