@@ -2,7 +2,7 @@ class_name GameCatalog
 extends RefCounted
 
 ## Bastion Zero's original combat balance; no third-party game resources.
-const GAME_VERSION := "0.2.2-primary-gun"
+const GAME_VERSION := "0.2.3-sentinel-evolution"
 const WORLD_SIZE := Vector2(720.0, 1280.0)
 const GUARDIAN := Vector2(360.0, 1080.0)
 const BREACH_Y := 1040.0
@@ -12,9 +12,29 @@ const STARTING_HEALTH := 100
 const UPGRADE_CAP := 4
 const META_CAP := 8
 const UPGRADE_ORDER: Array[String] = [
-    "gun", "beam", "volley", "arc", "nova", "hull", "rate", "power", "reach"
+    "gun", "gun_payload", "gun_pierce", "gun_ricochet", "gun_volley",
+    "beam", "volley", "arc", "nova", "hull", "rate", "power", "reach"
 ]
 const WEAPON_ORDER: Array[String] = ["gun", "beam", "volley", "arc", "nova"]
+const GUN_MODS: Array[String] = ["gun_payload", "gun_pierce", "gun_ricochet", "gun_volley"]
+
+static func upgrade_cap(key: String) -> int:
+    match key:
+        "gun_payload": return 3
+        "gun_pierce": return 2
+        "gun_ricochet": return 2
+        "gun_volley": return 2
+    return UPGRADE_CAP
+
+static func upgrade_category(key: String, current_rank: int) -> String:
+    if WEAPON_ORDER.has(key) and current_rank == 0:
+        return "NEW WEAPON"
+    if GUN_MODS.has(key):
+        return "SENTINEL MOD"
+    if WEAPON_ORDER.has(key):
+        return "WEAPON EVOLUTION"
+    return "SUPPORT SYSTEM"
+
 
 ## Enemy/weapon interactions are explicit, stable, and independent of monetization.
 ## Multipliers are applied before HP-capped accounting.
@@ -43,6 +63,10 @@ static func stage_duration(stage: int) -> float:
 static func upgrade_name(key: String) -> String:
     match key:
         "gun": return "SENTINEL AUTOCANNON"
+        "gun_payload": return "KINETIC PAYLOAD"
+        "gun_pierce": return "SABOT PIERCER"
+        "gun_ricochet": return "RICOCHET ROUTING"
+        "gun_volley": return "SATURATION BURST"
         "beam": return "PRISM BEAM"
         "volley": return "COMET VOLLEY"
         "arc": return "ARC RELAY"
@@ -60,6 +84,10 @@ static func upgrade_description(key: String, rank: int) -> String:
                 2: return "Faster automatic fire (+30% cadence)."
                 3: return "Dual-barrel bursts: two aimed rounds per volley."
                 _: return "Smart tracers: faster rounds and improved tracking."
+        "gun_payload": return "+25% damage per Sentinel round. Rank %d/3" % rank
+        "gun_pierce": return "Round passes through %d additional target(s)." % rank
+        "gun_ricochet": return "After piercing, ricochet to up to %d nearby target(s)." % rank
+        "gun_volley": return "+%d separately aimed Sentinel rounds per burst." % rank
         "beam": return "Unlock pinpoint beam / +pierce; twin beam acquires another enemy."
         "volley": return "Unlock rockets / add lanes, then split + blast. Rank %d" % rank
         "arc": return "Unlock chain lightning / more jumps and stun. Rank %d" % rank
@@ -77,7 +105,7 @@ static func upgrade_offers(levels: Dictionary, rng: RandomNumberGenerator, count
     var available: Array[String] = []
     var locked: Array[String] = []
     for key in UPGRADE_ORDER:
-        if int(levels.get(key, 0)) < UPGRADE_CAP:
+        if int(levels.get(key, 0)) < upgrade_cap(key):
             available.append(key)
             if WEAPON_ORDER.has(key) and int(levels.get(key, 0)) == 0:
                 locked.append(key)

@@ -181,8 +181,9 @@ func _choose_system(offers: Array[String]) -> void:
     var content := _screen("SYSTEM EVOLUTION", "LEVEL %d  •  CHOOSE ONE" % arena.level)
     for kind in offers:
         var rank: int = int(arena.levels.get(kind, 0)) + 1
-        var upgrade := _button("%s  •  RANK %d\n%s" % [
-            GameCatalog.upgrade_name(kind), rank,
+        var category: String = GameCatalog.upgrade_category(kind, rank - 1)
+        var upgrade := _button("[%s]  %s  •  RANK %d/%d\n%s" % [
+            category, GameCatalog.upgrade_name(kind), rank, GameCatalog.upgrade_cap(kind),
             GameCatalog.upgrade_description(kind, rank)
         ], false)
         upgrade.custom_minimum_size.y = 96

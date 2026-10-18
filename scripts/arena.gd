@@ -61,6 +61,7 @@ func begin_run(permanent_upgrades: Dictionary, selected_stage: int = 1, reduced_
     rng.seed = 14057 + stage * 137
     levels = {
         "gun": 1, "beam": 0, "volley": 0, "arc": 0, "nova": 0,
+        "gun_payload": 0, "gun_pierce": 0, "gun_ricochet": 0, "gun_volley": 0,
         "hull": 0, "rate": 0, "power": 0, "reach": 0
     }
     weapon_damage = {"gun": 0.0, "beam": 0.0, "volley": 0.0, "arc": 0.0, "nova": 0.0}
@@ -130,7 +131,7 @@ func focus_at(point: Vector2) -> void:
 func choose_upgrade(kind: String) -> void:
     if state != "upgrade" or not levels.has(kind):
         return
-    if int(levels[kind]) >= GameCatalog.UPGRADE_CAP:
+    if int(levels[kind]) >= GameCatalog.upgrade_cap(kind):
         return
     levels[kind] = int(levels[kind]) + 1
     if kind == "hull":
@@ -293,28 +294,30 @@ func _move_projectiles(delta: float) -> void:
         var target_idx: int = _index_by_id(int(bullet["target"]))
         var velocity: Vector2 = bullet["velocity"]
         var kind: String = String(bullet["kind"])
-        # Both rockets and the basic cannon track the assigned threat. The
-        # cannon makes smaller corrections, avoiding the old missing shots.
         if target_idx >= 0 and (kind == "rocket" or kind == "gun"):
             var destination: Vector2 = enemies[target_idx]["pos"]
             var aim: Vector2 = (destination - pos).normalized()
-            var bullet_speed := 670.0 if kind == "rocket" else (1250.0 if int(levels["gun"]) >= 4 else 1100.0)
-            var turning := 7.0 if kind == "rocket" else (9.0 if int(levels["gun"]) >= 4 else 6.0)
+            var bullet_speed: float = 670.0 if kind == "rocket" else (1250.0 if int(levels["gun"]) >= 4 else 1100.0)
+            var turning: float = 7.0 if kind == "rocket" else (9.0 if int(levels["gun"]) >= 4 else 6.0)
             velocity = velocity.lerp(aim * bullet_speed, minf(delta * turning, 1.0))
             bullet["velocity"] = velocity
         var next: Vector2 = pos + velocity * delta
         bullet["pos"] = next
         var collision := -1
+        var along_first := 2.0
         for enemy in enemies:
+            var enemy_id: int = int(enemy["id"])
+            if kind == "gun" and Array(bullet.get("hit_ids", [])).has(enemy_id):
+                continue
             var radius: float = float(enemy["radius"]) + (10.0 if kind == "rocket" else (9.0 if kind == "gun" else 7.0))
-            # Swept segment-vs-circle collision prevents high-speed tunneling.
+            # Check the swept path; choose earliest physical contact, not spawn-array order.
             var path: Vector2 = next - pos
             var along: float = clampf((Vector2(enemy["pos"]) - pos).dot(path) / maxf(0.01, path.length_squared()), 0.0, 1.0)
-            if Vector2(enemy["pos"]).distance_to(pos.lerp(next, along)) <= radius:
-                collision = int(enemy["id"])
-                break
+            if along < along_first and Vector2(enemy["pos"]).distance_to(pos.lerp(next, along)) <= radius:
+                collision = enemy_id
+                along_first = along
         if collision >= 0:
-            var hit_at: Vector2 = next
+            var hit_at: Vector2 = pos.lerp(next, along_first)
             var base_damage: float = float(bullet["damage"])
             if kind == "rocket":
                 _damage_by_id(collision, base_damage, "volley")
@@ -324,14 +327,50 @@ func _move_projectiles(delta: float) -> void:
                     for j in range(3):
                         var velocity_frag := Vector2.from_angle(-PI + j * PI / 2.0) * 450.0
                         projectiles.append({"pos": hit_at, "velocity": velocity_frag, "damage": base_damage * 0.33, "life": 0.36, "target": -1, "kind": "frag"})
+                projectiles.remove_at(i)
             elif kind == "gun":
                 _damage_by_id(collision, base_damage, "gun")
+                var touched: Array = bullet.get("hit_ids", [])
+                touched.append(collision)
+                bullet["hit_ids"] = touched
+                if int(bullet["pierce_left"]) > 0:
+                    # Penetration carries on in the same direction, never rehitting targets.
+                    bullet["pierce_left"] = int(bullet["pierce_left"]) - 1
+                    bullet["damage"] = base_damage * 0.86
+                    bullet["target"] = -1
+                    bullet["pos"] = next
+                elif int(bullet["ricochet_left"]) > 0:
+                    var bounced_id: int = _nearest_unhit_enemy(hit_at, touched, 500.0)
+                    if bounced_id >= 0:
+                        bullet["ricochet_left"] = int(bullet["ricochet_left"]) - 1
+                        bullet["target"] = bounced_id
+                        bullet["pos"] = hit_at
+                        bullet["velocity"] = (Vector2(enemies[_index_by_id(bounced_id)]["pos"]) - hit_at).normalized() * 1100.0
+                        bullet["damage"] = base_damage * 0.74
+                        _effect("beam", hit_at, Vector2(enemies[_index_by_id(bounced_id)]["pos"]), 1.0, CYAN, 0.08)
+                    else:
+                        projectiles.remove_at(i)
+                else:
+                    projectiles.remove_at(i)
             else:
                 _damage_by_id(collision, base_damage, "volley")
+                projectiles.remove_at(i)
             _effect("flash", hit_at, Vector2.ZERO, 12.0 if kind == "gun" else 22.0, CYAN if kind == "gun" else GOLD, 0.14 if kind == "gun" else 0.22)
-            projectiles.remove_at(i)
         elif float(bullet["life"]) <= 0.0 or next.y < 110.0 or next.y > 1180.0:
             projectiles.remove_at(i)
+
+func _nearest_unhit_enemy(point: Vector2, touched: Array, radius: float) -> int:
+    var result := -1
+    var shortest: float = radius
+    for enemy in enemies:
+        var id: int = int(enemy["id"])
+        if touched.has(id):
+            continue
+        var distance: float = point.distance_to(enemy["pos"])
+        if distance < shortest:
+            shortest = distance
+            result = id
+    return result
 func _update_effects(delta: float) -> void:
     for i in range(effects.size() - 1, -1, -1):
         effects[i]["ttl"] = float(effects[i]["ttl"]) - delta
@@ -382,28 +421,57 @@ func _target_index(max_dist: float) -> int:
             highest_y = threat
     return winner
 
+func _gun_target_ids(count: int) -> Array[int]:
+    var result: Array[int] = []
+    var index: int = _target_index(_range(1170.0))
+    if index < 0:
+        return result
+    var main_id: int = int(enemies[index]["id"])
+    result.append(main_id)
+    var others: Array[Dictionary] = []
+    for enemy in enemies:
+        var id: int = int(enemy["id"])
+        if id == main_id or Vector2(enemy["pos"]).distance_to(G) > _range(1170.0):
+            continue
+        others.append({"id": id, "y": float(Vector2(enemy["pos"]).y)})
+    others.sort_custom(func(first: Dictionary, second: Dictionary) -> bool: return float(first["y"]) > float(second["y"]))
+    for other in others:
+        if result.size() >= count:
+            break
+        result.append(int(other["id"]))
+    while result.size() < count:
+        result.append(main_id)
+    return result
+
 func _fire_gun() -> void:
-    var target_idx: int = _target_index(_range(1170.0))
-    if target_idx < 0 or projectiles.size() >= MAX_BULLETS - 2:
+    var count := 1 + (1 if int(levels["gun"]) >= 3 else 0) + int(levels["gun_volley"])
+    if projectiles.size() >= MAX_BULLETS - count:
         return
-    var enemy: Dictionary = enemies[target_idx]
-    var target: Vector2 = enemy["pos"]
-    var speed := 1250.0 if int(levels["gun"]) >= 4 else 1100.0
-    var barrels := 2 if int(levels["gun"]) >= 3 else 1
-    for barrel in range(barrels):
-        var offset: float = (float(barrel) - (barrels - 1.0) * 0.5) * 32.0
+    var targets: Array[int] = _gun_target_ids(count)
+    if targets.is_empty():
+        return
+    var speed: float = 1250.0 if int(levels["gun"]) >= 4 else 1100.0
+    for barrel in range(count):
+        var target_idx: int = _index_by_id(targets[barrel])
+        if target_idx < 0:
+            continue
+        var enemy: Dictionary = enemies[target_idx]
+        var target: Vector2 = enemy["pos"]
+        var offset: float = (float(barrel) - (count - 1.0) * 0.5) * 25.0
         var muzzle: Vector2 = G + Vector2(offset, -45.0)
         var flight: float = muzzle.distance_to(target) / (speed + float(enemy["speed"]))
         var lead: Vector2 = target + Vector2(0.0, float(enemy["speed"]) * flight * 0.75)
         var velocity: Vector2 = (lead - muzzle).normalized() * speed
         projectiles.append({
             "pos": muzzle, "velocity": velocity,
-            "damage": _power(7.0 + 2.0 * (int(levels["gun"]) - 1)),
-            "life": 1.45, "target": int(enemy["id"]), "kind": "gun"
+            "damage": _power(7.0 + 2.0 * (int(levels["gun"]) - 1)) * (1.0 + 0.25 * int(levels["gun_payload"])),
+            "life": 1.50 + float(levels["gun_ricochet"]) * 0.30,
+            "target": int(enemy["id"]), "kind": "gun",
+            "pierce_left": int(levels["gun_pierce"]), "ricochet_left": int(levels["gun_ricochet"]),
+            "hit_ids": []
         })
     if not low_fx:
         _effect("flash", G + Vector2(0, -45), Vector2.ZERO, 11.0, CYAN, 0.10)
-
 func _beam_target_ids() -> Array[int]:
     # The primary beam always aims through its target center. On the dual-beam
     # tier, the other beam selects a second valid enemy or converges on the first.
