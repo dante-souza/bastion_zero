@@ -46,6 +46,20 @@ func _run() -> void:
     _expect(HudProfile.TACTICAL_TOP_END < HudProfile.TACTICAL_WARNING_START and
         HudProfile.TACTICAL_WARNING_END < HudProfile.TACTICAL_ELITE_START,
         "I.1 tactical header, warnings and elite health never overlap")
+    _expect(ThreatLanguage.descriptions().size() == 12,
+        "I.4 threat guide has actual friendly, hostile and signaling vocabulary")
+    _expect(ThreatLanguage.color_for_event("BREACH! -7 HULL", "LINE") == ThreatLanguage.CRITICAL and
+        ThreatLanguage.color_for_event("ELITE - ESCORTED ASSAULT", "LINE") == ThreatLanguage.ELITE and
+        ThreatLanguage.color_for_event("", "ARMORED") == ThreatLanguage.SHIELDED,
+        "HUD threat colors reflect real breach/elite/armored events")
+    _expect(ThreatLanguage.banner("", "WEDGE", 4).contains("4 HOSTILES") and
+        ThreatLanguage.banner("", "WEDGE", 0).is_empty(),
+        "HUD warns only when real enemies/events exist")
+    for entry in ThreatLanguage.descriptions():
+        var legend_kind: String = String(entry["id"])
+        if ["grunt", "runner", "tank", "elite"].has(legend_kind):
+            _expect(Color(entry["color"]) == VisualProfile.enemy_tint(legend_kind),
+                "codex enemy colors match actual combat renderer: " + legend_kind)
     _expect(HudProfile.TACTICAL_TRAY_START < -110.0 and
         HudProfile.TACTICAL_TRAY_END == -10.0,
         "five-weapon tray stays below Guardian")
@@ -446,7 +460,29 @@ func _run() -> void:
         _expect(heading != null and zero != null and
             heading.text == "BASTION" and zero.text == "Z E R O",
             "native two-line title follows approved tactical reference")
-        var sectors_button: Button = title_view.find_child("OpenSectors", true, false) as Button
+        var guide_button: Button = title_view.find_child("OpenThreatGuide", true, false) as Button
+        _expect(guide_button != null, "title provides real threat codex entry")
+        if guide_button != null:
+            guide_button.pressed.emit()
+            var codex: ThreatGuideView = game.get("modal") as ThreatGuideView
+            _expect(codex != null and codex.find_child("ThreatGuideScroll", true, false) != null,
+                "threat guide is a scrolling native menu, not a screenshot")
+            if codex != null:
+                var hostile_grid: GridContainer = codex.find_child("HOSTILEGrid", true, false) as GridContainer
+                _expect(hostile_grid != null and hostile_grid.get_child_count() == 4,
+                    "codex covers the four existing hostile silhouettes")
+                var icon: ThreatGlyph = codex.find_child("GruntLegend", true, false).find_child(
+                    "ThreatSymbol", true, false) as ThreatGlyph
+                _expect(icon != null and icon.tint == VisualProfile.GRUNT,
+                    "codex green ring matches hostile grunt instead of false green XP")
+                var return_button: Button = codex.find_child("ThreatGuideBack", true, false) as Button
+                _expect(return_button != null, "threat guide has genuine return action")
+                if return_button != null:
+                    return_button.pressed.emit()
+                    _expect(game.get("modal") is TitleMenuView,
+                        "return from title codex restores the tactical title")
+        var sectors_button: Button = (game.get("modal") as TitleMenuView).find_child(
+            "OpenSectors", true, false) as Button
         if sectors_button != null:
             sectors_button.pressed.emit()
             var sector_normal: Button = (game.get("modal") as ColorRect).find_child(
@@ -513,7 +549,7 @@ func _run() -> void:
         for label_node in hangar_view.find_children("*", "Label", true, false):
             if String((label_node as Label).text) == "BUILD  " + GameCatalog.GAME_VERSION:
                 build_label_visible = true
-        _expect(GameCatalog.GAME_VERSION.begins_with("0.9.2") and build_label_visible,
+        _expect(GameCatalog.GAME_VERSION.begins_with("0.9.3") and build_label_visible,
             "Hangar footer displays current Phase G patch version")
     var deploy: Button
     if hangar_view != null:
@@ -551,6 +587,26 @@ func _run() -> void:
             live_arena.enemies.pop_back()
             tactical.apply_snapshot(live_arena.snapshot())
             _expect(not tactical.elite_panel.visible, "elite bar hides after elite is removed")
+        # Paused-game guide never resumes combat implicitly.
+        game.call("_pause")
+        _expect(live_arena.state == "paused", "pause transitions Arena to paused")
+        var paused_screen: ColorRect = game.get("modal")
+        var pause_guide: Button = paused_screen.find_child(
+            "PauseThreatGuide", true, false) as Button
+        _expect(pause_guide != null, "pause menu exposes the same real codex")
+        if pause_guide != null:
+            pause_guide.pressed.emit()
+            _expect(game.get("modal") is ThreatGuideView and live_arena.state == "paused",
+                "opening codex from combat does not unpause enemies")
+            var paused_codex: ThreatGuideView = game.get("modal") as ThreatGuideView
+            var return_to_pause: Button = paused_codex.find_child(
+                "ThreatGuideBack", true, false) as Button
+            return_to_pause.pressed.emit()
+            _expect(live_arena.state == "paused" and
+                (game.get("modal") as ColorRect).find_child("PauseThreatGuide", true, false) != null,
+                "codex return resumes the pause menu, not combat")
+        game.call("_resume")
+        _expect(live_arena.state == "running", "resume remains an explicit player action")
         live_arena.state = "upgrade"
         live_arena.levels["gun_payload"] = 2
         # LV12 has maxed gun; test with three eligible upgrades.

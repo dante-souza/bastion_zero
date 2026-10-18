@@ -153,13 +153,12 @@ func apply_snapshot(info: Dictionary) -> void:
     ]
     var threats: int = int(info.get("enemies", 0))
     var event: String = String(info.get("event", ""))
+    var formation := String(info.get("formation", "LINE"))
     warning_panel.visible = threats > 0 or not event.is_empty()
-    if not event.is_empty():
-        warning_label.text = "ALERT  •  " + event
-    else:
-        warning_label.text = "INCOMING  •  %s  •  %d HOSTILES" % [
-            String(info.get("formation", "LINE")), threats
-        ]
+    warning_label.text = ThreatLanguage.banner(event, formation, threats)
+    var severity := ThreatLanguage.color_for_event(event, formation)
+    if warning_label.get_theme_color("font_color") != severity:
+        warning_label.add_theme_color_override("font_color", severity)
 
     var maximum: float = float(info.get("elite_max_hp", 0.0))
     elite_panel.visible = maximum > 0.0

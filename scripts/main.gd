@@ -61,8 +61,24 @@ func _title() -> void:
     title.hangar_requested.connect(_hangar)
     title.sectors_requested.connect(_sectors)
     title.settings_requested.connect(_settings)
+    title.codex_requested.connect(_threat_guide)
     modal = title
     add_child(title)
+
+
+## Opens from title, or while paused without accidentally unpausing Arena.
+func _threat_guide(from_pause: bool = false) -> void:
+    if from_pause and arena.state != "paused":
+        return
+    _clear()
+    var guide := ThreatGuideView.new()
+    guide.name = "ThreatGuide"
+    if from_pause:
+        guide.return_requested.connect(_show_pause_menu)
+    else:
+        guide.return_requested.connect(_title)
+    modal = guide
+    add_child(guide)
 
 
 func _sectors() -> void:
@@ -145,10 +161,21 @@ func _pause() -> void:
     if arena.state != "running":
         return
     arena.toggle_pause()
+    _show_pause_menu()
+
+
+func _show_pause_menu() -> void:
+    # Returning from the codex stays paused; only RESUME toggles state.
+    if arena.state != "paused":
+        return
     var content := _screen("MISSION PAUSED", GameCatalog.stage_name(current_stage))
     var resume := _button("RESUME", true)
     resume.pressed.connect(_resume)
     content.add_child(resume)
+    var guide := _button("THREAT GUIDE", false)
+    guide.name = "PauseThreatGuide"
+    guide.pressed.connect(_threat_guide.bind(true))
+    content.add_child(guide)
     var retreat := _button("ABANDON RUN (NO ALLOY)", false)
     retreat.pressed.connect(_title)
     content.add_child(retreat)
