@@ -14,6 +14,28 @@ func _expect(ok: bool, label: String) -> void:
 
 func _run() -> void:
     _expect(GameCatalog.TOTAL_STAGES == 2, "normal and elite stages")
+    _expect(GameCatalog.STAGE_ONE_SHOWCASE and GameCatalog.SHOWCASE_START_LEVEL >= 6, "NORMAL 01 has explicit test-only higher-level start")
+    var preview := Arena.new()
+    root.add_child(preview)
+    preview.begin_run({}, 1, true, true)
+    _expect(preview.showcase_active and preview.level == GameCatalog.SHOWCASE_START_LEVEL, "showcase initializes higher player level immediately")
+    _expect(preview.enemies.size() == 3 and String(preview.enemies[2]["kind"]) == "tank", "showcase starts with mixed visible enemies")
+    _expect(int(preview.levels["gun"]) >= 3 and int(preview.levels["beam"]) > 0 and int(preview.levels["volley"]) > 0 and int(preview.levels["arc"]) > 0 and int(preview.levels["nova"]) > 0, "showcase starts with all five active weapons")
+    preview.elapsed = GameCatalog.SHOWCASE_ELITE_TIME
+    preview._showcase_elite_spawned = false
+    preview._physics_process(0.0)
+    _expect(preview._showcase_elite_spawned and preview.enemies.any(func(e: Dictionary) -> bool: return e["kind"] == "elite"), "visual preview spawns real elite before stage midpoint")
+    preview.queue_free()
+    var normal_preview := Arena.new()
+    root.add_child(normal_preview)
+    normal_preview.begin_run({}, 1, true, false)
+    _expect(not normal_preview.showcase_active and normal_preview.level == 1 and int(normal_preview.levels["beam"]) == 0 and normal_preview.enemies.is_empty(), "ordinary run remains unchanged when showcase disabled")
+    normal_preview.queue_free()
+    var stage2_preview := Arena.new()
+    root.add_child(stage2_preview)
+    stage2_preview.begin_run({}, 2, true, true)
+    _expect(not stage2_preview.showcase_active and stage2_preview.level == 1 and int(stage2_preview.levels["nova"]) == 0, "ELITE 01 never receives the NORMAL 01 showcase")
+    stage2_preview.queue_free()
     _expect(GameCatalog.stage_name(1) == "NORMAL 01", "stage one name")
     _expect(GameCatalog.stage_name(2) == "ELITE 01", "stage two name")
     _expect(GameCatalog.stage_duration(2) > GameCatalog.stage_duration(1), "elite lasts longer")

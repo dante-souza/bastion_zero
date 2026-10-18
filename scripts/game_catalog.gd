@@ -2,7 +2,12 @@ class_name GameCatalog
 extends RefCounted
 
 ## Bastion Zero's original combat balance; no third-party game resources.
-const GAME_VERSION := "0.2.4-evolution-ui"
+const GAME_VERSION := "0.5.0-visual-showcase"
+## Phase D temporary visual QA fixture for NORMAL 01, not final progression.
+const STAGE_ONE_SHOWCASE := true
+const SHOWCASE_START_LEVEL := 7
+const SHOWCASE_LOADOUT := {"gun": 3, "beam": 1, "volley": 1, "arc": 1, "nova": 1}
+const SHOWCASE_ELITE_TIME := 14.0
 const WORLD_SIZE := Vector2(720.0, 1280.0)
 const GUARDIAN := Vector2(360.0, 1080.0)
 const BREACH_Y := 1040.0

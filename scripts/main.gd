@@ -103,7 +103,11 @@ func _stats(info: Dictionary) -> void:
     for key in GameCatalog.WEAPON_ORDER:
         if int(info["weapons"].get(key, 0)) > 0:
             unlocked.append(GameCatalog.upgrade_name(key))
-    hud_tools.text = " + ".join(unlocked) + "  •  FPS %d" % Engine.get_frames_per_second()
+    if bool(info.get("showcase", false)):
+        hud_tools.text = "SHOWCASE • %d ACTIVE WEAPONS • FPS %d" % [
+            unlocked.size(), Engine.get_frames_per_second()]
+    else:
+        hud_tools.text = " + ".join(unlocked) + "  •  FPS %d" % Engine.get_frames_per_second()
     var current_event: String = String(info.get("event", ""))
     hud_cue.text = current_event if not current_event.is_empty() else "FORMATION: %s  •  BREACHES: %d" % [
         String(info.get("formation", "LINE")), int(info.get("breaches", 0))
@@ -117,7 +121,11 @@ func _hangar() -> void:
     record = SaveData.validated(record)
     var content := _screen("BASTION ZERO", "GUARDIAN HANGAR  •  M1R")
     content.add_child(_label("Hold the lower defense line. Build evolving weapon combinations and survive the enemy advance.", 20, PALE, true))
-    content.add_child(_label("STARTER: SENTINEL AUTOCANNON. Unlock Prism Beam from level-up cards.", 16, GREEN, true))
+    content.add_child(_label(
+        "NORMAL 01 QA SHOWCASE: START LEVEL 7 + ALL WEAPONS."
+        if GameCatalog.STAGE_ONE_SHOWCASE else
+        "STARTER: SENTINEL AUTOCANNON. Unlock Prism Beam from level-up cards.",
+        16, GREEN, true))
     content.add_child(_label("TANKS: RESIST PRISM; COMET/NOVA HIT HARD. RUNNERS: WEAK TO ARC.", 15, GREEN, true))
     content.add_child(_label("ALLOY BANK: %d" % int(record["bank"]), 27, GOLD, true))
     content.add_child(_label("RUNS %d   •   WINS %d   •   BEST STAGE %d" % [
@@ -159,7 +167,8 @@ func _deploy(selected_stage: int = 1) -> void:
     current_stage = selected_stage
     _clear()
     hud.show()
-    arena.begin_run(record["meta"], current_stage, bool(record["low_fx"]))
+    arena.begin_run(record["meta"], current_stage, bool(record["low_fx"]),
+        GameCatalog.STAGE_ONE_SHOWCASE and current_stage == 1)
 
 func _pause() -> void:
     if arena.state != "running":

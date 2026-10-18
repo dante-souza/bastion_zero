@@ -51,16 +51,19 @@ var formation_name := "LINE"
 var breaches := 0
 var combat_event := "DEFENSE ONLINE"
 var event_time := 0.0
+var showcase_active := false
+var _showcase_elite_spawned := false
 
 func _ready() -> void:
     rng.randomize()
     set_process(true)
     set_physics_process(true)
 
-func begin_run(permanent_upgrades: Dictionary, selected_stage: int = 1, reduced_fx: bool = true) -> void:
+func begin_run(permanent_upgrades: Dictionary, selected_stage: int = 1, reduced_fx: bool = true, showcase: bool = false) -> void:
     meta = permanent_upgrades.duplicate(true)
     stage = clampi(selected_stage, 1, GameCatalog.TOTAL_STAGES)
     low_fx = reduced_fx
+    showcase_active = showcase and stage == 1
     rng.seed = 14057 + stage * 137
     levels = {
         "gun": 1, "beam": 0, "volley": 0, "arc": 0, "nova": 0,
@@ -70,6 +73,10 @@ func begin_run(permanent_upgrades: Dictionary, selected_stage: int = 1, reduced_
     weapon_damage = {"gun": 0.0, "beam": 0.0, "volley": 0.0, "arc": 0.0, "nova": 0.0}
     elapsed = 0.0
     level = 1
+    if showcase_active:
+        level = GameCatalog.SHOWCASE_START_LEVEL
+        for key in GameCatalog.SHOWCASE_LOADOUT:
+            levels[key] = int(GameCatalog.SHOWCASE_LOADOUT[key])
     xp = 0
     kills = 0
     next_enemy_id = 1
@@ -91,11 +98,18 @@ func begin_run(permanent_upgrades: Dictionary, selected_stage: int = 1, reduced_
     _guardian_damage_until = -1.0
     _elite_spawned = false
     _elite_enraged = false
+    _showcase_elite_spawned = false
     formation_index = 0
     formation_name = "LINE"
     breaches = 0
     combat_event = "DEFENSE ONLINE"
     event_time = 3.0
+    if showcase_active:
+        combat_event = "VISUAL SHOWCASE • ALL WEAPONS ONLINE"
+        _spawn_enemy("grunt", 145.0, 455.0)
+        _spawn_enemy("runner", 340.0, 395.0)
+        _spawn_enemy("tank", 555.0, 470.0)
+        _spawn_timer = 1.60
     state = "running"
     stats_changed.emit(snapshot())
     queue_redraw()
@@ -110,6 +124,7 @@ func snapshot() -> Dictionary:
         "weapons": levels.duplicate(), "focus": focused_id,
         "enemies": enemies.size(), "damage": weapon_damage.duplicate(),
         "formation": formation_name, "breaches": breaches,
+        "showcase": showcase_active,
         "event": combat_event if event_time > 0.0 else ""
     }
 
@@ -163,6 +178,12 @@ func _physics_process(delta: float) -> void:
         _spawn_formation()
         var progress: float = minf(1.0, elapsed / GameCatalog.stage_duration(stage))
         _spawn_timer = maxf(1.30, 2.55 - 0.74 * progress - float(stage - 1) * 0.24) * rng.randf_range(0.85, 1.15)
+    if showcase_active and not _showcase_elite_spawned and elapsed >= GameCatalog.SHOWCASE_ELITE_TIME:
+        _showcase_elite_spawned = true
+        if enemies.size() < MAX_ENEMIES:
+            _spawn_enemy("elite", 360.0, 215.0)
+            combat_event = "SHOWCASE • ELITE SIGNATURE"
+            event_time = 3.0
     if stage == 2 and not _elite_spawned and elapsed > GameCatalog.stage_duration(stage) * 0.60:
         _elite_spawned = true
         _spawn_enemy("elite", 360.0, 155.0)
