@@ -71,7 +71,7 @@ def apk_ready(apk: Path) -> Path:
             fields = line.split()
             if len(fields) >= 2 and Path(fields[-1]).name == apk.name:
                 expected = fields[0].lower()
-                actual = hashlib.file_digest(apk.open("rb"), "sha256").hexdigest()
+                actual = hashlib.sha256(apk.read_bytes()).hexdigest()
                 if actual != expected:
                     raise RuntimeError(f"APK checksum mismatch! Expected {expected}, got {actual}; refusing install.")
                 print(f"APK SHA-256 verified: {actual}")
