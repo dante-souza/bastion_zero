@@ -430,8 +430,47 @@ func _run() -> void:
     var game: Control = (load("res://scenes/main.tscn") as PackedScene).instantiate()
     root.add_child(game)
     _expect(game.mouse_filter == Control.MOUSE_FILTER_IGNORE, "fullscreen UI does not swallow taps")
+    var title_view: TitleMenuView = game.get("modal") as TitleMenuView
+    _expect(title_view != null, "Phase I.3 opens tactical title before Hangar")
+    if title_view != null:
+        var art: TitleHorizonArt = title_view.find_child("TitleBattlefieldArt", true, false) as TitleHorizonArt
+        var guardian_icon: TextureRect = title_view.find_child("TitleGuardian", true, false) as TextureRect
+        var deploy_primary: Button = title_view.find_child("DeployPrimary", true, false) as Button
+        var nav: HBoxContainer = title_view.find_child("TitleNavigation", true, false) as HBoxContainer
+        _expect(art != null and guardian_icon != null and guardian_icon.texture != null,
+            "title uses original gameplay Guardian and clean defensive horizon art")
+        _expect(deploy_primary != null and nav != null and nav.get_child_count() == 3,
+            "large DEPLOY action plus HANGAR/SECTORS/SETTINGS native navigation")
+        var heading: Label = title_view.find_child("BastionWordmark", true, false) as Label
+        var zero: Label = title_view.find_child("ZeroWordmark", true, false) as Label
+        _expect(heading != null and zero != null and
+            heading.text == "BASTION" and zero.text == "Z E R O",
+            "native two-line title follows approved tactical reference")
+        var sectors_button: Button = title_view.find_child("OpenSectors", true, false) as Button
+        if sectors_button != null:
+            sectors_button.pressed.emit()
+            var sector_normal: Button = (game.get("modal") as ColorRect).find_child(
+                "SectorNormal", true, false) as Button
+            var sector_elite: Button = (game.get("modal") as ColorRect).find_child(
+                "SectorElite", true, false) as Button
+            _expect(sector_normal != null and sector_elite != null and sector_elite.disabled,
+                "SECTORS opens real Normal deployment and properly locked Elite")
+        game.call("_title")
+        var settings_title: TitleMenuView = game.get("modal") as TitleMenuView
+        var settings_button: Button = settings_title.find_child("OpenSettings", true, false) as Button
+        if settings_button != null:
+            settings_button.pressed.emit()
+            var fx_button: Button = (game.get("modal") as ColorRect).find_child(
+                "SettingsFx", true, false) as Button
+            _expect(fx_button != null, "SETTINGS opens working native graphics control")
+        game.call("_title")
+        var open_hangar: Button = (game.get("modal") as TitleMenuView).find_child(
+            "OpenHangar", true, false) as Button
+        _expect(open_hangar != null, "HANGAR navigation has real button")
+        if open_hangar != null:
+            open_hangar.pressed.emit()
     var hangar_view: HangarView = game.get("modal") as HangarView
-    _expect(hangar_view != null, "Phase G uses dedicated Last Horizon Hangar")
+    _expect(hangar_view != null, "Phase G Hangar stays accessible from tactical title")
     if hangar_view != null:
         var mission: VBoxContainer = hangar_view.find_child("MissionControlHeading", true, false) as VBoxContainer
         var research_heading: VBoxContainer = hangar_view.find_child("ResearchLabHeading", true, false) as VBoxContainer
@@ -474,14 +513,14 @@ func _run() -> void:
         for label_node in hangar_view.find_children("*", "Label", true, false):
             if String((label_node as Label).text) == "BUILD  " + GameCatalog.GAME_VERSION:
                 build_label_visible = true
-        _expect(GameCatalog.GAME_VERSION.begins_with("0.9.1") and build_label_visible,
+        _expect(GameCatalog.GAME_VERSION.begins_with("0.9.2") and build_label_visible,
             "Hangar footer displays current Phase G patch version")
     var deploy: Button
-    for node in game.find_children("*", "Button", true, false):
-        if (node as Button).text.begins_with("DEPLOY"):
-            deploy = node as Button
-            break
-    _expect(deploy != null, "hangar contains deploy button")
+    if hangar_view != null:
+        deploy = hangar_view.find_child("DeployNormal", true, false) as Button
+        _expect(hangar_view.find_child("BackToTitle", true, false) != null,
+            "HANGAR can return to tactical title without losing its real research actions")
+    _expect(deploy != null, "Hangar retains real Normal deployment button")
     if deploy != null:
         deploy.pressed.emit()
         var live_arena: Arena = game.get("arena")

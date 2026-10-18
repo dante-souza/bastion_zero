@@ -6,6 +6,7 @@ extends ColorRect
 signal deploy_requested(stage: int)
 signal research_requested(kind: String)
 signal fx_requested
+signal title_requested
 
 const HERO: Texture2D = preload("res://assets/branding/last_horizon_hero.svg")
 ## These high-fidelity, user-approved image assets are optional until the
@@ -148,6 +149,11 @@ func _build() -> void:
     settings.name = "VisualFx"
     settings.pressed.connect(func() -> void: fx_requested.emit())
     stack.add_child(settings)
+
+    var title_back := _button("RETURN TO TITLE", false, 51.0)
+    title_back.name = "BackToTitle"
+    title_back.pressed.connect(func() -> void: title_requested.emit())
+    stack.add_child(title_back)
 
     stack.add_child(_rule(BORDER))
     stack.add_child(_text("OFFLINE   •   NO ADS   •   NO PURCHASES", 15, GREEN, true))
