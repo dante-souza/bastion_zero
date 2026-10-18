@@ -21,7 +21,7 @@ func _ready() -> void:
     _build_hud()
     resized.connect(_resize_arena)
     _resize_arena()
-    _hangar()
+    _title()
 
 func _resize_arena() -> void:
     if size.x > 0.0 and size.y > 0.0:
@@ -50,6 +50,64 @@ func _stats(info: Dictionary) -> void:
     hud.apply_snapshot(info)
 
 
+func _title() -> void:
+    arena.state = "idle"
+    hud.hide()
+    record = SaveData.validated(record)
+    _clear()
+    var title := TitleMenuView.new()
+    title.configure(record)
+    title.deploy_requested.connect(_deploy)
+    title.hangar_requested.connect(_hangar)
+    title.sectors_requested.connect(_sectors)
+    title.settings_requested.connect(_settings)
+    modal = title
+    add_child(title)
+
+
+func _sectors() -> void:
+    arena.state = "idle"
+    hud.hide()
+    var content := _screen("SECTORS", "SELECT A REAL MISSION")
+    var normal := _button("NORMAL 01  •  DEPLOY", true)
+    normal.name = "SectorNormal"
+    normal.pressed.connect(_deploy.bind(1))
+    content.add_child(normal)
+    var elite := _button("ELITE 01  •  DEPLOY", false)
+    elite.name = "SectorElite"
+    elite.disabled = int(record.get("stage_unlocked", 1)) < 2
+    if elite.disabled:
+        elite.text = "ELITE 01  •  LOCKED — CLEAR NORMAL 01"
+    elite.pressed.connect(_deploy.bind(2))
+    content.add_child(elite)
+    var back := _button("RETURN TO TITLE", false)
+    back.name = "SectorsBack"
+    back.pressed.connect(_title)
+    content.add_child(back)
+
+
+func _settings() -> void:
+    arena.state = "idle"
+    hud.hide()
+    var content := _screen("SETTINGS", "SYSTEM CONFIGURATION")
+    var fx_label := "LOW (J8)" if bool(record.get("low_fx", true)) else "FULL"
+    var fx := _button("VISUAL FX: " + fx_label + "  •  CHANGE", true)
+    fx.name = "SettingsFx"
+    fx.pressed.connect(_settings_toggle_fx)
+    content.add_child(fx)
+    content.add_child(_label("OFFLINE  •  NO ADS  •  NO PURCHASES", 17, GREEN, true))
+    var back := _button("RETURN TO TITLE", false)
+    back.name = "SettingsBack"
+    back.pressed.connect(_title)
+    content.add_child(back)
+
+
+func _settings_toggle_fx() -> void:
+    record["low_fx"] = not bool(record.get("low_fx", true))
+    SaveData.write_game(record)
+    _settings()
+
+
 func _hangar() -> void:
     arena.state = "idle"
     hud.hide()
@@ -60,6 +118,7 @@ func _hangar() -> void:
     hangar.deploy_requested.connect(_deploy)
     hangar.research_requested.connect(_research)
     hangar.fx_requested.connect(_toggle_fx)
+    hangar.title_requested.connect(_title)
     modal = hangar
     add_child(hangar)
 
@@ -91,7 +150,7 @@ func _pause() -> void:
     resume.pressed.connect(_resume)
     content.add_child(resume)
     var retreat := _button("ABANDON RUN (NO ALLOY)", false)
-    retreat.pressed.connect(_hangar)
+    retreat.pressed.connect(_title)
     content.add_child(retreat)
 
 func _resume() -> void:
@@ -148,8 +207,8 @@ func _results(victory: bool, stats: Dictionary) -> void:
     var replay := _button("RETRY THIS STAGE", true)
     replay.pressed.connect(_deploy.bind(current_stage))
     content.add_child(replay)
-    var home := _button("RETURN TO HANGAR", false)
-    home.pressed.connect(_hangar)
+    var home := _button("RETURN TO TITLE", false)
+    home.pressed.connect(_title)
     content.add_child(home)
 
 func _clear() -> void:
