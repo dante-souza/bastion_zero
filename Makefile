@@ -1,5 +1,5 @@
 # Bastion Zero — Android-first workflows. All routine operations go through make.
-# PROFILE=auto selects current supported Git branch; phase-a targets work from any branch.
+# PROFILE=auto selects current supported Git branch; named targets work from any branch.
 PYTHON ?= python
 DEVICE ?= 38c19745
 PROFILE ?= auto
@@ -10,7 +10,7 @@ GODOT ?= godot
 J8 = $(PYTHON) scripts/android_j8.py --device "$(DEVICE)" --profile "$(PROFILE)" --apk "$(APK)"
 
 .DEFAULT_GOAL := help
-.PHONY: help profile doctor installed version apk install uninstall reinstall run reinstall-run deploy fresh logs screenshot sync git-status check-tools check phase-a phase-a-apk phase-a-install phase-a-reinstall-run phase-a-run phase-a-doctor phase-a-logs phase-a-screenshot
+.PHONY: help profile doctor installed version apk install uninstall reinstall run reinstall-run deploy fresh logs screenshot sync git-status check-tools check phase-a phase-a-apk phase-a-install phase-a-reinstall-run phase-a-run phase-a-doctor phase-a-logs phase-a-screenshot phase-b phase-b-apk phase-b-install phase-b-reinstall-run phase-b-run phase-b-doctor phase-b-logs phase-b-screenshot
 
 help:
 	@$(J8) help
@@ -78,6 +78,31 @@ phase-a-logs:
 
 phase-a-screenshot:
 	@$(MAKE) screenshot PROFILE=phase-a
+
+# Phase B.1 Guardian / smooth-background J8 test profile.
+phase-b:
+	@$(MAKE) fresh PROFILE=phase-b
+
+phase-b-apk:
+	@$(MAKE) apk PROFILE=phase-b
+
+phase-b-install:
+	@$(MAKE) install PROFILE=phase-b
+
+phase-b-reinstall-run:
+	@$(MAKE) reinstall-run PROFILE=phase-b
+
+phase-b-run:
+	@$(MAKE) run PROFILE=phase-b
+
+phase-b-doctor:
+	@$(MAKE) doctor PROFILE=phase-b
+
+phase-b-logs:
+	@$(MAKE) logs PROFILE=phase-b
+
+phase-b-screenshot:
+	@$(MAKE) screenshot PROFILE=phase-b
 
 # Fast-forward only; no reset, forced checkout or stash.
 sync:

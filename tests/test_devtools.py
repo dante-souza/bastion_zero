@@ -24,7 +24,8 @@ class J8ToolsTests(unittest.TestCase):
     def test_profile_selection_by_current_branch(self):
         for key, branch in [
             ("m1r", "feature/m1-playable-game"),
-            ("phase-a", "feature/m1-visual-phase-a")
+            ("phase-a", "feature/m1-visual-phase-a"),
+            ("phase-b", "feature/m1-visual-phase-b-guardian")
         ]:
             with self.subTest(key=key), mock.patch.object(
                 android_j8, "execute", return_value=mock.Mock(stdout=branch + "\n")
@@ -47,6 +48,17 @@ class J8ToolsTests(unittest.TestCase):
         self.assertIn("phase-a", str(android_j8.resolve_apk("auto", a)))
         self.assertIn("m1r", str(android_j8.resolve_apk("auto", b)))
         self.assertNotEqual(android_j8.resolve_apk("auto", a), android_j8.resolve_apk("auto", b))
+
+    def test_phase_b_is_isolated_and_export_matches(self):
+        b = android_j8.resolve_profile("phase-b")
+        a = android_j8.resolve_profile("phase-a")
+        self.assertNotEqual(b.package, a.package)
+        self.assertNotEqual(b.apk_name, a.apk_name)
+        self.assertNotEqual(b.artifact, a.artifact)
+        self.assertIn("phase-b", str(android_j8.resolve_apk("auto", b)))
+        self.assertTrue(b.package.endswith(".phaseb"))
+        with self.assertRaisesRegex(RuntimeError, "cross-profile"):
+            android_j8.resolve_apk("dist/phase-a/bastion-zero-phase-a-j8-debug.apk", b)
 
     def test_reject_cross_profile_apk_basename(self):
         with self.assertRaisesRegex(RuntimeError, "cross-profile"):
@@ -169,6 +181,7 @@ class J8ToolsTests(unittest.TestCase):
 
     def test_repo_sync_includes_visual_branch(self):
         self.assertIn("feature/m1-visual-phase-a", repo_sync.BRANCHES)
+        self.assertIn("feature/m1-visual-phase-b-guardian", repo_sync.BRANCHES)
 
 
 if __name__ == "__main__":

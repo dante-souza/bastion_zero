@@ -57,7 +57,7 @@ As requested, Phase A development saves are disposable; `reinstall-run` and `pha
 | `make check-tools`, `make check` | Local Python/Godot tests |
 | `make git-status` | Print local Git branch and status |
 
-Profiles are `phase-a` and `m1r`; `PROFILE=auto` selects the matching current Git branch or fails closed if unsupported. The Android package is never chosen independently of the profile.
+Profiles are `phase-b`, `phase-a` and `m1r`; `PROFILE=auto` selects the matching current Git branch or fails closed if unsupported. The Android package is never chosen independently of the profile.
 
 `make apk` places builds in distinct directories so older `dist/bastion-zero-j8-debug.apk` cannot interfere:
 
@@ -65,6 +65,7 @@ Profiles are `phase-a` and `m1r`; `PROFILE=auto` selects the matching current Gi
 dist/
   m1r/bastion-zero-j8-debug.apk
   phase-a/bastion-zero-phase-a-j8-debug.apk
+  phase-b/bastion-zero-phase-b-j8-debug.apk
 ```
 
 Each directory also contains a `SHA256SUMS.txt` and a cached run-id. Re-running `make apk` against the same successful run verifies and reuses the existing APK; when a new run succeeds, the target downloads and replaces only that profile's cached artifact.
@@ -91,3 +92,39 @@ The helper verifies the selected run belongs to Phase A and refuses a different 
 ## Build signing
 
 Unless `BASTION_DEBUG_KEYSTORE_BASE64` is configured in GitHub Actions, the CI workflow signs each APK with an ephemeral key. Android will reject in-place upgrades with mismatching certificates. Use `make phase-a` (reinstall) until stable signing and meaningful save persistence become requirements. See `docs/ANDROID-SIGNING.md`.
+
+## Phase B.1 — selected circular Guardian and smooth backdrop
+
+Phase B.1 continues Phase A on `feature/m1-visual-phase-b-guardian`, with its own
+APK profile, `com.dantesouza.bastionzero.phaseb`. Select it once:
+
+```powershell
+git status --short --branch
+git fetch origin --prune
+git switch --track origin/feature/m1-visual-phase-b-guardian
+# If your local branch already exists: git switch feature/m1-visual-phase-b-guardian
+git pull --ff-only origin feature/m1-visual-phase-b-guardian
+```
+
+All *device* operations are Makefile targets:
+
+```powershell
+make check-tools
+make phase-b
+make phase-b-doctor
+make phase-b-screenshot
+make phase-b-logs
+```
+
+`make phase-b` downloads the latest **successful Phase B J8** workflow artifact,
+verifies SHA-256, reinstalls the dedicated Phase B package and launches it. The
+old `dist/bastion-zero-j8-debug.apk`, Phase A APK, and their saves cannot be
+confused with Phase B. Development saves for Phase B can be erased.
+
+Other Phase B targets: `make phase-b-apk`, `make phase-b-install`,
+`make phase-b-reinstall-run`, `make phase-b-run` and
+`make phase-b-screenshot`. On the Phase B branch, `make fresh` and
+`make apk` auto-select Phase B as well.
+
+See [Guardian Phase B.1 technical notes](VISUAL-PHASE-B1.md). The selected
+reference image is **not** copied into the APK; all in-game art is procedural.
