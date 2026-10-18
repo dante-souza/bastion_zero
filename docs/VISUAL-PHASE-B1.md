@@ -55,3 +55,7 @@ Only mark the physical 30 FPS sustained target after J8 gameplay testing.
 
 The Phase B.1 debug APK uses `com.dantesouza.bastionzero.phaseb` (ARMv7)
 and has its own downloaded artifact/cache directory; saves may be erased.
+
+## B.2 continuation
+
+The same branch now continues with physical Sentinel barrel overlays, real tip flashes, upgrade count and hull-breach feedback; see [Phase B.2](VISUAL-PHASE-B2.md). B.1's note about deferred muzzle alignment reflects the original B.1 snapshot only.

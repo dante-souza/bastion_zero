@@ -82,3 +82,11 @@ pods, segmented cyan/royal-blue armor rings and a smooth lower-arena radial glow
 The existing Sentinel projectile spawn positions and all combat behavior are
 unchanged pending B.2 firing/aim alignment. No third-party art or generated image
 is bundled with the APK. See [Phase B.1 specification](docs/VISUAL-PHASE-B1.md).
+
+## Guardian Phase B.2 — combat-aware visuals
+
+The Phase B branch now additionally aligns visually rendered Sentinel barrels
+and muzzle flashes with the **actual fired projectile positions and velocities**.
+Base, dual and Saturation upgrades display the appropriate barrel count, and
+hull breaches pulse the Guardian's outer rim. This is strictly a presentation
+layer; combat math is unchanged. See [Phase B.2 details](docs/VISUAL-PHASE-B2.md).
