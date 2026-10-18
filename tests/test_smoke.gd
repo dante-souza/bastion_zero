@@ -31,39 +31,54 @@ func _run() -> void:
     var lightning_full: PackedVector2Array = WeaponEffects.lightning_points(Vector2(10, 20), Vector2(210, 220), false)
     _expect(lightning_low.size() < lightning_full.size(), "J8 low-FX lightning uses fewer vertices")
     _expect(lightning_full[0] == Vector2(10, 20) and lightning_full[lightning_full.size() - 1] == Vector2(210, 220), "lightning shares exact real chain endpoints")
-    _expect(GameCatalog.STAGE_ONE_SHOWCASE and GameCatalog.SHOWCASE_START_LEVEL == 12, "NORMAL 01 D.1 starts at level 12 for visual QA")
-    _expect(GameCatalog.SHOWCASE_SCRIPT.size() == 5 and GameCatalog.SHOWCASE_ELITE_TIME == 20.0, "five timed visual beats with elite at 20 sec")
-    _expect(GameCatalog.SHOWCASE_FORMATIONS_START >= 24.0, "ordinary formations wait until after scripted showcase")
+    _expect(GameCatalog.STAGE_ONE_SHOWCASE and GameCatalog.SHOWCASE_START_LEVEL == 12,
+        "pressure QA starts at level 12")
+    _expect(GameCatalog.SHOWCASE_SCRIPT.size() == 6 and GameCatalog.SHOWCASE_ELITE_TIME == 18.0,
+        "six deterministic pressure encounters with earlier escorted elite")
+    _expect(GameCatalog.SHOWCASE_FORMATIONS_START == 12.0 and GameCatalog.SHOWCASE_FORMATION_INTERVAL <= 1.2,
+        "normal formations overlap the second half of QA encounters")
+    _expect(GameCatalog.SHOWCASE_HP_SCALE > 1.0 and GameCatalog.SHOWCASE_SPEED_SCALE > 1.0
+        and GameCatalog.SHOWCASE_DAMAGE_SCALE > 1.0, "showcase challenges both offense and defense")
     var preview := Arena.new()
     root.add_child(preview)
     preview.begin_run({}, 1, true, true)
-    _expect(preview.showcase_active and preview.level == GameCatalog.SHOWCASE_START_LEVEL, "showcase initializes higher player level immediately")
-    _expect(preview.enemies.size() == 3 and String(preview.enemies[2]["kind"]) == "tank", "showcase starts with mixed visible enemies")
-    _expect(preview.showcase_script_index == 1 and not preview.showcase_regular_spawns_unlocked, "only first scripted beat starts immediately")
-    _expect(int(preview.levels["gun"]) == 4 and int(preview.levels["rate"]) == 1 and int(preview.levels["reach"]) == 1, "showcase grants enhanced Sentinel and support systems")
-    var preview_hp: float = float(preview.enemies[0]["hp"])
-    _expect(preview_hp > 29.0 * 2.5, "intro targets have temporary durability to remain visible")
+    _expect(preview.showcase_active and preview.level == 12 and preview.showcase_script_index == 1,
+        "QA deployment starts with first pressure wave")
+    _expect(preview.enemies.size() == 9 and not preview.showcase_regular_spawns_unlocked,
+        "nine differentiated threats are immediately visible")
+    _expect(int(preview.levels["gun"]) == 4 and int(preview.levels["beam"]) == 2
+        and int(preview.levels["volley"]) == 2 and int(preview.levels["arc"]) == 2
+        and int(preview.levels["nova"]) == 2, "five strong starting weapon ranks remain")
+    _expect(float(preview.enemies[0]["hp"]) > 29.0 * 4.0,
+        "scripted grunt has enough HP for powerful weapons")
+    _expect(float(preview.enemies[0]["speed"]) > 82.0 and
+        float(preview.enemies[0]["damage"]) > 7.0, "QA foes move faster and hit harder")
     preview.elapsed = 4.0
     preview._tick_showcase_script()
-    _expect(preview.showcase_script_index == 2 and preview.enemies.size() == 5, "4 sec runner pair arrives without normal formations")
+    _expect(preview.enemies.size() == 17 and preview.showcase_script_index == 2, "eight fast flankers at second four")
     preview.elapsed = 8.0
     preview._tick_showcase_script()
-    _expect(preview.showcase_script_index == 3 and preview.enemies.size() == 7, "8 sec tank pair introduced")
+    _expect(preview.enemies.size() == 27 and preview.showcase_script_index == 3, "armored formation reaches 27 threats")
     preview.elapsed = 12.0
     preview._tick_showcase_script()
-    _expect(preview.showcase_script_index == 4 and preview.enemies.size() == 11, "12 sec mixed cluster introduced")
-    _expect(int(preview.levels["gun"]) >= 3 and int(preview.levels["beam"]) > 0 and int(preview.levels["volley"]) > 0 and int(preview.levels["arc"]) > 0 and int(preview.levels["nova"]) > 0, "showcase starts with all five active weapons")
-    preview.elapsed = GameCatalog.SHOWCASE_ELITE_TIME
+    _expect(preview.enemies.size() == 39 and preview.showcase_script_index == 4
+        and preview.showcase_regular_spawns_unlocked, "swarm pressure and standard formations overlap")
+    preview.elapsed = 18.0
     preview._tick_showcase_script()
-    _expect(preview._showcase_elite_spawned and preview.showcase_script_index == 5
-        and preview.enemies.any(func(e: Dictionary) -> bool: return e["kind"] == "elite"),
-        "20 sec beat introduces the real elite once")
+    _expect(preview.enemies.size() == 48 and preview.showcase_script_index == 5
+        and preview._showcase_elite_spawned, "elite enters with escorts")
+    var boss_count := 0
+    for enemy in preview.enemies:
+        if String(enemy["kind"]) == "elite":
+            boss_count += 1
+            _expect(float(enemy["max_hp"]) > 900.0 * 2.5, "QA elite survives long enough to inspect")
+    _expect(boss_count == 1, "scripted pressure spawns exactly one elite")
+    preview.elapsed = 22.0
     preview._tick_showcase_script()
-    _expect(preview.showcase_script_index == 5, "no duplicate elite after beat completes")
-    preview.elapsed = 24.0
+    _expect(preview.enemies.size() == 58 and preview.showcase_script_index == 6,
+        "second flank brings authored pressure to 58 enemies before regular formations")
     preview._tick_showcase_script()
-    _expect(preview.showcase_regular_spawns_unlocked and is_equal_approx(preview._spawn_timer, 0.55),
-        "standard formations resume after 24 sec")
+    _expect(preview.enemies.size() == 58 and boss_count == 1, "no duplicate scripted encounters")
     preview.queue_free()
     var normal_preview := Arena.new()
     root.add_child(normal_preview)

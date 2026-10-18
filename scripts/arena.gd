@@ -182,7 +182,10 @@ func _physics_process(delta: float) -> void:
         if elapsed < GameCatalog.stage_duration(stage) and _spawn_timer <= 0.0:
             _spawn_formation()
             var progress: float = minf(1.0, elapsed / GameCatalog.stage_duration(stage))
-            _spawn_timer = maxf(1.30, 2.55 - 0.74 * progress - float(stage - 1) * 0.24) * rng.randf_range(0.85, 1.15)
+            if showcase_active:
+                _spawn_timer = GameCatalog.SHOWCASE_FORMATION_INTERVAL * rng.randf_range(0.90, 1.10)
+            else:
+                _spawn_timer = maxf(1.30, 2.55 - 0.74 * progress - float(stage - 1) * 0.24) * rng.randf_range(0.85, 1.15)
     if stage == 2 and not _elite_spawned and elapsed > GameCatalog.stage_duration(stage) * 0.60:
         _elite_spawned = true
         _spawn_enemy("elite", 360.0, 155.0)
@@ -273,10 +276,15 @@ func _spawn_enemy(kind: String, x: float = 360.0, y: float = 150.0, intro_only: 
             hit = 28.0
             reward_xp = 95
     var scaling: float = 1.0 + (stage - 1) * 0.33 + (elapsed / GameCatalog.stage_duration(stage)) * 0.55
-    # Extra HP ONLY for scripted visual targets, so Lv12's real attacks
-    # do not erase them before a human can recognize their silhouettes.
-    if intro_only and showcase_active and kind != "elite":
-        scaling *= GameCatalog.SHOWCASE_INTRO_HP_SCALE
+    # Stress-test pressure is isolated to NORMAL 01's opt-in QA deployment.
+    # Standard and ELITE stages retain untouched HP, speed and breach damage.
+    if showcase_active:
+        scaling *= GameCatalog.SHOWCASE_HP_SCALE
+        speed *= GameCatalog.SHOWCASE_SPEED_SCALE
+        hit *= GameCatalog.SHOWCASE_DAMAGE_SCALE
+        if intro_only:
+            scaling *= (GameCatalog.SHOWCASE_ELITE_HP_SCALE
+                if kind == "elite" else GameCatalog.SHOWCASE_INTRO_HP_SCALE)
     enemies.append({
         "id": next_enemy_id, "kind": kind, "pos": Vector2(x, y),
         "origin_x": x, "hp": hp * scaling, "max_hp": hp * scaling,
