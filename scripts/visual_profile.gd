@@ -1,13 +1,15 @@
 class_name VisualProfile
 extends RefCounted
 
-## Style tokens shared by the world renderer; original art only.
-## CURRENT holds the validated M1R display. Do not claim that these
-## colors reproduce the user-linked early-game video (unavailable for inspection).
-const BACKDROP := Color("#091322")
-const GRID := Color(0.1, 0.22, 0.31, 0.35)
-const SPAWN_BAND := Color("#182b41")
-const LOWER_ZONE := Color("#102a3e")
+## Original arcade palette, based on broad aesthetic observations of
+## user-provided reference video. No third-party game assets are used.
+## Phase A updates only world backdrop/horizon; other silhouettes remain M1R.
+const BACKDROP := Color("#020509")
+const HORIZON_BLUE := Color("#168BFF")
+const HORIZON_CORE := Color("#67D8FF")
+const HORIZON_HALO_OUTER := Color(0.086, 0.545, 1.0, 0.065)
+const HORIZON_HALO_INNER := Color(0.12, 0.70, 1.0, 0.17)
+const BACKGROUND_SPECK := Color(0.24, 0.43, 0.60, 0.17)
 const BREACH := Color("#ff6486")
 const GUARDIAN_HULL := Color("#174368")
 const GUARDIAN_CORE := Color("#46d6f2")

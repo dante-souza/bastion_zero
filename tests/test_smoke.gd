@@ -18,6 +18,17 @@ func _run() -> void:
     _expect(GameCatalog.stage_name(2) == "ELITE 01", "stage two name")
     _expect(GameCatalog.stage_duration(2) > GameCatalog.stage_duration(1), "elite lasts longer")
     _expect(GameCatalog.GUARDIAN.y > GameCatalog.BREACH_Y, "guardian below defensive line")
+    _expect(VisualProfile.BACKDROP == Color("#020509"), "Phase A uses near-black arena")
+    var horizon := ArenaBackground.horizon_points()
+    _expect(horizon.size() == ArenaBackground.SEGMENTS + 1, "horizon is a bounded sampled curve")
+    if horizon.size() == ArenaBackground.SEGMENTS + 1:
+        var left: Vector2 = horizon[0]
+        var center: Vector2 = horizon[ArenaBackground.SEGMENTS / 2]
+        var right: Vector2 = horizon[ArenaBackground.SEGMENTS]
+        _expect(is_equal_approx(left.x, 0.0) and is_equal_approx(right.x, GameCatalog.WORLD_SIZE.x), "horizon spans arena width")
+        _expect(is_equal_approx(left.y, right.y) and center.y < left.y, "horizon has symmetric upward crest")
+        _expect(center.y < GameCatalog.BREACH_Y and left.y > GameCatalog.BREACH_Y, "horizon frames the defended zone without moving breach logic")
+    _expect(ArenaBackground.horizon_y(-400.0) == ArenaBackground.horizon_y(0.0), "horizon clamps outside left edge")
     _expect(GameCatalog.next_level_xp(2) > GameCatalog.next_level_xp(1), "progressive XP")
     _expect(GameCatalog.meta_cost("hull", 0) == 68, "initial research price")
     _expect(GameCatalog.meta_cost("damage", 8) == -1, "research is capped")

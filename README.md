@@ -67,4 +67,4 @@ Copyright (c) 2026 Bastion Zero contributors. Code licensed **AGPL-3.0-or-later*
 
 ## Visual direction for next build
 
-The requested [early-game video reference](https://www.youtube.com/watch?v=9o4noNCPi-I) is tracked in [our visual planning document](docs/VISUAL-DIRECTION-EARLY-GAME.md). The exact YouTube footage was not retrievable during this pass; source-specific observations await an uploaded clip or screenshots. Meanwhile original, swappable style tokens are introduced via `scripts/visual_profile.gd`. No copied assets or unverified video claims.
+The [early-game visual direction](docs/VISUAL-DIRECTION-EARLY-GAME.md) is informed by the user's uploaded gameplay recording, without importing third-party art. **Phase A is implemented on `feature/m1-visual-phase-a`**: a near-black arena, a quiet playfield, a shallow electric-blue horizon, and minimal breach markers. Full-FX adds a restrained halo and sparse static speckles; low-FX omits them for the Samsung J8. The original Guardian and enemy drawing remain in place until the subsequent visual phases. See [Phase A implementation and validation](docs/VISUAL-PHASE-A.md).
