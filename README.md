@@ -159,3 +159,14 @@ Evolution selection UI is also upgraded. See `docs/VISUAL-PHASE-F.md`.
 Phase F deployment: `make phase-f` on
 `feature/m1-visual-phase-f-evolution`. Dedicated J8 package
 `com.dantesouza.bastionzero.phasef`.
+
+## Phase G — The Last Horizon
+
+The app icon no longer uses the old triangle; the first boot screen shows the
+dark Last Horizon arc and a stylized circular Guardian instead of Godot's
+default image. The Guardian Hangar has been rebuilt as a dedicated native
+command screen around an original hero illustration containing the same Guardian
+SVG used in combat. All mission, research, FX and progression interactions
+remain real. Run `make phase-g` on
+`feature/m1-visual-phase-g-identity-hangar`; see
+[Phase G](docs/VISUAL-PHASE-G.md) for design, constraints and testing.

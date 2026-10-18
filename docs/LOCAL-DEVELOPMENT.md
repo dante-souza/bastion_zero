@@ -225,3 +225,29 @@ make phase-f-logs
 `make phase-f` uses the latest successful Phase F GitHub Actions build,
 verifies SHA-256, reinstalls and launches on the J8. Development saves
 remain disposable. See `docs/VISUAL-PHASE-F.md`.
+
+## Phase G — The Last Horizon identity and Hangar
+
+Branch `feature/m1-visual-phase-g-identity-hangar`, stacked on Phase F.
+The new branded dark-navy Android boot splash, Guardian icon and illustrated
+hangar ship as one ARMv7 APK. The original real combat and Phase F stress demo
+remain available. The hangar's deployment, research, FX and save data actions
+continue through their real signal handlers.
+
+Phase G package: `com.dantesouza.bastionzero.phaseg`, cached at
+`dist/phase-g/`. Device operations stay Makefile-only:
+
+```powershell
+make profile
+make check-tools
+make check
+make phase-g
+make phase-g-doctor
+make phase-g-screenshot
+make phase-g-logs
+```
+
+`make phase-g` verifies the latest successful Phase G CI APK's SHA256 before
+reinstalling and launching. Phase G test saves are disposable. For launch-logo
+review, observe the *actual cold start* as well as the Hangar and launcher icon.
+See `docs/VISUAL-PHASE-G.md` for acceptance criteria and asset provenance.

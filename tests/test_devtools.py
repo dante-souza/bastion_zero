@@ -29,7 +29,8 @@ class J8ToolsTests(unittest.TestCase):
             ("phase-c", "feature/m1-visual-phase-c-enemies"),
             ("phase-d", "feature/m1-visual-phase-d-weapons"),
             ("phase-e", "feature/m1-visual-phase-e-hud"),
-            ("phase-f", "feature/m1-visual-phase-f-evolution")
+            ("phase-f", "feature/m1-visual-phase-f-evolution"),
+            ("phase-g", "feature/m1-visual-phase-g-identity-hangar")
         ]:
             with self.subTest(key=key), mock.patch.object(
                 android_j8, "execute", return_value=mock.Mock(stdout=branch + "\n")
@@ -111,6 +112,18 @@ class J8ToolsTests(unittest.TestCase):
         self.assertIn("phase-f", str(android_j8.resolve_apk("auto", f)))
         with self.assertRaisesRegex(RuntimeError, "cross-profile"):
             android_j8.resolve_apk("dist/phase-e/bastion-zero-phase-e-j8-debug.apk", f)
+
+    def test_phase_g_isolated_last_horizon_apk(self):
+        g = android_j8.resolve_profile("phase-g")
+        f = android_j8.resolve_profile("phase-f")
+        self.assertEqual(g.branch, "feature/m1-visual-phase-g-identity-hangar")
+        self.assertEqual(g.artifact, "Bastion-Zero-Phase-G-J8-ARMv7")
+        self.assertEqual(g.package, "com.dantesouza.bastionzero.phaseg")
+        self.assertNotEqual(g.package, f.package)
+        self.assertNotEqual(g.apk_name, f.apk_name)
+        self.assertIn("phase-g", str(android_j8.resolve_apk("auto", g)))
+        with self.assertRaisesRegex(RuntimeError, "cross-profile"):
+            android_j8.resolve_apk("dist/phase-f/bastion-zero-phase-f-j8-debug.apk", g)
 
     def test_reject_cross_profile_apk_basename(self):
         with self.assertRaisesRegex(RuntimeError, "cross-profile"):
@@ -238,6 +251,7 @@ class J8ToolsTests(unittest.TestCase):
         self.assertIn("feature/m1-visual-phase-d-weapons", repo_sync.BRANCHES)
         self.assertIn("feature/m1-visual-phase-e-hud", repo_sync.BRANCHES)
         self.assertIn("feature/m1-visual-phase-f-evolution", repo_sync.BRANCHES)
+        self.assertIn("feature/m1-visual-phase-g-identity-hangar", repo_sync.BRANCHES)
 
 
 if __name__ == "__main__":

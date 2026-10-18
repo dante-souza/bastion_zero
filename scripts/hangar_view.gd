@@ -120,7 +120,7 @@ func _build() -> void:
         btn.name = "Research" + kind.capitalize()
         btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
         btn.disabled = cost < 0 or int(record.get("bank", 0)) < cost
-        btn.pressed.connect(func() -> void: research_requested.emit(kind))
+        btn.pressed.connect(_request_research.bind(kind))
         research.add_child(btn)
 
     var settings := _button(
@@ -185,3 +185,7 @@ func _style(fill: Color, line: Color) -> StyleBoxFlat:
     style.content_margin_top = 7
     style.content_margin_bottom = 7
     return style
+
+
+func _request_research(kind: String) -> void:
+    research_requested.emit(kind)

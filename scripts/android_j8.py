@@ -54,6 +54,10 @@ PROFILES = {
         "phase-f", "feature/m1-visual-phase-f-evolution", "Bastion-Zero-Phase-F-J8-ARMv7",
         "bastion-zero-phase-f-j8-debug.apk", "com.dantesouza.bastionzero.phasef"
     ),
+    "phase-g": BuildProfile(
+        "phase-g", "feature/m1-visual-phase-g-identity-hangar", "Bastion-Zero-Phase-G-J8-ARMv7",
+        "bastion-zero-phase-g-j8-debug.apk", "com.dantesouza.bastionzero.phaseg"
+    ),
 }
 PACKAGE = PROFILES["m1r"].package  # backward-compatible testing alias
 DEFAULT_DEVICE = os.environ.get("BASTION_DEVICE", "38c19745")
@@ -93,7 +97,7 @@ def resolve_profile(name: str) -> BuildProfile:
                 return profile
         raise RuntimeError(
             f"Cannot infer Android profile from Git branch {branch!r}. "
-            "Use 'make phase-f', or explicitly set PROFILE=phase-f|phase-e|phase-d|phase-c|phase-b|phase-a|m1r."
+            "Use 'make phase-g', or explicitly set PROFILE=phase-g|phase-f|phase-e|phase-d|phase-c|phase-b|phase-a|m1r."
         )
     if name not in PROFILES:
         raise RuntimeError(f"Unknown PROFILE={name!r}; supported: auto, {', '.join(PROFILES)}")
@@ -319,14 +323,21 @@ def help_text() -> None:
     print("  make phase-f-doctor       check J8, Phase F package and APK")
     print("  make phase-f-logs         Android diagnostics")
     print("  make phase-f-screenshot   save screenshot in screenshots/")
+    print("  make phase-g              download, reinstall and launch Last Horizon Hangar")
+    print("  make phase-g-apk          download/cache Phase G APK")
+    print("  make phase-g-reinstall-run  reinstall cached Phase G APK and launch")
+    print("  make phase-g-run          launch installed Phase G build")
+    print("  make phase-g-doctor       check J8, Phase G package and APK")
+    print("  make phase-g-logs         Android diagnostics")
+    print("  make phase-g-screenshot   save screenshot in screenshots/")
     print("  make fresh                download/reinstall/run selected branch profile")
     for key, value in COMMANDS.items():
         print(f"  make {key:<20} {value}")
-    print("  make sync                 Fast-forward local main/dev/M1R/Phase-A/Phase-B/Phase-C/Phase-D/Phase-E/Phase-F and restore branch")
+    print("  make sync                 Fast-forward local main/dev/M1R/Phase-A/Phase-B/Phase-C/Phase-D/Phase-E/Phase-F/Phase-G and restore branch")
     print("  make check-tools          Python developer tool tests")
     print("  make check                Python + headless Godot validations")
     print("  make git-status           Inspect current local Git branch")
-    print("  Overrides: PROFILE=phase-f|phase-e|phase-d|phase-c|phase-b|phase-a|m1r|auto, DEVICE=serial, APK=path, RUN_ID=number")
+    print("  Overrides: PROFILE=phase-g|phase-f|phase-e|phase-d|phase-c|phase-b|phase-a|m1r|auto, DEVICE=serial, APK=path, RUN_ID=number")
     print("  Default DEVICE=38c19745 (Galaxy J8); saves in the selected package are disposable.")
 
 
