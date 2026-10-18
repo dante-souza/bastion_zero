@@ -10,7 +10,7 @@ GODOT ?= godot
 J8 = $(PYTHON) scripts/android_j8.py --device "$(DEVICE)" --profile "$(PROFILE)" --apk "$(APK)"
 
 .DEFAULT_GOAL := help
-.PHONY: help profile doctor installed version apk install uninstall reinstall run reinstall-run deploy fresh logs screenshot sync git-status check-tools check phase-a phase-a-apk phase-a-install phase-a-reinstall-run phase-a-run phase-a-doctor phase-a-logs phase-a-screenshot phase-b phase-b-apk phase-b-install phase-b-reinstall-run phase-b-run phase-b-doctor phase-b-logs phase-b-screenshot
+.PHONY: help profile doctor installed version apk install uninstall reinstall run reinstall-run deploy fresh logs screenshot sync git-status check-tools check phase-a phase-a-apk phase-a-install phase-a-reinstall-run phase-a-run phase-a-doctor phase-a-logs phase-a-screenshot phase-b phase-b-apk phase-b-install phase-b-reinstall-run phase-b-run phase-b-doctor phase-b-logs phase-b-screenshot phase-c phase-c-apk phase-c-install phase-c-reinstall-run phase-c-run phase-c-doctor phase-c-logs phase-c-screenshot
 
 help:
 	@$(J8) help
@@ -103,6 +103,31 @@ phase-b-logs:
 
 phase-b-screenshot:
 	@$(MAKE) screenshot PROFILE=phase-b
+
+# Phase C high-contrast enemy silhouettes; isolated Android package/artifact.
+phase-c:
+	@$(MAKE) fresh PROFILE=phase-c
+
+phase-c-apk:
+	@$(MAKE) apk PROFILE=phase-c
+
+phase-c-install:
+	@$(MAKE) install PROFILE=phase-c
+
+phase-c-reinstall-run:
+	@$(MAKE) reinstall-run PROFILE=phase-c
+
+phase-c-run:
+	@$(MAKE) run PROFILE=phase-c
+
+phase-c-doctor:
+	@$(MAKE) doctor PROFILE=phase-c
+
+phase-c-logs:
+	@$(MAKE) logs PROFILE=phase-c
+
+phase-c-screenshot:
+	@$(MAKE) screenshot PROFILE=phase-c
 
 # Fast-forward only; no reset, forced checkout or stash.
 sync:

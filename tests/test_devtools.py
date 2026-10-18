@@ -25,7 +25,8 @@ class J8ToolsTests(unittest.TestCase):
         for key, branch in [
             ("m1r", "feature/m1-playable-game"),
             ("phase-a", "feature/m1-visual-phase-a"),
-            ("phase-b", "feature/m1-visual-phase-b-guardian")
+            ("phase-b", "feature/m1-visual-phase-b-guardian"),
+            ("phase-c", "feature/m1-visual-phase-c-enemies")
         ]:
             with self.subTest(key=key), mock.patch.object(
                 android_j8, "execute", return_value=mock.Mock(stdout=branch + "\n")
@@ -59,6 +60,18 @@ class J8ToolsTests(unittest.TestCase):
         self.assertTrue(b.package.endswith(".phaseb"))
         with self.assertRaisesRegex(RuntimeError, "cross-profile"):
             android_j8.resolve_apk("dist/phase-a/bastion-zero-phase-a-j8-debug.apk", b)
+
+    def test_phase_c_isolated_and_j8_export_metadata(self):
+        c = android_j8.resolve_profile("phase-c")
+        b = android_j8.resolve_profile("phase-b")
+        self.assertEqual(c.branch, "feature/m1-visual-phase-c-enemies")
+        self.assertEqual(c.artifact, "Bastion-Zero-Phase-C-J8-ARMv7")
+        self.assertEqual(c.package, "com.dantesouza.bastionzero.phasec")
+        self.assertNotEqual(c.package, b.package)
+        self.assertNotEqual(c.apk_name, b.apk_name)
+        self.assertIn("dist", str(android_j8.resolve_apk("auto", c)))
+        with self.assertRaisesRegex(RuntimeError, "cross-profile"):
+            android_j8.resolve_apk("dist/phase-b/bastion-zero-phase-b-j8-debug.apk", c)
 
     def test_reject_cross_profile_apk_basename(self):
         with self.assertRaisesRegex(RuntimeError, "cross-profile"):
@@ -182,6 +195,7 @@ class J8ToolsTests(unittest.TestCase):
     def test_repo_sync_includes_visual_branch(self):
         self.assertIn("feature/m1-visual-phase-a", repo_sync.BRANCHES)
         self.assertIn("feature/m1-visual-phase-b-guardian", repo_sync.BRANCHES)
+        self.assertIn("feature/m1-visual-phase-c-enemies", repo_sync.BRANCHES)
 
 
 if __name__ == "__main__":

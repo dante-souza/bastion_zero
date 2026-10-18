@@ -98,3 +98,16 @@ thin neon wireframe geometry, B.3 switches to a larger, original **SVG-based**
 blue reactor chassis and strengthens the smooth lower-field navy aura. The
 barrel and combat fidelity from B.2 remains intact. Run `make phase-b` after
 updating the existing branch. See [B.3 notes](docs/VISUAL-PHASE-B3.md).
+
+## Phase C — readable enemy silhouettes
+
+Four combat categories are now drawn using original geometric shapes instead
+of the earlier red/purple filled primitives: green hollow circles (grunts),
+orange triangles (runners), yellow armored squares (tanks), and a larger
+magenta/orange segmented elite sigil. All hitboxes and combat math remain
+unchanged. Health-bar noise is reduced for undamaged basic enemies. See
+[Phase C details](docs/VISUAL-PHASE-C.md). J8: `make phase-c`.
+
+**Phase C J8 installation:** `make phase-c` after checking out
+`feature/m1-visual-phase-c-enemies`. The APK's isolated package keeps existing
+M1R/Phase A/Phase B installations independent.
