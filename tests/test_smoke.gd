@@ -202,6 +202,24 @@ func _run() -> void:
     _expect(arena.state == "finished", "stage loss ends battle")
     arena.queue_free()
 
+    # A card showing next rank 3/3 is eligible only while current rank is 2.
+    var cap_levels: Dictionary = arena.levels.duplicate()
+    cap_levels["gun_payload"] = 2
+    _expect(GameCatalog.upgrade_available(cap_levels, "gun_payload"), "final 3/3 level can be acquired from 2/3")
+    _expect(GameCatalog.upgrade_description("gun_payload", 3).find("%d") < 0, "Kinetic Payload description has no unformatted placeholder")
+    cap_levels["gun_payload"] = 3
+    _expect(not GameCatalog.upgrade_available(cap_levels, "gun_payload"), "maxed 3/3 Payload is no longer eligible")
+    for selection in range(30):
+        var choices: Array[String] = GameCatalog.upgrade_offers(cap_levels, rng)
+        _expect(not choices.has("gun_payload"), "max-rank Payload never returns as an offer")
+    arena.state = "upgrade"
+    arena.levels["gun_payload"] = 2
+    arena.choose_upgrade("gun_payload")
+    _expect(int(arena.levels["gun_payload"]) == 3 and arena.state == "running", "final rank selection applies correctly")
+    arena.state = "upgrade"
+    arena.choose_upgrade("gun_payload")
+    _expect(int(arena.levels["gun_payload"]) == 3 and arena.state == "upgrade", "duplicate max-rank selection cannot increase rank")
+
     var game: Control = (load("res://scenes/main.tscn") as PackedScene).instantiate()
     root.add_child(game)
     _expect(game.mouse_filter == Control.MOUSE_FILTER_IGNORE, "fullscreen UI does not swallow taps")
@@ -215,6 +233,32 @@ func _run() -> void:
         deploy.pressed.emit()
         var live_arena: Arena = game.get("arena")
         _expect(live_arena.state == "running" and live_arena.stage == 1, "deployment opens Normal 1")
+        live_arena.state = "upgrade"
+        live_arena.levels["gun_payload"] = 2
+        var menu_offers: Array[String] = ["gun_payload", "gun", "volley"]
+        game.call("_choose_system", menu_offers)
+        var ui_cards: Array[Node] = []
+        var rank_label_found := false
+        for node in game.find_children("*", "Button", true, false):
+            if node.has_meta("upgrade_key"):
+                ui_cards.append(node)
+                if String(node.get_meta("upgrade_key")) == "gun_payload":
+                    for lbl in node.find_children("*", "Label", true, false):
+                        if String(lbl.text).contains("OWNED 2/3") and String(lbl.text).contains("NEXT 3/3"):
+                            rank_label_found = true
+                    _expect(float(node.custom_minimum_size.y) >= 180.0, "evolution choice cards have tall readable touch targets")
+        _expect(ui_cards.size() == 3 and rank_label_found, "system evolution shows correct owned-to-next rank")
+        game.call("_apply_upgrade", "gun_payload")
+        _expect(int(live_arena.levels["gun_payload"]) == 3, "UI confirms final Kinetic Payload rank")
+        live_arena.state = "upgrade"
+        game.call("_choose_system", menu_offers)
+        var max_card_visible := false
+        for node in game.find_children("*", "Button", true, false):
+            if node.has_meta("upgrade_key") and String(node.get_meta("upgrade_key")) == "gun_payload":
+                max_card_visible = true
+        _expect(not max_card_visible, "max-ranked Payload card is hidden even when offered stale data")
+        _expect(live_arena.state == "upgrade", "stale card filtering does not unpause battle")
+
     game.queue_free()
     print("RESULT: ", "PASS" if failures == 0 else "%d FAILURES" % failures)
     quit(0 if failures == 0 else 1)
