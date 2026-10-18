@@ -282,3 +282,26 @@ deployment because the remote CI has equivalent Godot checks.
 `make phase-h-art` is retained only for replacing the approved images in
 future art revisions, not for Phase H installation. See
 `docs/VISUAL-PHASE-H.md`.
+
+## Phase I.1 — Tactical Combat HUD (same Phase H Android package)
+
+Reference: user's four-screen tactical mockup. On branch
+`feature/m1-visual-phase-i1-combat-hud`, the game gains a compact wave/time,
+real formation warning and live-elite health strip, plus five weapon rank
+slots. The J8 APK uses `com.dantesouza.bastionzero.phaseh`, preserving a single
+premium Guardian launcher icon rather than introducing another app.
+
+```powershell
+git fetch origin --prune
+git switch feature/m1-visual-phase-i1-combat-hud
+git merge --ff-only origin/feature/m1-visual-phase-i1-combat-hud
+make profile
+make check-tools
+make phase-i1
+make phase-i1-doctor
+make phase-i1-screenshot
+```
+
+GitHub CI builds with Godot 4.4.1 and checks the existing six premium images.
+Local Godot remains optional. `make phase-i1` replaces the existing Phase H
+app build and can reset its disposable debug saves.

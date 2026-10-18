@@ -208,3 +208,7 @@ real formation warnings, **living elite** HP bar, and a five-weapon rank tray.
 The mockup's imaginary mechanics are not presented as playable. This J8
 build updates the *same Phase H app ID* without a new launcher icon. See
 `docs/VISUAL-PHASE-I1.md`.
+
+Phase I.1 Make workflow: `make phase-i1` on
+`feature/m1-visual-phase-i1-combat-hud` after `git fetch`/switch. New APK
+uses **existing Phase H package** to avoid another Android icon.

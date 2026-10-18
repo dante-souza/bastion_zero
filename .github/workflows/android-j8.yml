@@ -2,7 +2,7 @@ name: Android J8 debug APK
 
 on:
   push:
-    branches: ['feature/m1-playable-game', 'feature/m1-visual-phase-a', 'feature/m1-visual-phase-b-guardian', 'feature/m1-visual-phase-c-enemies', 'feature/m1-visual-phase-d-weapons', 'feature/m1-visual-phase-e-hud', 'feature/m1-visual-phase-f-evolution', 'feature/m1-visual-phase-g-identity-hangar', 'feature/m1-visual-phase-h-premium']
+    branches: ['feature/m1-playable-game', 'feature/m1-visual-phase-a', 'feature/m1-visual-phase-b-guardian', 'feature/m1-visual-phase-c-enemies', 'feature/m1-visual-phase-d-weapons', 'feature/m1-visual-phase-e-hud', 'feature/m1-visual-phase-f-evolution', 'feature/m1-visual-phase-g-identity-hangar', 'feature/m1-visual-phase-h-premium', 'feature/m1-visual-phase-i1-combat-hud']
   workflow_dispatch:
 
 permissions:
@@ -75,7 +75,7 @@ jobs:
           echo "GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=android" >> "$GITHUB_ENV"
 
       - name: Verify Phase H approved art
-        if: github.ref_name == 'feature/m1-visual-phase-h-premium'
+        if: github.ref_name == 'feature/m1-visual-phase-h-premium' || github.ref_name == 'feature/m1-visual-phase-i1-combat-hud'
         shell: bash
         run: python scripts/phase_h_assets.py verify --require
 
@@ -87,7 +87,10 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          if [[ "$GITHUB_REF_NAME" == "feature/m1-visual-phase-h-premium" ]]; then
+          if [[ "$GITHUB_REF_NAME" == "feature/m1-visual-phase-i1-combat-hud" ]]; then
+            PRESET="Android J8 Phase I1 Debug"
+            APK="dist/bastion-zero-phase-i1-j8-debug.apk"
+          elif [[ "$GITHUB_REF_NAME" == "feature/m1-visual-phase-h-premium" ]]; then
             PRESET="Android J8 Phase H Debug"
             APK="dist/bastion-zero-phase-h-j8-debug.apk"
           elif [[ "$GITHUB_REF_NAME" == "feature/m1-visual-phase-g-identity-hangar" ]]; then
@@ -122,7 +125,7 @@ jobs:
       - name: Upload J8 APK
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ github.ref_name == 'feature/m1-visual-phase-h-premium' && 'Bastion-Zero-Phase-H-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-g-identity-hangar' && 'Bastion-Zero-Phase-G-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-f-evolution' && 'Bastion-Zero-Phase-F-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-e-hud' && 'Bastion-Zero-Phase-E-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-d-weapons' && 'Bastion-Zero-Phase-D-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-c-enemies' && 'Bastion-Zero-Phase-C-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-b-guardian' && 'Bastion-Zero-Phase-B-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-a' && 'Bastion-Zero-Phase-A-J8-ARMv7' || 'Bastion-Zero-M1R-J8-ARMv7'))))))) }}
+          name: ${{ github.ref_name == 'feature/m1-visual-phase-i1-combat-hud' && 'Bastion-Zero-Phase-I1-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-h-premium' && 'Bastion-Zero-Phase-H-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-g-identity-hangar' && 'Bastion-Zero-Phase-G-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-f-evolution' && 'Bastion-Zero-Phase-F-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-e-hud' && 'Bastion-Zero-Phase-E-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-d-weapons' && 'Bastion-Zero-Phase-D-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-c-enemies' && 'Bastion-Zero-Phase-C-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-b-guardian' && 'Bastion-Zero-Phase-B-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-a' && 'Bastion-Zero-Phase-A-J8-ARMv7' || 'Bastion-Zero-M1R-J8-ARMv7')))))))) }}
           path: |
             dist/bastion-zero-*-j8-debug.apk
             dist/bastion-zero-j8-debug.apk
