@@ -21,7 +21,7 @@ EXPECTED = {
     "premium_guardian_foreground_432.png": "fc26d01b8fe66c8b4055f1ad4564ab9d0398b02f641dba3da959703bce6f49a3",
     "premium_splash_720.png": "2465594a7623ec93234c1808ec001f42b5b77aa64a3e3c90698eb9ace9f902c1",
     "premium_guardian_background_432.png": "094501f452da14adae2b17a69cb931febaab3f829cb008b4db2a45df6dcbf025",
-    "premium_hangar_hero.webp": "e4fe4203aed393c5c4dfbfdc3c79d0cef2be13b1241aece4bc8bbb206491ccb5",
+    "premium_hangar_hero.webp": "9eeab7b0e75bdbd1f834262944c0c8ec5585f13751dff3987f3d6ce33923f397",
     "premium_hangar_background.webp": "87a92ecce24c9dad5a97cc82a2409f038ea117fb21f6979dfbe83b73b5e5e0cb",
     "premium_guardian_launcher_192.png": "42840171276685c26cd6ceacd813ec21a098cacfd2f7b4113eeedf770f64a1d9",
 }
