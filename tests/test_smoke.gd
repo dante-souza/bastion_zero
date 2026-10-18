@@ -43,6 +43,18 @@ func _run() -> void:
     _expect(HudProfile.PAUSE_SIZE.x >= 44.0 and HudProfile.PAUSE_SIZE.y >= 44.0,
         "pause remains a touch-safe control")
     _expect(HudProfile.XP_HEIGHT <= 12.0, "XP progress bar is slimmer")
+    _expect(HudProfile.TACTICAL_TOP_END < HudProfile.TACTICAL_WARNING_START and
+        HudProfile.TACTICAL_WARNING_END < HudProfile.TACTICAL_ELITE_START,
+        "I.1 tactical header, warnings and elite health never overlap")
+    _expect(HudProfile.TACTICAL_TRAY_START < -110.0 and
+        HudProfile.TACTICAL_TRAY_END == -10.0,
+        "five-weapon tray stays below Guardian")
+    _expect(TacticalHud.SLOT_KEYS.size() == 5 and
+        TacticalHud.SLOT_KEYS == GameCatalog.WEAPON_ORDER,
+        "tactical status slots map to five real equipped weapon types")
+    _expect(TacticalHud.SLOT_COLORS[1] == VisualProfile.PRISM_BEAM and
+        TacticalHud.SLOT_COLORS[4] == VisualProfile.NOVA_FIELD,
+        "status slot colors match existing combat effects")
     _expect(WeaponEffects.ARC_SEGMENTS_LOW < WeaponEffects.ARC_SEGMENTS_FULL,
         "J8 low-FX chain lighting remains cheaper after readability pass")
     _expect(VisualProfile.PRISM_BEAM == Color("#FF56DD"), "Phase D Prism uses magenta identity")
@@ -462,7 +474,7 @@ func _run() -> void:
         for label_node in hangar_view.find_children("*", "Label", true, false):
             if String((label_node as Label).text) == "BUILD  " + GameCatalog.GAME_VERSION:
                 build_label_visible = true
-        _expect(GameCatalog.GAME_VERSION.begins_with("0.8.1") and build_label_visible,
+        _expect(GameCatalog.GAME_VERSION.begins_with("0.9.0") and build_label_visible,
             "Hangar footer displays current Phase G patch version")
     var deploy: Button
     for node in game.find_children("*", "Button", true, false):
@@ -474,6 +486,32 @@ func _run() -> void:
         deploy.pressed.emit()
         var live_arena: Arena = game.get("arena")
         _expect(live_arena.state == "running" and live_arena.stage == 1, "deployment opens Normal 1")
+        var tactical: TacticalHud = game.get("hud") as TacticalHud
+        _expect(tactical != null and tactical.visible, "tactical combat HUD is shown upon deployment")
+        if tactical != null:
+            _expect(tactical.find_child("WeaponSlots", true, false) != null and
+                tactical.slot_labels.size() == 5, "five weapon ranks are displayed as status cards")
+            _expect(tactical.find_child("Pause", true, false) != null and
+                tactical.find_child("ThreatBanner", true, false) != null and
+                tactical.find_child("EliteStrip", true, false) != null,
+                "tactical HUD contains pause, real threat warnings and boss HP")
+            tactical.apply_snapshot(live_arena.snapshot())
+            _expect(tactical.slot_labels[0].text.contains("R4") and
+                tactical.slot_labels[1].text.contains("R2"),
+                "weapons show actual starting ranks, not invented mockup mechanics")
+            _expect(not tactical.elite_panel.visible,
+                "elite health strip hides without living elite")
+            live_arena._spawn_enemy("elite", 350.0, 200.0)
+            tactical.apply_snapshot(live_arena.snapshot())
+            _expect(tactical.elite_panel.visible and tactical.elite_bar.max_value > 0.0,
+                "elite health bar reads a real elite's max HP")
+            live_arena.enemies.back()["hp"] = float(live_arena.enemies.back()["max_hp"]) * 0.25
+            tactical.apply_snapshot(live_arena.snapshot())
+            _expect(is_equal_approx(tactical.elite_bar.value / tactical.elite_bar.max_value, 0.25),
+                "elite bar decreases with actual elite HP")
+            live_arena.enemies.pop_back()
+            tactical.apply_snapshot(live_arena.snapshot())
+            _expect(not tactical.elite_panel.visible, "elite bar hides after elite is removed")
         live_arena.state = "upgrade"
         live_arena.levels["gun_payload"] = 2
         # LV12 has maxed gun; test with three eligible upgrades.

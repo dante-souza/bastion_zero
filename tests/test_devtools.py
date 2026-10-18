@@ -33,7 +33,8 @@ class J8ToolsTests(unittest.TestCase):
             ("phase-e", "feature/m1-visual-phase-e-hud"),
             ("phase-f", "feature/m1-visual-phase-f-evolution"),
             ("phase-g", "feature/m1-visual-phase-g-identity-hangar"),
-            ("phase-h", "feature/m1-visual-phase-h-premium")
+            ("phase-h", "feature/m1-visual-phase-h-premium"),
+            ("phase-i1", "feature/m1-visual-phase-i1-combat-hud")
         ]:
             with self.subTest(key=key), mock.patch.object(
                 android_j8, "execute", return_value=mock.Mock(stdout=branch + "\n")
@@ -189,6 +190,17 @@ class J8ToolsTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "cross-profile"):
             android_j8.resolve_apk("dist/phase-g/bastion-zero-phase-g-j8-debug.apk", h)
 
+    def test_phase_i1_updates_existing_phase_h_app_without_another_icon(self):
+        h = android_j8.resolve_profile("phase-h")
+        i = android_j8.resolve_profile("phase-i1")
+        self.assertEqual(i.branch, "feature/m1-visual-phase-i1-combat-hud")
+        self.assertEqual(i.artifact, "Bastion-Zero-Phase-I1-J8-ARMv7")
+        self.assertEqual(i.package, h.package)
+        self.assertNotEqual(i.apk_name, h.apk_name)
+        self.assertIn("phase-i1", str(android_j8.resolve_apk("auto", i)))
+        with self.assertRaisesRegex(RuntimeError, "cross-profile"):
+            android_j8.resolve_apk("dist/phase-h/bastion-zero-phase-h-j8-debug.apk", i)
+
     def test_reject_cross_profile_apk_basename(self):
         with self.assertRaisesRegex(RuntimeError, "cross-profile"):
             android_j8.resolve_apk("dist/bastion-zero-j8-debug.apk", android_j8.PROFILES["phase-a"])
@@ -317,6 +329,7 @@ class J8ToolsTests(unittest.TestCase):
         self.assertIn("feature/m1-visual-phase-f-evolution", repo_sync.BRANCHES)
         self.assertIn("feature/m1-visual-phase-g-identity-hangar", repo_sync.BRANCHES)
         self.assertIn("feature/m1-visual-phase-h-premium", repo_sync.BRANCHES)
+        self.assertIn("feature/m1-visual-phase-i1-combat-hud", repo_sync.BRANCHES)
 
 
 if __name__ == "__main__":

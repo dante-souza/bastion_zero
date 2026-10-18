@@ -6,13 +6,8 @@ const PALE := Color("#b7c8de")
 const GREEN := Color("#8ef3b2")
 var arena: Arena
 var record: Dictionary
-var hud: Control
+var hud: TacticalHud
 var modal: ColorRect
-var hud_title: Label
-var hud_detail: Label
-var hud_tools: Label
-var hud_cue: Label
-var xp_bar: ProgressBar
 var current_stage := 1
 
 func _ready() -> void:
@@ -45,83 +40,15 @@ func _unhandled_input(event: InputEvent) -> void:
         get_viewport().set_input_as_handled()
 
 func _build_hud() -> void:
-    hud = Control.new()
-    hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    hud.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    hud = TacticalHud.new()
+    hud.pause_requested.connect(_pause)
     add_child(hud)
-    var top := _panel(true)
-    top.anchor_left = 0.02
-    top.anchor_right = 0.98
-    top.offset_top = HudProfile.TOP_START
-    top.offset_bottom = HudProfile.TOP_END
-    hud.add_child(top)
-    var stack := VBoxContainer.new()
-    stack.add_theme_constant_override("separation", 2)
-    top.add_child(stack)
-    var title_row := HBoxContainer.new()
-    stack.add_child(title_row)
-    hud_title = _label("NORMAL 01 • 00:00", 21, CYAN)
-    hud_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    title_row.add_child(hud_title)
-    var pause_button := _button("II", false)
-    pause_button.custom_minimum_size = HudProfile.PAUSE_SIZE
-    pause_button.pressed.connect(_pause)
-    title_row.add_child(pause_button)
-    hud_detail = _label("HULL 100/100  •  LV 1", 17, GOLD)
-    stack.add_child(hud_detail)
-    hud_cue = _label("Tap a threat to prioritize it.", 15, PALE)
-    stack.add_child(hud_cue)
-    var bottom := _panel(true)
-    bottom.anchor_left = 0.02
-    bottom.anchor_right = 0.98
-    bottom.anchor_top = 1.0
-    bottom.anchor_bottom = 1.0
-    bottom.offset_top = HudProfile.BOTTOM_START
-    bottom.offset_bottom = HudProfile.BOTTOM_END
-    hud.add_child(bottom)
-    var bottom_stack := VBoxContainer.new()
-    bottom_stack.add_theme_constant_override("separation", 4)
-    bottom.add_child(bottom_stack)
-    hud_tools = _label("WEAPONS • FPS", 15, GREEN)
-    bottom_stack.add_child(hud_tools)
-    xp_bar = ProgressBar.new()
-    xp_bar.custom_minimum_size = Vector2(0, HudProfile.XP_HEIGHT)
-    xp_bar.show_percentage = false
-    var xp_background := StyleBoxFlat.new()
-    xp_background.bg_color = Color("#0A1C2B")
-    xp_background.set_corner_radius_all(4)
-    xp_bar.add_theme_stylebox_override("background", xp_background)
-    var xp_fill := StyleBoxFlat.new()
-    xp_fill.bg_color = Color("#439DCC")
-    xp_fill.set_corner_radius_all(4)
-    xp_bar.add_theme_stylebox_override("fill", xp_fill)
-    bottom_stack.add_child(xp_bar)
     hud.hide()
 
+
 func _stats(info: Dictionary) -> void:
-    hud_title.text = "%s  •  %s / %s" % [
-        info["stage_name"], GameCatalog.format_time(float(info["time"])),
-        GameCatalog.format_time(float(info["duration"]))
-    ]
-    hud_detail.text = "HULL %d/%d  •  LV %d  •  %d KILLS" % [
-        ceili(float(info["hull"])), ceili(float(info["max_hull"])),
-        int(info["level"]), int(info["kills"])
-    ]
-    var unlocked: Array[String] = []
-    for key in GameCatalog.WEAPON_ORDER:
-        if int(info["weapons"].get(key, 0)) > 0:
-            unlocked.append(GameCatalog.upgrade_name(key))
-    if bool(info.get("showcase", false)):
-        hud_tools.text = "QA LV12 • %d WEAPONS • FPS %d" % [
-            unlocked.size(), Engine.get_frames_per_second()]
-    else:
-        hud_tools.text = " + ".join(unlocked) + "  •  FPS %d" % Engine.get_frames_per_second()
-    var current_event: String = String(info.get("event", ""))
-    hud_cue.text = current_event if not current_event.is_empty() else "FORMATION: %s  •  BREACHES: %d" % [
-        String(info.get("formation", "LINE")), int(info.get("breaches", 0))
-    ]
-    xp_bar.max_value = int(info["next_xp"])
-    xp_bar.value = int(info["xp"])
+    hud.apply_snapshot(info)
+
 
 func _hangar() -> void:
     arena.state = "idle"
