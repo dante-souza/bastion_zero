@@ -166,7 +166,7 @@ func _build() -> void:
 
 func _section(title: String) -> HBoxContainer:
     var row := HBoxContainer.new()
-    row.name = title.replace(" ", "") + "Heading"
+    row.name = "MissionControlHeading" if title == "MISSION CONTROL" else "ResearchLabHeading"
     row.add_theme_constant_override("separation", 10)
     var name_label := _text(title, 18, CYAN)
     row.add_child(name_label)
