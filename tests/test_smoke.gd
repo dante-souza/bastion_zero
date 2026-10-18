@@ -90,6 +90,74 @@ func _run() -> void:
     gun_battle._fire_beam()
     _expect(float(gun_battle.enemies[0]["hp"]) < before_left and float(gun_battle.enemies[1]["hp"]) < before_right, "both split Prism beams hit their respective targets")
     gun_battle.queue_free()
+    _expect(GameCatalog.upgrade_cap("gun_payload") == 3, "kinetic payload card cap")
+    _expect(GameCatalog.upgrade_cap("gun_pierce") == 2 and GameCatalog.upgrade_cap("gun_ricochet") == 2, "independent penetration and ricochet caps")
+    _expect(GameCatalog.upgrade_category("gun_pierce", 0) == "SENTINEL MOD", "Sentinel mod cards have their own category")
+    var fully_upgraded: Dictionary = gun_battle.levels.duplicate()
+    for key in GameCatalog.UPGRADE_ORDER:
+        fully_upgraded[key] = GameCatalog.upgrade_cap(key)
+    var offers_capped: Array[String] = GameCatalog.upgrade_offers(fully_upgraded, rng)
+    _expect(offers_capped.is_empty(), "maxed cards disappear from upgrade pool")
+
+    # Payload modifies the actual simulated projectile before contact.
+    var payload_battle := Arena.new()
+    root.add_child(payload_battle)
+    payload_battle.begin_run({}, 1, true)
+    payload_battle._spawn_enemy("tank", 360.0, 650.0)
+    payload_battle._fire_gun()
+    var regular_round: float = payload_battle.projectiles[0]["damage"]
+    payload_battle.projectiles.clear()
+    payload_battle.levels["gun_payload"] = 2
+    payload_battle._fire_gun()
+    _expect(is_equal_approx(float(payload_battle.projectiles[0]["damage"]), regular_round * 1.5), "Kinetic Payload actually increases bullet damage")
+    payload_battle.queue_free()
+
+    # Sabot Pierce should damage two aligned enemies with one physical round.
+    var pierce_battle := Arena.new()
+    root.add_child(pierce_battle)
+    pierce_battle.begin_run({}, 1, true)
+    pierce_battle.levels["gun_pierce"] = 1
+    pierce_battle._spawn_enemy("tank", 360.0, 675.0)
+    pierce_battle._spawn_enemy("tank", 360.0, 505.0)
+    var p_id: int = int(pierce_battle.enemies[0]["id"])
+    var q_id: int = int(pierce_battle.enemies[1]["id"])
+    pierce_battle._fire_gun()
+    for tick in range(110):
+        pierce_battle._move_projectiles(1.0 / 60.0)
+    _expect(float(pierce_battle.weapon_damage["gun"]) > 7.0, "Sabot Piercer registers more than one hit")
+    _expect(float(pierce_battle.enemies[pierce_battle._index_by_id(p_id)]["hp"]) < float(pierce_battle.enemies[pierce_battle._index_by_id(p_id)]["max_hp"]), "piercing hits first target")
+    _expect(float(pierce_battle.enemies[pierce_battle._index_by_id(q_id)]["hp"]) < float(pierce_battle.enemies[pierce_battle._index_by_id(q_id)]["max_hp"]), "piercing hits second target")
+    pierce_battle.queue_free()
+
+    # Ricochet must retarget a different enemy rather than damaging the same one repeatedly.
+    var bounce_battle := Arena.new()
+    root.add_child(bounce_battle)
+    bounce_battle.begin_run({}, 1, true)
+    bounce_battle.levels["gun_ricochet"] = 1
+    bounce_battle._spawn_enemy("tank", 215.0, 680.0)
+    bounce_battle._spawn_enemy("tank", 540.0, 660.0)
+    bounce_battle._fire_gun()
+    for tick in range(115):
+        bounce_battle._move_projectiles(1.0 / 60.0)
+    _expect(float(bounce_battle.enemies[0]["hp"]) < float(bounce_battle.enemies[0]["max_hp"]), "ricochet origin enemy takes damage")
+    _expect(float(bounce_battle.enemies[1]["hp"]) < float(bounce_battle.enemies[1]["max_hp"]), "ricochet damages distinct second target")
+    bounce_battle.queue_free()
+
+    # Saturation Burst fires real independently targeted rounds (not a decorative fan).
+    var volley_battle := Arena.new()
+    root.add_child(volley_battle)
+    volley_battle.begin_run({}, 1, true)
+    volley_battle.levels["gun"] = 3
+    volley_battle.levels["gun_volley"] = 2
+    volley_battle._spawn_enemy("tank", 200.0, 670.0)
+    volley_battle._spawn_enemy("tank", 510.0, 640.0)
+    volley_battle._fire_gun()
+    var targeted: Dictionary = {}
+    for bullet in volley_battle.projectiles:
+        targeted[int(bullet["target"])] = true
+    _expect(volley_battle.projectiles.size() == 4, "Saturation Burst adds real projectiles")
+    _expect(targeted.size() == 2, "Saturation Burst targets separate threats")
+    volley_battle.queue_free()
     var arena := Arena.new()
     root.add_child(arena)
     arena.begin_run({"hull": 1, "damage": 2}, 1, true)
