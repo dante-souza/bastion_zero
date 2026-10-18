@@ -10,7 +10,7 @@ GODOT ?= godot
 J8 = $(PYTHON) scripts/android_j8.py --device "$(DEVICE)" --profile "$(PROFILE)" --apk "$(APK)"
 
 .DEFAULT_GOAL := help
-.PHONY: help profile doctor installed version apk install uninstall reinstall run reinstall-run deploy fresh logs screenshot sync git-status check-tools check phase-a phase-a-apk phase-a-install phase-a-reinstall-run phase-a-run phase-a-doctor phase-a-logs phase-a-screenshot phase-b phase-b-apk phase-b-install phase-b-reinstall-run phase-b-run phase-b-doctor phase-b-logs phase-b-screenshot phase-c phase-c-apk phase-c-install phase-c-reinstall-run phase-c-run phase-c-doctor phase-c-logs phase-c-screenshot phase-d phase-d-apk phase-d-install phase-d-reinstall-run phase-d-run phase-d-doctor phase-d-logs phase-d-screenshot phase-e phase-e-apk phase-e-install phase-e-reinstall-run phase-e-run phase-e-doctor phase-e-logs phase-e-screenshot phase-f phase-f-apk phase-f-install phase-f-reinstall-run phase-f-run phase-f-doctor phase-f-logs phase-f-screenshot phase-g phase-g-apk phase-g-install phase-g-reinstall-run phase-g-run phase-g-doctor phase-g-logs phase-g-screenshot phase-h phase-h-apk phase-h-install phase-h-reinstall-run phase-h-run phase-h-doctor phase-h-logs phase-h-screenshot phase-h-art phase-h-art-check phase-i1 phase-i1-apk phase-i1-install phase-i1-reinstall-run phase-i1-run phase-i1-doctor phase-i1-logs phase-i1-screenshot
+.PHONY: help profile doctor installed version apk install uninstall reinstall run reinstall-run deploy fresh logs screenshot sync git-status check-tools check phase-a phase-a-apk phase-a-install phase-a-reinstall-run phase-a-run phase-a-doctor phase-a-logs phase-a-screenshot phase-b phase-b-apk phase-b-install phase-b-reinstall-run phase-b-run phase-b-doctor phase-b-logs phase-b-screenshot phase-c phase-c-apk phase-c-install phase-c-reinstall-run phase-c-run phase-c-doctor phase-c-logs phase-c-screenshot phase-d phase-d-apk phase-d-install phase-d-reinstall-run phase-d-run phase-d-doctor phase-d-logs phase-d-screenshot phase-e phase-e-apk phase-e-install phase-e-reinstall-run phase-e-run phase-e-doctor phase-e-logs phase-e-screenshot phase-f phase-f-apk phase-f-install phase-f-reinstall-run phase-f-run phase-f-doctor phase-f-logs phase-f-screenshot phase-g phase-g-apk phase-g-install phase-g-reinstall-run phase-g-run phase-g-doctor phase-g-logs phase-g-screenshot phase-h phase-h-apk phase-h-install phase-h-reinstall-run phase-h-run phase-h-doctor phase-h-logs phase-h-screenshot phase-h-art phase-h-art-check phase-i1 phase-i1-apk phase-i1-install phase-i1-reinstall-run phase-i1-run phase-i1-doctor phase-i1-logs phase-i1-screenshot phase-i2 phase-i2-apk phase-i2-install phase-i2-reinstall-run phase-i2-run phase-i2-doctor phase-i2-logs phase-i2-screenshot
 
 help:
 	@$(J8) help
@@ -288,6 +288,31 @@ phase-i1-logs:
 
 phase-i1-screenshot:
 	@$(MAKE) screenshot PROFILE=phase-i1
+
+# Phase I.2 genuine three-card evolution UI. Same premium app package.
+phase-i2:
+	@$(MAKE) fresh PROFILE=phase-i2
+
+phase-i2-apk:
+	@$(MAKE) apk PROFILE=phase-i2
+
+phase-i2-install:
+	@$(MAKE) install PROFILE=phase-i2
+
+phase-i2-reinstall-run:
+	@$(MAKE) reinstall-run PROFILE=phase-i2
+
+phase-i2-run:
+	@$(MAKE) run PROFILE=phase-i2
+
+phase-i2-doctor:
+	@$(MAKE) doctor PROFILE=phase-i2
+
+phase-i2-logs:
+	@$(MAKE) logs PROFILE=phase-i2
+
+phase-i2-screenshot:
+	@$(MAKE) screenshot PROFILE=phase-i2
 
 # Fast-forward only; no reset, forced checkout or stash.
 sync:

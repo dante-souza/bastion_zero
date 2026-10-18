@@ -305,3 +305,25 @@ make phase-i1-screenshot
 GitHub CI builds with Godot 4.4.1 and checks the existing six premium images.
 Local Godot remains optional. `make phase-i1` replaces the existing Phase H
 app build and can reset its disposable debug saves.
+
+## Phase I.2 — Tactical Level-Up Choice
+
+Branch `feature/m1-visual-phase-i2-evolution`, stacked on I.1. Uses the
+**same premium Phase H package** `com.dantesouza.bastionzero.phaseh`;
+Android version code 21 / `0.9.1-phase-i2-levelup-debug`. Three real upgrade
+cards replace the older oversized evolution panel; test by leveling up in
+Normal 01.
+
+```powershell
+git fetch origin --prune
+git switch feature/m1-visual-phase-i2-evolution
+git merge --ff-only origin/feature/m1-visual-phase-i2-evolution
+make profile
+make check-tools
+make phase-i2
+make phase-i2-doctor
+make phase-i2-screenshot
+```
+
+Assets remain directly committed to GitHub, and CI still performs Godot
+checks and APK export. Local Godot is not required.
