@@ -41,6 +41,9 @@ var _arc_timer := 0.0
 var _nova_timer := 0.0
 var _hud_timer := 0.0
 var _visual_clock := 0.0
+## Visual-only state derived from physically spawned Sentinel rounds and breaches.
+var gun_visual_lanes: Array[Dictionary] = []
+var _guardian_damage_until := -1.0
 var _elite_spawned := false
 var _elite_enraged := false
 var formation_index := 0
@@ -84,6 +87,8 @@ func begin_run(permanent_upgrades: Dictionary, selected_stage: int = 1, reduced_
     _nova_timer = 1.8
     _hud_timer = 0.0
     _visual_clock = 0.0
+    gun_visual_lanes.clear()
+    _guardian_damage_until = -1.0
     _elite_spawned = false
     _elite_enraged = false
     formation_index = 0
@@ -134,6 +139,9 @@ func choose_upgrade(kind: String) -> void:
     if int(levels[kind]) >= GameCatalog.upgrade_cap(kind):
         return
     levels[kind] = int(levels[kind]) + 1
+    if kind == "gun" or kind == "gun_volley":
+        # Rebuild idle barrels at the new upgrade count.
+        gun_visual_lanes.clear()
     if kind == "hull":
         max_hull += 22.0
         hull = minf(max_hull, hull + 25.0)
@@ -256,6 +264,7 @@ func _move_enemies(delta: float) -> void:
             enemy["pos"] = pos
         if pos.y >= GameCatalog.BREACH_Y:
             hull = maxf(0.0, hull - float(enemy["damage"]))
+            _guardian_damage_until = _visual_clock + 0.32
             breaches += 1
             combat_event = "BREACH!  -%d HULL" % roundi(float(enemy["damage"]))
             event_time = 2.0
@@ -444,24 +453,28 @@ func _gun_target_ids(count: int) -> Array[int]:
     return result
 
 func _fire_gun() -> void:
-    var count := 1 + (1 if int(levels["gun"]) >= 3 else 0) + int(levels["gun_volley"])
+    var count: int = GuardianRenderer.sentinel_barrel_count(int(levels["gun"]), int(levels["gun_volley"]))
     if projectiles.size() >= MAX_BULLETS - count:
         return
     var targets: Array[int] = _gun_target_ids(count)
     if targets.is_empty():
         return
     var speed: float = 1250.0 if int(levels["gun"]) >= 4 else 1100.0
+    gun_visual_lanes.clear()
     for barrel in range(count):
         var target_idx: int = _index_by_id(targets[barrel])
         if target_idx < 0:
             continue
         var enemy: Dictionary = enemies[target_idx]
         var target: Vector2 = enemy["pos"]
-        var offset: float = (float(barrel) - (count - 1.0) * 0.5) * 25.0
-        var muzzle: Vector2 = G + Vector2(offset, -45.0)
+        var muzzle: Vector2 = GuardianRenderer.sentinel_muzzle(G, barrel, count)
         var flight: float = muzzle.distance_to(target) / (speed + float(enemy["speed"]))
         var lead: Vector2 = target + Vector2(0.0, float(enemy["speed"]) * flight * 0.75)
         var velocity: Vector2 = (lead - muzzle).normalized() * speed
+        gun_visual_lanes.append({
+            "muzzle": muzzle, "direction": velocity.normalized(),
+            "fired_at": _visual_clock
+        })
         projectiles.append({
             "pos": muzzle, "velocity": velocity,
             "damage": _power(7.0 + 2.0 * (int(levels["gun"]) - 1)) * (1.0 + 0.25 * int(levels["gun_payload"])),
@@ -470,8 +483,7 @@ func _fire_gun() -> void:
             "pierce_left": int(levels["gun_pierce"]), "ricochet_left": int(levels["gun_ricochet"]),
             "hit_ids": []
         })
-    if not low_fx:
-        _effect("flash", G + Vector2(0, -45), Vector2.ZERO, 11.0, CYAN, 0.10)
+    # Tip flashes are rendered directly from gun_visual_lanes (actual muzzles).
 func _beam_target_ids() -> Array[int]:
     # The primary beam always aims through its target center. On the dual-beam
     # tier, the other beam selects a second valid enemy or converges on the first.
@@ -669,13 +681,10 @@ func _effect(kind: String, a: Vector2, b: Vector2, radius: float, color: Color, 
 
 func _draw() -> void:
     ArenaBackground.draw_to(self, low_fx, _visual_clock)
-    draw_circle(G, 48.0, VisualProfile.GUARDIAN_HULL)
-    draw_arc(G, 45.0, 0, TAU, 36, CYAN, 5.0, true)
-    draw_colored_polygon(PackedVector2Array([
-        G + Vector2(0, -54), G + Vector2(35, 24),
-        G + Vector2(0, 12), G + Vector2(-35, 24)
-    ]), VisualProfile.GUARDIAN_CORE)
-    draw_circle(G + Vector2(0, -4), 13.0, Color.WHITE)
+    var damage_fraction: float = clampf((_guardian_damage_until - _visual_clock) / 0.32, 0.0, 1.0)
+    GuardianRenderer.draw_to(self, G, low_fx, _visual_clock,
+        GuardianRenderer.sentinel_barrel_count(int(levels.get("gun", 1)), int(levels.get("gun_volley", 0))),
+        gun_visual_lanes, damage_fraction)
     for enemy in enemies:
         var at: Vector2 = enemy["pos"]
         var radius: float = enemy["radius"]

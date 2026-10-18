@@ -29,6 +29,23 @@ func _run() -> void:
         _expect(is_equal_approx(left.y, right.y) and center.y < left.y, "horizon has symmetric upward crest")
         _expect(center.y < GameCatalog.BREACH_Y and left.y > GameCatalog.BREACH_Y, "horizon frames the defended zone without moving breach logic")
     _expect(ArenaBackground.horizon_y(-400.0) == ArenaBackground.horizon_y(0.0), "horizon clamps outside left edge")
+    _expect(ArenaBackground.RADIAL_SECTORS == 32 and ArenaBackground.AURA_RADIUS.x > 400.0, "Phase B.1 uses smooth, bounded backdrop halo")
+    _expect(ArenaBackground.AURA_CENTER.y < GameCatalog.GUARDIAN.y, "aura sits behind upper Guardian silhouette")
+    _expect(GuardianRenderer.MODULE_DIRECTIONS.size() == 4 and GuardianRenderer.RING_SEGMENTS == 4, "four cardinal Guardian modules")
+    _expect(GuardianRenderer.MODULE_TIP_RADIUS < 90.0 and GuardianRenderer.CORE_RADIUS > 12.0, "Guardian keeps J8-safe footprint and visible core")
+    _expect(GuardianRenderer.ART != null and GuardianRenderer.ART.get_size().x >= 320.0, "Guardian illustrated SVG imports as a real Texture2D")
+    _expect(GuardianRenderer.DISPLAY_SIZE >= 200.0, "Guardian is larger than the original wireframe design")
+    _expect(VisualProfile.GUARDIAN_AURA.a > 0.35, "near-black arena has a visible soft lower-field gradient")
+    _expect(GuardianRenderer.module_point(GameCatalog.GUARDIAN, Vector2.UP).y < GameCatalog.GUARDIAN.y, "top module geometry is world-aligned")
+    _expect(GuardianRenderer.module_point(GameCatalog.GUARDIAN, Vector2.RIGHT).x > GameCatalog.GUARDIAN.x, "side pod geometry is world-aligned")
+    _expect(VisualProfile.GUARDIAN_RING_BLUE != VisualProfile.GUARDIAN_CORE, "Guardian armor and core are distinguishable")
+    _expect(GuardianRenderer.sentinel_barrel_count(1, 0) == 1, "B.2 one built-in barrel")
+    _expect(GuardianRenderer.sentinel_barrel_count(3, 0) == 2, "B.2 dual barrel visible after rank three")
+    _expect(GuardianRenderer.sentinel_barrel_count(3, 2) == 4, "B.2 saturation upgrade gives four real channels")
+    var left_muzzle: Vector2 = GuardianRenderer.sentinel_muzzle(GameCatalog.GUARDIAN, 0, 2)
+    var right_muzzle: Vector2 = GuardianRenderer.sentinel_muzzle(GameCatalog.GUARDIAN, 1, 2)
+    _expect(left_muzzle.x < GameCatalog.GUARDIAN.x and right_muzzle.x > GameCatalog.GUARDIAN.x, "paired muzzles straddle Guardian")
+    _expect(is_equal_approx(left_muzzle.y, GameCatalog.GUARDIAN.y - 45.0), "B.2 preserves original launch height")
     _expect(GameCatalog.next_level_xp(2) > GameCatalog.next_level_xp(1), "progressive XP")
     _expect(GameCatalog.meta_cost("hull", 0) == 68, "initial research price")
     _expect(GameCatalog.meta_cost("damage", 8) == -1, "research is capped")
@@ -85,12 +102,22 @@ func _run() -> void:
     _expect(float(gun_battle.weapon_damage["beam"]) == 0.0, "Prism Beam cannot fire before card unlock")
     gun_battle._fire_gun()
     _expect(gun_battle.projectiles.size() == 1 and gun_battle.projectiles[0]["kind"] == "gun", "machinegun fires one built-in bullet")
+    _expect(gun_battle.gun_visual_lanes.size() == gun_battle.projectiles.size(), "each physical bullet has one visual lane")
+    if gun_battle.gun_visual_lanes.size() == 1:
+        _expect(Vector2(gun_battle.gun_visual_lanes[0]["muzzle"]) == GuardianRenderer.sentinel_muzzle(GameCatalog.GUARDIAN, 0, 1), "barrel tip and bullet origin agree")
+        _expect(Vector2(gun_battle.gun_visual_lanes[0]["direction"]).is_equal_approx(Vector2(gun_battle.projectiles[0]["velocity"]).normalized()), "barrel aims along real fired round")
     for tick in range(75):
         gun_battle._move_projectiles(1.0 / 60.0)
     _expect(float(gun_battle.weapon_damage["gun"]) > 0.0, "machinegun projectile reaches actual target")
     gun_battle.levels["gun"] = 3
     gun_battle._fire_gun()
     _expect(gun_battle.projectiles.size() == 2, "dual-barrel machinegun upgrade fires two rounds")
+    _expect(gun_battle.gun_visual_lanes.size() == 2, "both dual muzzles appear during burst")
+    if gun_battle.gun_visual_lanes.size() == 2:
+        var dual_matches := true
+        for barrel in range(2):
+            dual_matches = dual_matches and Vector2(gun_battle.gun_visual_lanes[barrel]["muzzle"]) == Vector2(gun_battle.projectiles[barrel]["pos"])
+        _expect(dual_matches, "both displayed muzzles equal physical projectile origins")
     gun_battle.projectiles.clear()
     gun_battle.levels["beam"] = 1
     gun_battle._fire_beam()
@@ -172,6 +199,12 @@ func _run() -> void:
     for bullet in volley_battle.projectiles:
         targeted[int(bullet["target"])] = true
     _expect(volley_battle.projectiles.size() == 4, "Saturation Burst adds real projectiles")
+    _expect(volley_battle.gun_visual_lanes.size() == 4, "Saturation Burst draws four real barrels")
+    if volley_battle.gun_visual_lanes.size() == 4:
+        var all_aligned := true
+        for lane in range(4):
+            all_aligned = all_aligned and Vector2(volley_battle.gun_visual_lanes[lane]["muzzle"]) == Vector2(volley_battle.projectiles[lane]["pos"])
+        _expect(all_aligned, "all Saturation barrels launch actual rounds")
     _expect(targeted.size() == 2, "Saturation Burst targets separate threats")
     volley_battle.queue_free()
     var arena := Arena.new()
@@ -181,6 +214,14 @@ func _run() -> void:
     _expect(arena.stage == 1 and arena.levels["gun"] == 1 and arena.levels["beam"] == 0, "machinegun is built in and Prism is locked")
     arena._spawn_enemy("runner", 210.0, 140.0)
     _expect(arena.enemies.size() == 1 and Vector2(arena.enemies[0]["pos"]).y < GameCatalog.GUARDIAN.y, "enemy spawns above Guardian")
+    var breach_visual := Arena.new()
+    root.add_child(breach_visual)
+    breach_visual.begin_run({}, 1, true)
+    breach_visual._spawn_enemy("runner", 200.0, GameCatalog.BREACH_Y + 1.0)
+    breach_visual._move_enemies(0.0)
+    _expect(breach_visual._guardian_damage_until > breach_visual._visual_clock, "actual breach sets short localized Guardian damage flash")
+    _expect(is_equal_approx(breach_visual.hull, breach_visual.max_hull - 6.0), "damage visual does not modify hull damage balance")
+    breach_visual.queue_free()
     var enemy_id: int = int(arena.enemies[0]["id"])
     var dealt: float = arena._damage_by_id(enemy_id, 11.5, "beam")
     _expect(is_equal_approx(dealt, 11.5) and is_equal_approx(float(arena.weapon_damage["beam"]), 11.5), "damage meter records applied damage")

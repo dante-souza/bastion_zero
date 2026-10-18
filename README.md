@@ -31,16 +31,16 @@ godot --headless --path . --quit-after 10
 
 ## Samsung J8 APK
 
-The build uses the 32-bit ARMv7 export preset. Routine device operations are **Makefile-only**. For the Phase A visual test:
+The build uses the 32-bit ARMv7 export preset. Routine device operations are **Makefile-only**. For the current Phase B.1 visual test:
 
 ```powershell
-make phase-a
-make phase-a-doctor
-make phase-a-screenshot
-make phase-a-logs
+make phase-b
+make phase-b-doctor
+make phase-b-screenshot
+make phase-b-logs
 ```
 
-Phase A is a separate Android package `com.dantesouza.bastionzero.phasea`; original M1R remains independent. `make phase-a` downloads a SHA-256-verified APK from the correct successful GitHub Actions run, safely caches it at `dist/phase-a/`, reinstalls and launches. Saved progress for the selected development package is erased on reinstall by design.
+Phase B.1 ships as `com.dantesouza.bastionzero.phaseb` alongside Phase A and M1R. `make phase-b` downloads a SHA-256-verified APK from the matching GitHub Actions run, caches it in `dist/phase-b/`, reinstalls and launches. Development saves for the selected package are disposable.
 
 See [Makefile-first Android routines](docs/LOCAL-DEVELOPMENT.md) for install overrides, safe profile selection, checks and troubleshooting.
 
@@ -53,14 +53,14 @@ A `Makefile` and standard-library Python helpers provide safe updates and Galaxy
 ```powershell
 make help
 make profile
-make phase-a            # fetch + reinstall + run Phase A on J8
-make phase-a-doctor
-make phase-a-screenshot
+make phase-b            # fetch + reinstall + run Guardian Phase B.1 on J8
+make phase-b-doctor
+make phase-b-screenshot
 make check-tools
 make sync               # fast-forward local branches
 ```
 
-The Make targets explicitly select J8 serial `38c19745` even when other phones are connected. Profile-aware targets ensure M1R and Phase A packages and APKs are never confused. During early visual development, saves may be erased; stable signing will matter once progression testing begins.
+The Make targets explicitly select J8 serial `38c19745` even when other phones are connected. Profile-aware targets keep M1R, Phase A and Phase B packages and APKs separate. During early visual development, saves may be erased; stable signing will matter once progression testing begins.
 
 ## Development flow
 
@@ -73,3 +73,28 @@ Copyright (c) 2026 Bastion Zero contributors. Code licensed **AGPL-3.0-or-later*
 ## Visual direction for next build
 
 The [early-game visual direction](docs/VISUAL-DIRECTION-EARLY-GAME.md) is informed by the user's uploaded gameplay recording, without importing third-party art. **Phase A is implemented on `feature/m1-visual-phase-a`**: a near-black arena, a quiet playfield, a shallow electric-blue horizon, and minimal breach markers. Full-FX adds a restrained halo and sparse static speckles; low-FX omits them for the Samsung J8. The original Guardian and enemy drawing remain in place until the subsequent visual phases. See [Phase A implementation and validation](docs/VISUAL-PHASE-A.md).
+
+## Guardian Phase B.1 — selected circular design
+
+The first playable Guardian visual pass uses an **original procedural**
+approximation of the user-selected blue circular lens, four cardinal mechanical
+pods, segmented cyan/royal-blue armor rings and a smooth lower-arena radial glow.
+The existing Sentinel projectile spawn positions and all combat behavior are
+unchanged pending B.2 firing/aim alignment. No third-party art or generated image
+is bundled with the APK. See [Phase B.1 specification](docs/VISUAL-PHASE-B1.md).
+
+## Guardian Phase B.2 — combat-aware visuals
+
+The Phase B branch now additionally aligns visually rendered Sentinel barrels
+and muzzle flashes with the **actual fired projectile positions and velocities**.
+Base, dual and Saturation upgrades display the appropriate barrel count, and
+hull breaches pulse the Guardian's outer rim. This is strictly a presentation
+layer; combat math is unchanged. See [Phase B.2 details](docs/VISUAL-PHASE-B2.md).
+
+## B.3 visual-fidelity correction
+
+After the first real J8 screenshot showed a Guardian that remained too close to
+thin neon wireframe geometry, B.3 switches to a larger, original **SVG-based**
+blue reactor chassis and strengthens the smooth lower-field navy aura. The
+barrel and combat fidelity from B.2 remains intact. Run `make phase-b` after
+updating the existing branch. See [B.3 notes](docs/VISUAL-PHASE-B3.md).
