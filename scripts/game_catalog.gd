@@ -2,7 +2,7 @@ class_name GameCatalog
 extends RefCounted
 
 ## Bastion Zero's original combat balance; no third-party game resources.
-const GAME_VERSION := "0.9.0-tactical-combat-hud"
+const GAME_VERSION := "0.9.1-tactical-levelup-choice"
 ## Phase F: temporary stress showcase on NORMAL 01 only. Not production balance.
 const STAGE_ONE_SHOWCASE := true
 const SHOWCASE_START_LEVEL := 12
