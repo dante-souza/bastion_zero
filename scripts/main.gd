@@ -178,20 +178,79 @@ func _resume() -> void:
     arena.toggle_pause()
 
 func _choose_system(offers: Array[String]) -> void:
-    var content := _screen("SYSTEM EVOLUTION", "LEVEL %d  •  CHOOSE ONE" % arena.level)
+    # The catalog is authoritative. The UI also filters stale offerings,
+    # making it impossible to display an already-maxed upgrade card.
+    var eligible: Array[String] = []
     for kind in offers:
-        var rank: int = int(arena.levels.get(kind, 0)) + 1
-        var category: String = GameCatalog.upgrade_category(kind, rank - 1)
-        var upgrade := _button("[%s]  %s  •  RANK %d/%d\n%s" % [
-            category, GameCatalog.upgrade_name(kind), rank, GameCatalog.upgrade_cap(kind),
-            GameCatalog.upgrade_description(kind, rank)
-        ], false)
-        upgrade.custom_minimum_size.y = 96
-        upgrade.pressed.connect(_apply_upgrade.bind(kind))
-        content.add_child(upgrade)
-    content.add_child(_label("SYNERGIES: PRISM + ARC   /   COMET + NOVA", 16, GOLD, true))
+        if not eligible.has(kind) and GameCatalog.upgrade_available(arena.levels, kind):
+            eligible.append(kind)
+    if eligible.is_empty():
+        push_warning("System Evolution received no eligible upgrade cards.")
+        return
+    var content := _screen("SYSTEM EVOLUTION", "LEVEL %d  •  CHOOSE ONE" % arena.level, true)
+    content.add_child(_label("Choose your next tactical evolution.", 21, PALE, true))
+    for kind in eligible:
+        var card := _upgrade_card(kind, int(arena.levels.get(kind, 0)))
+        card.pressed.connect(_apply_upgrade.bind(kind))
+        content.add_child(card)
+    var spacer := Control.new()
+    spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    content.add_child(spacer)
+    content.add_child(_label("SYNERGIES: PRISM + ARC   /   COMET + NOVA", 19, GOLD, true))
+
+func _upgrade_card(kind: String, current_rank: int) -> Button:
+    var cap: int = GameCatalog.upgrade_cap(kind)
+    var next_rank: int = current_rank + 1
+    var card := _button("", false)
+    card.custom_minimum_size.y = 192.0
+    card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    card.set_meta("upgrade_key", kind)
+    card.tooltip_text = GameCatalog.upgrade_description(kind, next_rank)
+
+    # A transparent, non-intercepting content layer gives us individual
+    # typography control without sacrificing the entire clickable card.
+    var padding := MarginContainer.new()
+    padding.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    padding.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    for side in ["left", "right"]:
+        padding.add_theme_constant_override("margin_" + side, 19)
+    for side in ["top", "bottom"]:
+        padding.add_theme_constant_override("margin_" + side, 13)
+    card.add_child(padding)
+
+    var text_stack := VBoxContainer.new()
+    text_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    text_stack.add_theme_constant_override("separation", 4)
+    padding.add_child(text_stack)
+
+    var category := _label("[" + GameCatalog.upgrade_category(kind, current_rank) + "]", 18, GREEN)
+    category.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    text_stack.add_child(category)
+
+    var title_text := _label(GameCatalog.upgrade_name(kind), 28, CYAN)
+    title_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    text_stack.add_child(title_text)
+
+    # 3/3 on an offered card is the NEXT (final) rank, not the current rank.
+    var progress := "OWNED %d/%d  →  NEXT %d/%d" % [
+        current_rank, cap, next_rank, cap
+    ]
+    if next_rank == cap:
+        progress += "  (FINAL)"
+    var rank_text := _label(progress, 18, GOLD)
+    rank_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    text_stack.add_child(rank_text)
+
+    var description := _label(GameCatalog.upgrade_description(kind, next_rank), 21, PALE)
+    description.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    text_stack.add_child(description)
+    return card
 
 func _apply_upgrade(kind: String) -> void:
+    if arena.state != "upgrade" or not GameCatalog.upgrade_available(arena.levels, kind):
+        push_warning("Stale or max-rank upgrade rejected: " + kind)
+        return
     arena.choose_upgrade(kind)
     _clear()
 
@@ -230,7 +289,7 @@ func _clear() -> void:
         modal.queue_free()
         modal = null
 
-func _screen(heading: String, subheading: String) -> VBoxContainer:
+func _screen(heading: String, subheading: String, tall: bool = false) -> VBoxContainer:
     _clear()
     modal = ColorRect.new()
     modal.color = Color(0.015, 0.025, 0.05, 0.96)
@@ -244,16 +303,18 @@ func _screen(heading: String, subheading: String) -> VBoxContainer:
     var center := CenterContainer.new()
     center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     center.size_flags_vertical = Control.SIZE_EXPAND_FILL
-    center.custom_minimum_size.y = 1090.0
+    center.custom_minimum_size.y = 1240.0 if tall else 1090.0
     scroll.add_child(center)
     var panel := _panel()
-    panel.custom_minimum_size.x = 564
+    panel.custom_minimum_size.x = 620.0 if tall else 564.0
+    if tall:
+        panel.custom_minimum_size.y = 1080.0
     center.add_child(panel)
     var body := VBoxContainer.new()
-    body.add_theme_constant_override("separation", 15)
+    body.add_theme_constant_override("separation", 19 if tall else 15)
     panel.add_child(body)
-    body.add_child(_label(heading, 38, CYAN, true))
-    body.add_child(_label(subheading, 20, GOLD, true))
+    body.add_child(_label(heading, 44 if tall else 38, CYAN, true))
+    body.add_child(_label(subheading, 25 if tall else 20, GOLD, true))
     body.add_child(HSeparator.new())
     return body
 
