@@ -2,7 +2,7 @@ class_name GameCatalog
 extends RefCounted
 
 ## Bastion Zero's original combat balance; no third-party game resources.
-const GAME_VERSION := "0.2.3-sentinel-evolution"
+const GAME_VERSION := "0.2.4-evolution-ui"
 const WORLD_SIZE := Vector2(720.0, 1280.0)
 const GUARDIAN := Vector2(360.0, 1080.0)
 const BREACH_Y := 1040.0
@@ -84,7 +84,7 @@ static func upgrade_description(key: String, rank: int) -> String:
                 2: return "Faster automatic fire (+30% cadence)."
                 3: return "Dual-barrel bursts: two aimed rounds per volley."
                 _: return "Smart tracers: faster rounds and improved tracking."
-        "gun_payload": return "+25% damage per Sentinel round. Rank %d/3" % rank
+        "gun_payload": return "+25% damage per Sentinel round."
         "gun_pierce": return "Round passes through %d additional target(s)." % rank
         "gun_ricochet": return "After piercing, ricochet to up to %d nearby target(s)." % rank
         "gun_volley": return "+%d separately aimed Sentinel rounds per burst." % rank
@@ -101,12 +101,15 @@ static func upgrade_description(key: String, rank: int) -> String:
 static func next_level_xp(level: int) -> int:
     return 15 + int(pow(float(maxi(1, level)), 1.32) * 7.0)
 
+static func upgrade_available(levels: Dictionary, key: String) -> bool:
+    return UPGRADE_ORDER.has(key) and int(levels.get(key, 0)) < upgrade_cap(key)
+
 static func upgrade_offers(levels: Dictionary, rng: RandomNumberGenerator, count: int = 3) -> Array[String]:
     var available: Array[String] = []
     var locked: Array[String] = []
     var sentinel_options: Array[String] = []
     for key in UPGRADE_ORDER:
-        if int(levels.get(key, 0)) < upgrade_cap(key):
+        if upgrade_available(levels, key):
             available.append(key)
             if WEAPON_ORDER.has(key) and int(levels.get(key, 0)) == 0:
                 locked.append(key)
