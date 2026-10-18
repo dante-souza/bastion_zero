@@ -69,6 +69,11 @@ PROFILES = {
         "Bastion-Zero-Phase-I1-J8-ARMv7",
         "bastion-zero-phase-i1-j8-debug.apk", "com.dantesouza.bastionzero.phaseh"
     ),
+    "phase-i2": BuildProfile(
+        "phase-i2", "feature/m1-visual-phase-i2-evolution",
+        "Bastion-Zero-Phase-I2-J8-ARMv7",
+        "bastion-zero-phase-i2-j8-debug.apk", "com.dantesouza.bastionzero.phaseh"
+    ),
 }
 PACKAGE = PROFILES["m1r"].package  # backward-compatible testing alias
 DEFAULT_DEVICE = os.environ.get("BASTION_DEVICE", "38c19745")
@@ -108,7 +113,7 @@ def resolve_profile(name: str) -> BuildProfile:
                 return profile
         raise RuntimeError(
             f"Cannot infer Android profile from Git branch {branch!r}. "
-            "Use 'make phase-i1', or explicitly set PROFILE=phase-i1|phase-h|phase-g|phase-f|phase-e|phase-d|phase-c|phase-b|phase-a|m1r."
+            "Use 'make phase-i2', or explicitly set PROFILE=phase-i2|phase-i1|phase-h|phase-g|phase-f|phase-e|phase-d|phase-c|phase-b|phase-a|m1r."
         )
     if name not in PROFILES:
         raise RuntimeError(f"Unknown PROFILE={name!r}; supported: auto, {', '.join(PROFILES)}")
@@ -354,14 +359,17 @@ def help_text() -> None:
     print("  make phase-i1-doctor      verify J8 and current tactical package")
     print("  make phase-i1-logs        Android logs for tactical HUD")
     print("  make phase-i1-screenshot  capture current tactical combat UI")
+    print("  make phase-i2             download, reinstall and launch level-up choice")
+    print("  make phase-i2-doctor      verify J8 and current evolution package")
+    print("  make phase-i2-screenshot  capture 3-card level-up menu")
     print("  make fresh                download/reinstall/run selected branch profile")
     for key, value in COMMANDS.items():
         print(f"  make {key:<20} {value}")
-    print("  make sync                 Fast-forward local main/dev/M1R/Phase-A/Phase-B/Phase-C/Phase-D/Phase-E/Phase-F/Phase-G/Phase-H/Phase-I1 and restore branch")
+    print("  make sync                 Fast-forward local main/dev/M1R/Phase-A/Phase-B/Phase-C/Phase-D/Phase-E/Phase-F/Phase-G/Phase-H/Phase-I1/Phase-I2 and restore branch")
     print("  make check-tools          Python developer tool tests")
     print("  make check                Python + headless Godot validations")
     print("  make git-status           Inspect current local Git branch")
-    print("  Overrides: PROFILE=phase-i1|phase-h|phase-g|phase-f|phase-e|phase-d|phase-c|phase-b|phase-a|m1r|auto, DEVICE=serial, APK=path, RUN_ID=number")
+    print("  Overrides: PROFILE=phase-i2|phase-i1|phase-h|phase-g|phase-f|phase-e|phase-d|phase-c|phase-b|phase-a|m1r|auto, DEVICE=serial, APK=path, RUN_ID=number")
     print("  Default DEVICE=38c19745 (Galaxy J8); saves in the selected package are disposable.")
 
 

@@ -99,8 +99,7 @@ func _resume() -> void:
     arena.toggle_pause()
 
 func _choose_system(offers: Array[String]) -> void:
-    # The catalog is authoritative. The UI also filters stale offerings,
-    # making it impossible to display an already-maxed upgrade card.
+    # Filter stale or capped offers before showing the paused tactical UI.
     var eligible: Array[String] = []
     for kind in offers:
         if not eligible.has(kind) and GameCatalog.upgrade_available(arena.levels, kind):
@@ -108,85 +107,13 @@ func _choose_system(offers: Array[String]) -> void:
     if eligible.is_empty():
         push_warning("System Evolution received no eligible upgrade cards.")
         return
-    var content := _screen("SYSTEM EVOLUTION",
-        "LV %d   •   %d THREATS   •   %d KILLS" % [
-            arena.level, arena.enemies.size(), arena.kills], true)
-    content.add_child(_label("SELECT ONE UPGRADE • THE BATTLE IS PAUSED", 18, PALE, true))
-    for kind in eligible:
-        var card := _upgrade_card(kind, int(arena.levels.get(kind, 0)))
-        card.pressed.connect(_apply_upgrade.bind(kind))
-        content.add_child(card)
-    var spacer := Control.new()
-    spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-    content.add_child(spacer)
-    content.add_child(_label(EvolutionProfile.synergy_summary(arena.levels), 18, GREEN, true))
+    _clear()
+    var choice := EvolutionChoiceView.new()
+    choice.configure(eligible, arena.levels, arena.level)
+    choice.upgrade_chosen.connect(_apply_upgrade)
+    modal = choice
+    add_child(choice)
 
-func _upgrade_card(kind: String, current_rank: int) -> Button:
-    var cap: int = GameCatalog.upgrade_cap(kind)
-    var next_rank: int = current_rank + 1
-    var card := _button("", false)
-    card.custom_minimum_size.y = 186.0
-    card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    var accent: Color = EvolutionProfile.accent(kind)
-    for variant in ["normal", "hover", "pressed"]:
-        var card_style := StyleBoxFlat.new()
-        card_style.bg_color = Color("#10263C") if variant == "normal" else Color("#1A3B55")
-        card_style.border_color = accent
-        card_style.border_width_left = 6
-        card_style.border_width_right = 2
-        card_style.border_width_top = 2
-        card_style.border_width_bottom = 2
-        card_style.set_corner_radius_all(9)
-        card_style.content_margin_left = 12
-        card_style.content_margin_right = 12
-        card_style.content_margin_top = 7
-        card_style.content_margin_bottom = 7
-        card.add_theme_stylebox_override(variant, card_style)
-    card.set_meta("upgrade_key", kind)
-    card.tooltip_text = GameCatalog.upgrade_description(kind, next_rank)
-
-    # A transparent, non-intercepting content layer gives us individual
-    # typography control without sacrificing the entire clickable card.
-    var padding := MarginContainer.new()
-    padding.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    padding.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-    for side in ["left", "right"]:
-        padding.add_theme_constant_override("margin_" + side, 19)
-    for side in ["top", "bottom"]:
-        padding.add_theme_constant_override("margin_" + side, 13)
-    card.add_child(padding)
-
-    var text_stack := VBoxContainer.new()
-    text_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    text_stack.add_theme_constant_override("separation", 4)
-    padding.add_child(text_stack)
-
-    var category := _label(
-        GameCatalog.upgrade_category(kind, current_rank) + "   •   " + EvolutionProfile.tactical_role(kind),
-        15, accent)
-    category.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    text_stack.add_child(category)
-
-    var title_text := _label(GameCatalog.upgrade_name(kind), 27, CYAN)
-    title_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    text_stack.add_child(title_text)
-
-    # 3/3 on an offered card is the NEXT (final) rank, not the current rank.
-    var progress := "OWNED %d/%d  →  NEXT %d/%d" % [
-        current_rank, cap, next_rank, cap
-    ]
-    if next_rank == cap:
-        progress += "  (FINAL)"
-    progress += "    " + EvolutionProfile.rank_marks(next_rank, cap)
-    var rank_text := _label(progress, 17, GOLD)
-    rank_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    text_stack.add_child(rank_text)
-
-    var description := _label(GameCatalog.upgrade_description(kind, next_rank), 19, PALE)
-    description.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    text_stack.add_child(description)
-    return card
 
 func _apply_upgrade(kind: String) -> void:
     if arena.state != "upgrade" or not GameCatalog.upgrade_available(arena.levels, kind):

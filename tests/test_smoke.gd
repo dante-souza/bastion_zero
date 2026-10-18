@@ -474,7 +474,7 @@ func _run() -> void:
         for label_node in hangar_view.find_children("*", "Label", true, false):
             if String((label_node as Label).text) == "BUILD  " + GameCatalog.GAME_VERSION:
                 build_label_visible = true
-        _expect(GameCatalog.GAME_VERSION.begins_with("0.9.0") and build_label_visible,
+        _expect(GameCatalog.GAME_VERSION.begins_with("0.9.1") and build_label_visible,
             "Hangar footer displays current Phase G patch version")
     var deploy: Button
     for node in game.find_children("*", "Button", true, false):
@@ -520,6 +520,22 @@ func _run() -> void:
         var ui_cards: Array[Node] = []
         var rank_label_found := false
         var active_menu: ColorRect = game.get("modal")
+        var choice: EvolutionChoiceView = active_menu as EvolutionChoiceView
+        _expect(choice != null, "Phase I.2 renders a dedicated native evolution screen")
+        if choice != null:
+            _expect(choice.find_child("EvolutionScroll", true, false) != null and
+                choice.find_child("EvolutionMargins", true, false) != null,
+                "evolution cards scroll within J8 safe margins")
+            _expect(choice.find_child("EvolutionTitle", true, false) != null and
+                choice.find_child("SynergySummary", true, false) != null,
+                "choose-one heading and real synergy summary are present")
+            var choose_header: Label = choice.find_child("EvolutionTitle", true, false) as Label
+            _expect(choose_header != null and
+                choose_header.get_theme_font_size("font_size") == 39,
+                "approved CHOOSE ONE heading typography stays unchanged")
+            _expect(choice.find_child("LevelAdvance", true, false) != null and
+                choice.find_child("EvolutionFooter", true, false) != null,
+                "upgrade menu identifies level progression and paused state")
         for node in active_menu.find_children("*", "Button", true, false):
             if node.has_meta("upgrade_key"):
                 ui_cards.append(node)
@@ -527,12 +543,33 @@ func _run() -> void:
                     for lbl in node.find_children("*", "Label", true, false):
                         if String(lbl.text).contains("OWNED 2/3") and String(lbl.text).contains("NEXT 3/3"):
                             rank_label_found = true
-                    _expect(float(node.custom_minimum_size.y) >= 180.0, "evolution choice cards have tall readable touch targets")
+                    _expect(float(node.custom_minimum_size.y) >= 210.0, "larger evolution text has space inside each touch card")
+                    var readable_name: Label = node.find_child("ChoiceName", true, false) as Label
+                    var readable_body: Label = node.find_child("ChoiceDescription", true, false) as Label
+                    var readable_rank: Label = node.find_child("ChoiceRank", true, false) as Label
+                    _expect(readable_name != null and readable_body != null
+                        and readable_rank != null and
+                        readable_name.get_theme_font_size("font_size") >= 26 and
+                        readable_body.get_theme_font_size("font_size") >= 20 and
+                        readable_rank.get_theme_font_size("font_size") >= 18,
+                        "J8 evolution cards enlarge the small fonts, not CHOOSE ONE")
+                    _expect(node.find_child("UpgradeIcon", true, false) is UpgradeEmblem,
+                        "upgrade option has real geometric icon instead of decorative screenshot")
+                    _expect(node.find_child("ChoiceName", true, false) is Label and
+                        node.find_child("ChoiceDescription", true, false) is Label and
+                        node.find_child("ChoicePips", true, false) is Label,
+                        "choice card exposes upgrade name, mechanic and rank pips")
                     var normal_style: StyleBoxFlat = node.get_theme_stylebox("normal") as StyleBoxFlat
                     _expect(normal_style != null and normal_style.border_width_left >= 6,
                         "evolution cards have distinct colored tactical edge")
         _expect(ui_cards.size() == 3 and rank_label_found, "system evolution shows correct owned-to-next rank")
-        game.call("_apply_upgrade", "gun_payload")
+        var selected_button: Button
+        for button in ui_cards:
+            if String(button.get_meta("upgrade_key")) == "gun_payload":
+                selected_button = button as Button
+        _expect(selected_button != null, "offered Kinetic Payload is selectable")
+        if selected_button != null:
+            selected_button.pressed.emit()
         _expect(int(live_arena.levels["gun_payload"]) == 3, "UI confirms final Kinetic Payload rank")
         live_arena.state = "upgrade"
         game.call("_choose_system", menu_offers)
