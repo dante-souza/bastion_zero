@@ -2,7 +2,7 @@ class_name GameCatalog
 extends RefCounted
 
 ## Bastion Zero's original combat balance; no third-party game resources.
-const GAME_VERSION := "0.2.0-m1r"
+const GAME_VERSION := "0.2.1-combat"
 const WORLD_SIZE := Vector2(720.0, 1280.0)
 const GUARDIAN := Vector2(360.0, 1080.0)
 const BREACH_Y := 1040.0
@@ -15,6 +15,24 @@ const UPGRADE_ORDER: Array[String] = [
     "beam", "volley", "arc", "nova", "hull", "rate", "power", "reach"
 ]
 const WEAPON_ORDER: Array[String] = ["beam", "volley", "arc", "nova"]
+
+## Enemy/weapon interactions are explicit, stable, and independent of monetization.
+## Multipliers are applied before HP-capped accounting.
+static func damage_factor(enemy_kind: String, weapon: String) -> float:
+    if enemy_kind == "tank":
+        match weapon:
+            "beam": return 0.72
+            "volley": return 1.30
+            "nova": return 1.18
+    elif enemy_kind == "runner":
+        match weapon:
+            "arc": return 1.32
+            "volley": return 0.90
+    elif enemy_kind == "elite":
+        match weapon:
+            "beam": return 0.90
+            "volley": return 1.12
+    return 1.0
 
 static func stage_name(stage: int) -> String:
     return "NORMAL 01" if stage <= 1 else "ELITE 01"
