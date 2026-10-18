@@ -116,6 +116,14 @@ func begin_run(permanent_upgrades: Dictionary, selected_stage: int = 1, reduced_
     queue_redraw()
 
 func snapshot() -> Dictionary:
+    # Live elite HP for a real health bar; never infer boss health from time.
+    var elite_hp := 0.0
+    var elite_max_hp := 0.0
+    for enemy in enemies:
+        if String(enemy["kind"]) == "elite":
+            elite_hp = maxf(0.0, float(enemy["hp"]))
+            elite_max_hp = float(enemy["max_hp"])
+            break
     return {
         "stage": stage, "stage_name": GameCatalog.stage_name(stage),
         "state": state, "time": elapsed,
@@ -124,6 +132,7 @@ func snapshot() -> Dictionary:
         "kills": kills, "hull": hull, "max_hull": max_hull,
         "weapons": levels.duplicate(), "focus": focused_id,
         "enemies": enemies.size(), "damage": weapon_damage.duplicate(),
+        "elite_hp": elite_hp, "elite_max_hp": elite_max_hp,
         "formation": formation_name, "breaches": breaches,
         "showcase": showcase_active,
         "showcase_beat": showcase_script_index,

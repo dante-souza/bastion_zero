@@ -12,6 +12,16 @@ const XP_HEIGHT := 11.0
 const HUD_MARGIN_HORIZONTAL := 14
 const HUD_MARGIN_VERTICAL := 9
 
+## Phase I.1 tactical overlays (reference: user's compact combat mockup).
+const TACTICAL_TOP_START := 8.0
+const TACTICAL_TOP_END := 133.0
+const TACTICAL_WARNING_START := 138.0
+const TACTICAL_WARNING_END := 172.0
+const TACTICAL_ELITE_START := 176.0
+const TACTICAL_ELITE_END := 213.0
+const TACTICAL_TRAY_START := -119.0
+const TACTICAL_TRAY_END := -10.0
+
 static func top_height() -> float:
     return TOP_END - TOP_START
 
