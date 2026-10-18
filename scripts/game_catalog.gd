@@ -1,70 +1,93 @@
 class_name GameCatalog
 extends RefCounted
 
-## All tuning is centralized for transparent, non-monetized progression.
-const GAME_VERSION := "0.1.1"
-const TOTAL_WAVES := 8
-const WAVE_SECONDS := 42.0
+## Bastion Zero's original combat balance; no third-party game resources.
+const GAME_VERSION := "0.2.0-m1r"
 const WORLD_SIZE := Vector2(720.0, 1280.0)
-const CORE_POSITION := Vector2(360.0, 670.0)
+const GUARDIAN := Vector2(360.0, 1080.0)
+const BREACH_Y := 1040.0
+const TOTAL_STAGES := 2
+const STAGE_SECONDS := [96.0, 115.0]
 const STARTING_HEALTH := 100
-const UPGRADE_CAP := 5
+const UPGRADE_CAP := 4
 const META_CAP := 8
-
 const UPGRADE_ORDER: Array[String] = [
-    "pulse", "arc", "rail", "mine", "hull", "rate", "power", "reach"
+    "beam", "volley", "arc", "nova", "hull", "rate", "power", "reach"
 ]
+const WEAPON_ORDER: Array[String] = ["beam", "volley", "arc", "nova"]
+
+static func stage_name(stage: int) -> String:
+    return "NORMAL 01" if stage <= 1 else "ELITE 01"
+
+static func stage_duration(stage: int) -> float:
+    return STAGE_SECONDS[clampi(stage, 1, TOTAL_STAGES) - 1]
 
 static func upgrade_name(key: String) -> String:
     match key:
-        "pulse": return "PULSE ARRAY"
-        "arc": return "ARC CONDUCTOR"
-        "rail": return "RAIL LANCE"
-        "mine": return "NOVA MINES"
+        "beam": return "PRISM BEAM"
+        "volley": return "COMET VOLLEY"
+        "arc": return "ARC RELAY"
+        "nova": return "NOVA FIELD"
         "hull": return "REINFORCED HULL"
         "rate": return "OVERCLOCK"
         "power": return "AMPLIFIER"
-        "reach": return "LONG-RANGE RADAR"
+        "reach": return "RANGE ARRAY"
     return key.to_upper()
 
-static func upgrade_description(key: String, next_rank: int) -> String:
+static func upgrade_description(key: String, rank: int) -> String:
     match key:
-        "pulse": return "+pulse damage and projectile speed. Rank %d" % next_rank
-        "arc": return "Lightning chains across nearby enemies. Rank %d" % next_rank
-        "rail": return "Precision piercing strike. Rank %d" % next_rank
-        "mine": return "Area explosions around approaching threats. Rank %d" % next_rank
-        "hull": return "+22 maximum hull and repair 20 hull."
-        "rate": return "+12% fire rate for every equipped weapon."
-        "power": return "+14% damage for every equipped weapon."
-        "reach": return "+12% targeting and chain range."
-    return "System enhancement."
+        "beam": return "Unlock beam / +pierce, then a second beam. Rank %d" % rank
+        "volley": return "Unlock rockets / add lanes, then split + blast. Rank %d" % rank
+        "arc": return "Unlock chain lightning / more jumps and stun. Rank %d" % rank
+        "nova": return "Unlock field / bigger slow pulse and detonation. Rank %d" % rank
+        "hull": return "+22 maximum hull, repair 25."
+        "rate": return "+13% fire rate for every weapon."
+        "power": return "+15% damage for every weapon."
+        "reach": return "+12% targeting range for every weapon."
+    return "System upgrade."
 
 static func next_level_xp(level: int) -> int:
-    return 12 + int(pow(float(maxi(1, level)), 1.4) * 8.0)
+    return 15 + int(pow(float(maxi(1, level)), 1.32) * 7.0)
 
 static func upgrade_offers(levels: Dictionary, rng: RandomNumberGenerator, count: int = 3) -> Array[String]:
-    var candidates: Array[String] = []
+    var available: Array[String] = []
+    var locked: Array[String] = []
     for key in UPGRADE_ORDER:
         if int(levels.get(key, 0)) < UPGRADE_CAP:
-            candidates.append(key)
-    # Fisher-Yates: predictable/testable given the RNG seed.
-    for i in range(candidates.size() - 1, 0, -1):
+            available.append(key)
+            if WEAPON_ORDER.has(key) and int(levels.get(key, 0)) == 0:
+                locked.append(key)
+    if available.is_empty():
+        return []
+    _shuffle(available, rng)
+    _shuffle(locked, rng)
+    var offers: Array[String] = []
+    # Always offer an undiscovered weapon, where possible, to avoid an
+    # upgrade-only run with no access to the four combat systems.
+    if not locked.is_empty():
+        offers.append(locked[0])
+    for key in available:
+        if offers.size() >= count:
+            break
+        if not offers.has(key):
+            offers.append(key)
+    return offers
+
+static func _shuffle(items: Array[String], rng: RandomNumberGenerator) -> void:
+    for i in range(items.size() - 1, 0, -1):
         var j: int = rng.randi_range(0, i)
-        var old: String = candidates[i]
-        candidates[i] = candidates[j]
-        candidates[j] = old
-    return candidates.slice(0, mini(count, candidates.size()))
+        var temp: String = items[i]
+        items[i] = items[j]
+        items[j] = temp
 
-static func meta_cost(stat: String, current_rank: int) -> int:
-    if stat != "hull" and stat != "damage":
+static func meta_cost(stat: String, rank: int) -> int:
+    if not ["hull", "damage"].has(stat) or rank < 0 or rank >= META_CAP:
         return -1
-    if current_rank < 0 or current_rank >= META_CAP:
-        return -1
-    return 40 + int(28.0 * pow(1.5, float(current_rank)))
+    return 40 + int(28.0 * pow(1.5, float(rank)))
 
-static func reward(kills: int, wave: int, victory: bool) -> int:
-    return 10 + maxi(0, kills) / 3 + clampi(wave, 1, TOTAL_WAVES) * 6 + (70 if victory else 0)
+static func reward(kills: int, stage: int, victory: bool) -> int:
+    return 12 + maxi(0, kills) / 3 + clampi(stage, 1, TOTAL_STAGES) * 9 + (80 if victory else 0)
 
 static func format_time(seconds: float) -> String:
-    var value: int = maxi(0, int(seconds))
-    return "%02d:%02d" % [value / 60, value % 60]
+    var t: int = maxi(0, int(seconds))
+    return "%02d:%02d" % [t / 60, t % 60]

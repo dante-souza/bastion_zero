@@ -2,17 +2,15 @@ class_name SaveData
 extends RefCounted
 
 const FILE_PATH := "user://bastion_zero_save.json"
-const SAVE_SCHEMA := 1
+const SAVE_SCHEMA := 2
 
 static func defaults() -> Dictionary:
     return {
         "schema": SAVE_SCHEMA,
         "bank": 0,
         "meta": {"hull": 0, "damage": 0},
-        "runs": 0,
-        "wins": 0,
-        "best_wave": 0,
-        "best_kills": 0
+        "runs": 0, "wins": 0, "best_wave": 0, "best_kills": 0,
+        "stage_unlocked": 1, "best_stage": 0, "low_fx": true
     }
 
 static func validated(data: Variant) -> Dictionary:
@@ -22,8 +20,11 @@ static func validated(data: Variant) -> Dictionary:
     clean["bank"] = clampi(int(data.get("bank", 0)), 0, 999999999)
     clean["runs"] = clampi(int(data.get("runs", 0)), 0, 999999999)
     clean["wins"] = clampi(int(data.get("wins", 0)), 0, int(clean["runs"]))
-    clean["best_wave"] = clampi(int(data.get("best_wave", 0)), 0, GameCatalog.TOTAL_WAVES)
+    clean["best_wave"] = clampi(int(data.get("best_wave", 0)), 0, 8)
     clean["best_kills"] = clampi(int(data.get("best_kills", 0)), 0, 999999999)
+    clean["stage_unlocked"] = clampi(int(data.get("stage_unlocked", 1)), 1, GameCatalog.TOTAL_STAGES)
+    clean["best_stage"] = clampi(int(data.get("best_stage", 0)), 0, GameCatalog.TOTAL_STAGES)
+    clean["low_fx"] = bool(data.get("low_fx", true))
     var raw_meta: Variant = data.get("meta", {})
     if typeof(raw_meta) == TYPE_DICTIONARY:
         for key in ["hull", "damage"]:
@@ -43,7 +44,7 @@ static func load_game() -> Dictionary:
 static func write_game(data: Dictionary) -> bool:
     var file := FileAccess.open(FILE_PATH, FileAccess.WRITE)
     if file == null:
-        push_warning("Could not save progress: %s" % FileAccess.get_open_error())
+        push_warning("Cannot save progress: %d" % FileAccess.get_open_error())
         return false
     file.store_string(JSON.stringify(validated(data), "  "))
     file.flush()
@@ -61,3 +62,12 @@ static func buy_meta(data: Dictionary, stat: String) -> bool:
     data["bank"] = int(data["bank"]) - price
     data["meta"][stat] = rank + 1
     return true
+
+static func record_run(data: Dictionary, stage: int, victory: bool, report: Dictionary) -> void:
+    data["runs"] = int(data["runs"]) + 1
+    data["wins"] = int(data["wins"]) + (1 if victory else 0)
+    data["bank"] = int(data["bank"]) + int(report["reward"])
+    data["best_kills"] = maxi(int(data["best_kills"]), int(report["kills"]))
+    if victory:
+        data["best_stage"] = maxi(int(data["best_stage"]), stage)
+        data["stage_unlocked"] = mini(GameCatalog.TOTAL_STAGES, maxi(int(data["stage_unlocked"]), stage + 1))
