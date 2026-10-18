@@ -2,14 +2,14 @@
 
 **Bastion Zero** is an original Android-first, offline, no-ads, no-IAP directional tower-defense roguelite made with **Godot 4.4.1** (GDScript, GL Compatibility).
 
-> **M1R combat refinement v0.2.1.** The early radial-arena M1 design was rejected after comparing gameplay reference recordings. M1R contains a new combat runtime. GitHub CI validates code/export; only a physical J8 playtest can validate tactile gameplay and performance.
+> **M1R v0.2.2 — built-in Sentinel Autocannon.** The early radial-arena M1 design was rejected after comparing gameplay reference recordings. M1R contains a new combat runtime. GitHub CI validates code/export; only a physical J8 playtest can validate tactile gameplay and performance.
 
 ## Play the M1R demo
 
 - **NORMAL 01**: defend the lower breach line against authored line, wedge, pincer, rush and armored formations in a ~96-second stage.
 - **ELITE 01**: unlocked after winning NORMAL 01; ~115-second stage with tougher formations, an elite encounter that gains speed and summons escorts below 55% HP.
-- Your **Guardian** is anchored at the bottom; weapons fire automatically. Touch an enemy to prioritize it temporarily.
-- Evolve four **original** weapons: Prism Beam (penetration + twin beam), Comet Volley (homing multi-rocket salvo + explosive/splitting missiles), Arc Relay (chains + stun), and Nova Field (slow pulse + blast).
+- Your **Guardian** is anchored at the bottom with a **built-in Sentinel Autocannon**. It tracks enemies with rapid-fire projectiles; **Prism Beam** is acquired through an upgrade card, not a starting weapon. Touch an enemy to prioritize it temporarily.
+- Evolve four **original** weapons: Prism Beam (unlockable penetration + accurately targeted twin beam), Comet Volley (homing multi-rocket salvo + explosive/splitting missiles), Arc Relay (chains + stun), and Nova Field (slow pulse + blast).
 - Every XP level-up pauses battle to offer three distinct build choices. Synergies: Prism/Arc and Comet/Nova.
 - Local alloy rewards and permanent hull/damage research; stage unlocks and graphics settings persist.
 - Battle HUD shows hull, stage timer, XP, selected weapons and approximate FPS. After each run: damage breakdown by weapon.
@@ -64,3 +64,7 @@ The Make targets explicitly select J8 serial `38c19745` when a Moto G41 is also 
 ## License
 
 Copyright (c) 2026 Bastion Zero contributors. Code licensed **AGPL-3.0-or-later** (`LICENSE`).
+
+## Visual direction for next build
+
+The requested [early-game video reference](https://www.youtube.com/watch?v=9o4noNCPi-I) is tracked in [our visual planning document](docs/VISUAL-DIRECTION-EARLY-GAME.md). The exact YouTube footage was not retrievable during this pass; source-specific observations await an uploaded clip or screenshots. Meanwhile original, swappable style tokens are introduced via `scripts/visual_profile.gd`. No copied assets or unverified video claims.

@@ -123,3 +123,7 @@ Design tuning in this milestone is independent and provisional. Weapon balance m
 - Added formation/event HUD feedback, low-cost impact flashes and breach counts; reduced effects remains default on J8.
 - Validation includes authored formation invariants, armor multipliers, combat damage metering and one-shot elite escort trigger. Physical J8 combat/balance testing is still needed.
 
+
+## Starting firearm correction — v0.2.2
+
+The Guardian now always starts with the original Sentinel Autocannon (`gun:1`), firing individually simulated, targeted projectiles. Level-up upgrades improve its cadence, then unlock two-barrel salvos and tracking. Prism Beam now starts locked (`beam:0`), becomes available in level-up choices, and only fires after acquired. Its rank-3 dual beams individually aim through target centers (including convergence on a single remaining target) and use the same ray geometry for both visuals and actual enemy damage. Run statistics now include applied autocannon damage. Godot regression tests check initial loadout, collision, locked beam suppression and dual-ray hits.

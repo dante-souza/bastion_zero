@@ -28,7 +28,7 @@ func _run() -> void:
     var upgrades: Dictionary = {}
     for key in GameCatalog.UPGRADE_ORDER:
         upgrades[key] = 0
-    upgrades["beam"] = 1
+    upgrades["gun"] = 1
     var offers: Array[String] = GameCatalog.upgrade_offers(upgrades, rng)
     _expect(offers.size() == 3, "three choices")
     _expect(offers[0] != offers[1] and offers[1] != offers[2] and offers[0] != offers[2], "nonduplicate offers")
@@ -61,11 +61,40 @@ func _run() -> void:
     _expect(is_equal_approx(GameCatalog.damage_factor("tank", "beam"), 0.72), "tank armor resists beams")
     _expect(GameCatalog.damage_factor("tank", "volley") > 1.0, "Comet Volley counters tank armor")
     _expect(GameCatalog.damage_factor("runner", "arc") > 1.0, "Arc Relay counters runners")
+    var gun_battle := Arena.new()
+    root.add_child(gun_battle)
+    gun_battle.begin_run({"hull": 0, "damage": 0}, 1, true)
+    gun_battle._spawn_enemy("tank", 360.0, 520.0)
+    gun_battle._fire_beam()
+    _expect(float(gun_battle.weapon_damage["beam"]) == 0.0, "Prism Beam cannot fire before card unlock")
+    gun_battle._fire_gun()
+    _expect(gun_battle.projectiles.size() == 1 and gun_battle.projectiles[0]["kind"] == "gun", "machinegun fires one built-in bullet")
+    for tick in range(75):
+        gun_battle._move_projectiles(1.0 / 60.0)
+    _expect(float(gun_battle.weapon_damage["gun"]) > 0.0, "machinegun projectile reaches actual target")
+    gun_battle.levels["gun"] = 3
+    gun_battle._fire_gun()
+    _expect(gun_battle.projectiles.size() == 2, "dual-barrel machinegun upgrade fires two rounds")
+    gun_battle.projectiles.clear()
+    gun_battle.levels["beam"] = 1
+    gun_battle._fire_beam()
+    _expect(float(gun_battle.weapon_damage["beam"]) > 0.0, "unlocked Prism hits target center")
+    gun_battle.enemies.clear()
+    gun_battle._spawn_enemy("tank", 160.0, 650.0)
+    gun_battle._spawn_enemy("tank", 565.0, 635.0)
+    gun_battle.levels["beam"] = 3
+    var before_left: float = float(gun_battle.enemies[0]["hp"])
+    var before_right: float = float(gun_battle.enemies[1]["hp"])
+    var lanes: Array[int] = gun_battle._beam_target_ids()
+    _expect(lanes.size() == 2 and lanes[0] != lanes[1], "split Prism lanes acquire two different enemies")
+    gun_battle._fire_beam()
+    _expect(float(gun_battle.enemies[0]["hp"]) < before_left and float(gun_battle.enemies[1]["hp"]) < before_right, "both split Prism beams hit their respective targets")
+    gun_battle.queue_free()
     var arena := Arena.new()
     root.add_child(arena)
     arena.begin_run({"hull": 1, "damage": 2}, 1, true)
     _expect(arena.state == "running" and arena.max_hull == 116.0, "battle initialize")
-    _expect(arena.stage == 1 and arena.levels["beam"] == 1, "starting weapon and stage")
+    _expect(arena.stage == 1 and arena.levels["gun"] == 1 and arena.levels["beam"] == 0, "machinegun is built in and Prism is locked")
     arena._spawn_enemy("runner", 210.0, 140.0)
     _expect(arena.enemies.size() == 1 and Vector2(arena.enemies[0]["pos"]).y < GameCatalog.GUARDIAN.y, "enemy spawns above Guardian")
     var enemy_id: int = int(arena.enemies[0]["id"])

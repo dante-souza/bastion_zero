@@ -11,7 +11,7 @@ const GOLD := Color("#ffca66")
 const RED := Color("#ff6486")
 const BLUE := Color("#7894ff")
 const GREEN := Color("#8ef3b2")
-const DARK := Color("#091322")
+const DARK := VisualProfile.BACKDROP
 const MAX_ENEMIES := 84
 const MAX_BULLETS := 220
 
@@ -602,28 +602,24 @@ func _effect(kind: String, a: Vector2, b: Vector2, radius: float, color: Color, 
 func _draw() -> void:
     draw_rect(Rect2(Vector2.ZERO, GameCatalog.WORLD_SIZE), DARK, true)
     for x in range(80, 721, 80):
-        draw_line(Vector2(x, 140), Vector2(x, GameCatalog.BREACH_Y), Color(0.1, 0.22, 0.31, 0.35), 1.0)
+        draw_line(Vector2(x, 140), Vector2(x, GameCatalog.BREACH_Y), VisualProfile.GRID, 1.0)
     for y in range(180, 1100, 100):
-        draw_line(Vector2(0, y), Vector2(720, y), Color(0.1, 0.22, 0.31, 0.35), 1.0)
-    draw_rect(Rect2(0, 125, 720, 55), Color("#182b41"), true)
+        draw_line(Vector2(0, y), Vector2(720, y), VisualProfile.GRID, 1.0)
+    draw_rect(Rect2(0, 125, 720, 55), VisualProfile.SPAWN_BAND, true)
     draw_line(Vector2(0, GameCatalog.BREACH_Y), Vector2(720, GameCatalog.BREACH_Y), RED, 4.0)
-    draw_rect(Rect2(0, 1052, 720, 110), Color("#102a3e"), true)
+    draw_rect(Rect2(0, 1052, 720, 110), VisualProfile.LOWER_ZONE, true)
     draw_arc(G, 72.0 + sin(_visual_clock * 3.0) * 4.0, PI, TAU, 32, Color(0.2, 0.76, 0.88, 0.25), 2.0, true)
-    draw_circle(G, 48.0, Color("#174368"))
+    draw_circle(G, 48.0, VisualProfile.GUARDIAN_HULL)
     draw_arc(G, 45.0, 0, TAU, 36, CYAN, 5.0, true)
     draw_colored_polygon(PackedVector2Array([
         G + Vector2(0, -54), G + Vector2(35, 24),
         G + Vector2(0, 12), G + Vector2(-35, 24)
-    ]), Color("#46d6f2"))
+    ]), VisualProfile.GUARDIAN_CORE)
     draw_circle(G + Vector2(0, -4), 13.0, Color.WHITE)
     for enemy in enemies:
         var at: Vector2 = enemy["pos"]
         var radius: float = enemy["radius"]
-        var shade := RED
-        match String(enemy["kind"]):
-            "runner": shade = GOLD
-            "tank": shade = BLUE
-            "elite": shade = Color("#e888ff")
+        var shade: Color = VisualProfile.enemy_tint(String(enemy["kind"]))
         if float(enemy["slow"]) > 0.0:
             draw_arc(at, radius + 10.0, 0, TAU, 22, GREEN, 2.0, true)
         match String(enemy["kind"]):
