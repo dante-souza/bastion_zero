@@ -31,14 +31,18 @@ godot --headless --path . --quit-after 10
 
 ## Samsung J8 APK
 
-Open [Android J8 debug APK CI runs](https://github.com/dante-souza/bastion_zero/actions/workflows/android-j8.yml), select a **successful M1R run**, download the `Bastion-Zero-M1R-J8-ARMv7` artifact, unzip and sideload `bastion-zero-j8-debug.apk`. The build uses the 32-bit ARMv7 export preset.
-
-PowerShell (from APK directory):
+The build uses the 32-bit ARMv7 export preset. Routine device operations are **Makefile-only**. For the Phase A visual test:
 
 ```powershell
-adb devices -l
-adb -s 38c19745 install -r .\bastion-zero-j8-debug.apk
+make phase-a
+make phase-a-doctor
+make phase-a-screenshot
+make phase-a-logs
 ```
+
+Phase A is a separate Android package `com.dantesouza.bastionzero.phasea`; original M1R remains independent. `make phase-a` downloads a SHA-256-verified APK from the correct successful GitHub Actions run, safely caches it at `dist/phase-a/`, reinstalls and launches. Saved progress for the selected development package is erased on reinstall by design.
+
+See [Makefile-first Android routines](docs/LOCAL-DEVELOPMENT.md) for install overrides, safe profile selection, checks and troubleshooting.
 
 **Debug signing**: If no persistent `BASTION_DEBUG_KEYSTORE_BASE64` GitHub Actions secret is configured, the CI pipeline generates an ephemeral key for each run. Android will reject an overwrite with mismatched signatures. Uninstalling first will erase Bastion Zero's local save. To preserve updates, configure a stable debug signing keystore (see `docs/ANDROID-SIGNING.md`) before continuing regular phone playtests.
 
@@ -48,14 +52,15 @@ A `Makefile` and standard-library Python helpers provide safe updates and Galaxy
 
 ```powershell
 make help
-make doctor
-make apk
-make reinstall-run   # WARNING: deletes current Bastion Zero save
-make installed
-make sync            # safe fast-forward of local main/dev/feature
+make profile
+make phase-a            # fetch + reinstall + run Phase A on J8
+make phase-a-doctor
+make phase-a-screenshot
+make check-tools
+make sync               # fast-forward local branches
 ```
 
-The Make targets explicitly select J8 serial `38c19745` when a Moto G41 is also connected. `make reinstall-run` verifies the APK before uninstalling. Stable debug signing is still recommended to avoid local save deletion between CI builds.
+The Make targets explicitly select J8 serial `38c19745` even when other phones are connected. Profile-aware targets ensure M1R and Phase A packages and APKs are never confused. During early visual development, saves may be erased; stable signing will matter once progression testing begins.
 
 ## Development flow
 

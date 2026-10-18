@@ -7,7 +7,7 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parent.parent
-BRANCHES = ("main", "dev", "feature/m1-playable-game")
+BRANCHES = ("main", "dev", "feature/m1-playable-game", "feature/m1-visual-phase-a")
 
 
 def git(*args: str, capture: bool = True, check: bool = True) -> subprocess.CompletedProcess[str]:

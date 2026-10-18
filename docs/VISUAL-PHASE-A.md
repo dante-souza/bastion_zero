@@ -42,3 +42,14 @@ Manual desktop/J8 checks still required:
 ## Exclusions
 
 No Guardian silhouette redesign (Phase B), enemy redesign (C), weapon rendering overhaul (D), HUD overhaul (E), or System Evolution overhaul (F). No reference-game footage or art committed.
+
+## Device commands (Makefile-only)
+
+```powershell
+make phase-a
+make phase-a-doctor
+make phase-a-screenshot
+make phase-a-logs
+```
+
+Use `make phase-a` for a fresh download, reinstall and launch. For an existing downloaded Phase A APK, use `make phase-a-reinstall-run` (optionally with `APK=...`). See [local development](LOCAL-DEVELOPMENT.md).
