@@ -10,7 +10,7 @@ GODOT ?= godot
 J8 = $(PYTHON) scripts/android_j8.py --device "$(DEVICE)" --profile "$(PROFILE)" --apk "$(APK)"
 
 .DEFAULT_GOAL := help
-.PHONY: help profile doctor installed version apk install uninstall reinstall run reinstall-run deploy fresh logs screenshot sync git-status check-tools check phase-a phase-a-apk phase-a-install phase-a-reinstall-run phase-a-run phase-a-doctor phase-a-logs phase-a-screenshot phase-b phase-b-apk phase-b-install phase-b-reinstall-run phase-b-run phase-b-doctor phase-b-logs phase-b-screenshot phase-c phase-c-apk phase-c-install phase-c-reinstall-run phase-c-run phase-c-doctor phase-c-logs phase-c-screenshot phase-d phase-d-apk phase-d-install phase-d-reinstall-run phase-d-run phase-d-doctor phase-d-logs phase-d-screenshot
+.PHONY: help profile doctor installed version apk install uninstall reinstall run reinstall-run deploy fresh logs screenshot sync git-status check-tools check phase-a phase-a-apk phase-a-install phase-a-reinstall-run phase-a-run phase-a-doctor phase-a-logs phase-a-screenshot phase-b phase-b-apk phase-b-install phase-b-reinstall-run phase-b-run phase-b-doctor phase-b-logs phase-b-screenshot phase-c phase-c-apk phase-c-install phase-c-reinstall-run phase-c-run phase-c-doctor phase-c-logs phase-c-screenshot phase-d phase-d-apk phase-d-install phase-d-reinstall-run phase-d-run phase-d-doctor phase-d-logs phase-d-screenshot phase-e phase-e-apk phase-e-install phase-e-reinstall-run phase-e-run phase-e-doctor phase-e-logs phase-e-screenshot
 
 help:
 	@$(J8) help
@@ -153,6 +153,31 @@ phase-d-logs:
 
 phase-d-screenshot:
 	@$(MAKE) screenshot PROFILE=phase-d
+
+# D.1 guided Lv12 showcase and E compact HUD.
+phase-e:
+	@$(MAKE) fresh PROFILE=phase-e
+
+phase-e-apk:
+	@$(MAKE) apk PROFILE=phase-e
+
+phase-e-install:
+	@$(MAKE) install PROFILE=phase-e
+
+phase-e-reinstall-run:
+	@$(MAKE) reinstall-run PROFILE=phase-e
+
+phase-e-run:
+	@$(MAKE) run PROFILE=phase-e
+
+phase-e-doctor:
+	@$(MAKE) doctor PROFILE=phase-e
+
+phase-e-logs:
+	@$(MAKE) logs PROFILE=phase-e
+
+phase-e-screenshot:
+	@$(MAKE) screenshot PROFILE=phase-e
 
 # Fast-forward only; no reset, forced checkout or stash.
 sync:

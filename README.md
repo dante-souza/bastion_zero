@@ -142,3 +142,7 @@ at 0, 4, 8, 12, and 20 seconds, followed by regular waves at 24 seconds.
 Intro-only normal enemies have 3x HP for **visibility**, not difficulty
 balance. Phase E reduces the obstructive HUD margins and heights for J8.
 Documentation: `docs/VISUAL-PHASE-E.md`.
+
+**D.1 + E:** `feature/m1-visual-phase-e-hud` implements the level-12 guided
+showcase, longer contrast-rich FX and compact HUD. Install via `make phase-e`.
+See `docs/VISUAL-PHASE-E.md` for temporary QA restrictions.

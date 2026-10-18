@@ -393,7 +393,8 @@ func _run() -> void:
         _expect(live_arena.state == "running" and live_arena.stage == 1, "deployment opens Normal 1")
         live_arena.state = "upgrade"
         live_arena.levels["gun_payload"] = 2
-        var menu_offers: Array[String] = ["gun_payload", "gun", "volley"]
+        # LV12 has maxed gun; test with three eligible upgrades.
+        var menu_offers: Array[String] = ["gun_payload", "gun_pierce", "gun_ricochet"]
         game.call("_choose_system", menu_offers)
         var ui_cards: Array[Node] = []
         var rank_label_found := false
