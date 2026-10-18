@@ -1,7 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
-<rect width="192" height="192" rx="34" fill="#08132a"/>
-<circle cx="96" cy="96" r="63" fill="none" stroke="#163d62" stroke-width="10"/>
-<path d="M96 21L163 139H29Z" fill="#142a4b" stroke="#56dfff" stroke-width="8" stroke-linejoin="round"/>
-<circle cx="96" cy="106" r="25" fill="#4ce6f2"/>
-<circle cx="96" cy="106" r="10" fill="#fff"/>
+<defs>
+<linearGradient id="ring" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#63F6FF"/><stop offset=".48" stop-color="#06BDFA"/><stop offset="1" stop-color="#1D64E9"/></linearGradient>
+<radialGradient id="lens"><stop stop-color="#F3FFFF"/><stop offset=".15" stop-color="#2CF3FF"/><stop offset=".48" stop-color="#177FFB"/><stop offset="1" stop-color="#05134E"/></radialGradient>
+<radialGradient id="bg"><stop stop-color="#112B4C"/><stop offset="1" stop-color="#020815"/></radialGradient>
+</defs>
+<rect width="192" height="192" rx="33" fill="#020916"/>
+<circle cx="96" cy="96" r="88" fill="url(#bg)"/>
+<path d="M80 15 H112 V39 H80Z M80 153 H112 V177 H80Z M15 80 H39 V112 H15Z M153 80 H177 V112 H153Z" fill="#163E64" stroke="#4CA5EA" stroke-width="3"/>
+<path d="M90 19H102V36H90Z M90 156H102V173H90Z M19 90H36V102H19Z M156 90H173V102H156Z" fill="#20DDFF"/>
+<circle cx="96" cy="96" r="57" fill="#031427" stroke="#195082" stroke-width="8"/>
+<circle cx="96" cy="96" r="57" fill="none" stroke="url(#ring)" stroke-width="15"/>
+<circle cx="96" cy="96" r="38" fill="#021022" stroke="#8DC4F4" stroke-width="4"/>
+<circle cx="96" cy="96" r="27" fill="#071B61" stroke="#11DFFD" stroke-width="5"/>
+<circle cx="96" cy="96" r="21" fill="url(#lens)"/>
+<circle cx="96" cy="96" r="5" fill="#F4FFFF"/>
+<path d="M96 60v9 M96 123v9 M60 96h9 M123 96h9" stroke="#23F1FF" stroke-width="3"/>
 </svg>

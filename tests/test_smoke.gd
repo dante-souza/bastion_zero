@@ -14,6 +14,17 @@ func _expect(ok: bool, label: String) -> void:
 
 func _run() -> void:
     _expect(GameCatalog.TOTAL_STAGES == 2, "normal and elite stages")
+    _expect(load("res://assets/branding/last_horizon_boot.png") is Texture2D,
+        "native Godot boot splash imports as a PNG texture")
+    _expect(load("res://assets/branding/guardian_launcher_192.png") is Texture2D,
+        "Android launcher icon is an imported 192px PNG")
+    _expect(load("res://assets/branding/guardian_adaptive_foreground_432.png") is Texture2D
+        and load("res://assets/branding/guardian_adaptive_background_432.png") is Texture2D,
+        "Android 8+ adaptive icon foreground/background resources import")
+    _expect(load("res://assets/branding/guardian_icon.svg") != null,
+        "Last Horizon app icon resource imports")
+    _expect(HangarView.HERO != null and HangarView.HERO.get_size().x >= 680.0,
+        "Hangar visual uses J8-readable same-Guardian horizon artwork")
     _expect(EvolutionProfile.tactical_role("beam") == "PRECISE ENERGY LANE",
         "Phase F labels Prism role clearly")
     _expect(EvolutionProfile.accent("beam") == VisualProfile.PRISM_BEAM and
@@ -407,6 +418,34 @@ func _run() -> void:
     var game: Control = (load("res://scenes/main.tscn") as PackedScene).instantiate()
     root.add_child(game)
     _expect(game.mouse_filter == Control.MOUSE_FILTER_IGNORE, "fullscreen UI does not swallow taps")
+    var hangar_view: HangarView = game.get("modal") as HangarView
+    _expect(hangar_view != null, "Phase G uses dedicated Last Horizon Hangar")
+    if hangar_view != null:
+        var hero_art: TextureRect = hangar_view.find_child("HorizonArtwork", true, false) as TextureRect
+        _expect(hero_art != null and hero_art.texture != null,
+            "Hangar shows real Guardian/Horizon hero illustration")
+        _expect(hangar_view.find_child("DeployNormal", true, false) != null and
+            hangar_view.find_child("ResearchControls", true, false) != null and
+            hangar_view.find_child("VisualFx", true, false) != null,
+            "Deploy, research and graphics controls survive visual redesign")
+        var progression: VBoxContainer = hangar_view.find_child("ProgressSummary", true, false) as VBoxContainer
+        var balance_label: Label = hangar_view.find_child("AlloyBalance", true, false) as Label
+        var stats_label: Label = hangar_view.find_child("ProgressStats", true, false) as Label
+        _expect(progression != null and balance_label != null and stats_label != null,
+            "Phase G progression uses a real vertically stacked panel")
+        if balance_label != null and stats_label != null:
+            _expect(balance_label.autowrap_mode == TextServer.AUTOWRAP_OFF
+                and stats_label.autowrap_mode == TextServer.AUTOWRAP_OFF,
+                "Alloy and run stats never collapse into vertical letters")
+            _expect(balance_label.text.begins_with("ALLOY BANK") and
+                stats_label.text.begins_with("RUNS"),
+                "Balance and progress labels remain readable and complete")
+        var build_label_visible := false
+        for label_node in hangar_view.find_children("*", "Label", true, false):
+            if String((label_node as Label).text) == "BUILD  " + GameCatalog.GAME_VERSION:
+                build_label_visible = true
+        _expect(GameCatalog.GAME_VERSION.begins_with("0.7.1") and build_label_visible,
+            "Hangar footer displays current Phase G patch version")
     var deploy: Button
     for node in game.find_children("*", "Button", true, false):
         if (node as Button).text.begins_with("DEPLOY"):
