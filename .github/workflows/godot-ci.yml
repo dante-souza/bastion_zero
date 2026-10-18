@@ -25,5 +25,9 @@ jobs:
         run: ./godot --headless --path . --editor --quit --quit-after 240
       - name: Execute source smoke tests
         run: ./godot --headless --path . --script res://tests/test_smoke.gd
+      - name: Validate developer tools (offline)
+        run: |
+          python3 -m compileall -q scripts
+          python3 -m unittest discover -s tests -p "test_devtools.py" -v
       - name: Confirm project boots
         run: ./godot --headless --path . --quit-after 10

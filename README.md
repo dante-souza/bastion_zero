@@ -42,6 +42,21 @@ adb -s 38c19745 install -r .\bastion-zero-j8-debug.apk
 
 **Debug signing**: If no persistent `BASTION_DEBUG_KEYSTORE_BASE64` GitHub Actions secret is configured, the CI pipeline generates an ephemeral key for each run. Android will reject an overwrite with mismatched signatures. Uninstalling first will erase Bastion Zero's local save. To preserve updates, configure a stable debug signing keystore (see `docs/ANDROID-SIGNING.md`) before continuing regular phone playtests.
 
+## Local developer setup (Windows + ADB)
+
+A `Makefile` and standard-library Python helpers provide safe updates and Galaxy J8 APK operations. See [Local developer workflow](docs/LOCAL-DEVELOPMENT.md). Quick commands from the repository root:
+
+```powershell
+make help
+make doctor
+make apk
+make reinstall-run   # WARNING: deletes current Bastion Zero save
+make installed
+make sync            # safe fast-forward of local main/dev/feature
+```
+
+The Make targets explicitly select J8 serial `38c19745` when a Moto G41 is also connected. `make reinstall-run` verifies the APK before uninstalling. Stable debug signing is still recommended to avoid local save deletion between CI builds.
+
 ## Development flow
 
 `feature/m1-playable-game` → Draft [PR #1](https://github.com/dante-souza/bastion_zero/pull/1) to `dev`, awaiting J8 gameplay validation. Then merge without squash and promote through normal Gitflow. Never merge reference third-party assets, extracted saves or binaries.
