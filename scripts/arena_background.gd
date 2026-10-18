@@ -1,11 +1,14 @@
 class_name ArenaBackground
 extends RefCounted
 
-## Phase A — cheap, deterministic background geometry. Nothing here controls
-## collisions, enemy spawning, guardian position, or progression.
+## Phase A horizon + Phase B.1 smoother near-black-to-navy gradient and
+## Guardian-centered radial falloff. Pure presentation; no gameplay rules.
 const SEGMENTS := 48
 const CREST_Y := 990.0
 const EDGE_Y := 1120.0
+const RADIAL_SECTORS := 32
+const AURA_CENTER := Vector2(360.0, 1050.0)
+const AURA_RADIUS := Vector2(440.0, 400.0)
 
 ## Sparse, fixed-position details for full-FX only. Kept away from the HUD.
 const SPECKS := [
@@ -27,7 +30,34 @@ static func horizon_points() -> PackedVector2Array:
     return path
 
 static func draw_to(canvas: CanvasItem, reduced_fx: bool, visual_time: float) -> void:
-    canvas.draw_rect(Rect2(Vector2.ZERO, GameCatalog.WORLD_SIZE), VisualProfile.BACKDROP, true)
+    # Four-vertex interpolated colors: one smooth vertical gradient, not bands.
+    var w: float = GameCatalog.WORLD_SIZE.x
+    var h: float = GameCatalog.WORLD_SIZE.y
+    canvas.draw_polygon(
+        PackedVector2Array([Vector2(0, 0), Vector2(w, 0), Vector2(w, h), Vector2(0, h)]),
+        PackedColorArray([
+            VisualProfile.BACKDROP, VisualProfile.BACKDROP,
+            VisualProfile.BACKDROP_BOTTOM, VisualProfile.BACKDROP_BOTTOM
+        ])
+    )
+
+    # Small vertex-colored fan makes a smoothly fading blue aura behind the
+    # Guardian. At J8 low-FX, 20 triangles; full-FX uses 32. No shader/bloom.
+    var sectors: int = 20 if reduced_fx else RADIAL_SECTORS
+    var tint: Color = VisualProfile.GUARDIAN_AURA
+    if reduced_fx:
+        tint.a *= 0.60
+    var edge_tint := Color(tint.r, tint.g, tint.b, 0.0)
+    for i in range(sectors):
+        var a0: float = TAU * float(i) / float(sectors)
+        var a1: float = TAU * float(i + 1) / float(sectors)
+        var p0 := AURA_CENTER + Vector2(cos(a0) * AURA_RADIUS.x, sin(a0) * AURA_RADIUS.y)
+        var p1 := AURA_CENTER + Vector2(cos(a1) * AURA_RADIUS.x, sin(a1) * AURA_RADIUS.y)
+        canvas.draw_polygon(
+            PackedVector2Array([AURA_CENTER, p0, p1]),
+            PackedColorArray([tint, edge_tint, edge_tint])
+        )
+
     if not reduced_fx:
         for speck in SPECKS:
             canvas.draw_circle(speck, 1.25, VisualProfile.BACKGROUND_SPECK)

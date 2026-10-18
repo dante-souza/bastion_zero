@@ -669,13 +669,7 @@ func _effect(kind: String, a: Vector2, b: Vector2, radius: float, color: Color, 
 
 func _draw() -> void:
     ArenaBackground.draw_to(self, low_fx, _visual_clock)
-    draw_circle(G, 48.0, VisualProfile.GUARDIAN_HULL)
-    draw_arc(G, 45.0, 0, TAU, 36, CYAN, 5.0, true)
-    draw_colored_polygon(PackedVector2Array([
-        G + Vector2(0, -54), G + Vector2(35, 24),
-        G + Vector2(0, 12), G + Vector2(-35, 24)
-    ]), VisualProfile.GUARDIAN_CORE)
-    draw_circle(G + Vector2(0, -4), 13.0, Color.WHITE)
+    GuardianRenderer.draw_to(self, G, low_fx, _visual_clock)
     for enemy in enemies:
         var at: Vector2 = enemy["pos"]
         var radius: float = enemy["radius"]
