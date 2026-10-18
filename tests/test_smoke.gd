@@ -239,7 +239,8 @@ func _run() -> void:
         game.call("_choose_system", menu_offers)
         var ui_cards: Array[Node] = []
         var rank_label_found := false
-        for node in game.find_children("*", "Button", true, false):
+        var active_menu: ColorRect = game.get("modal")
+        for node in active_menu.find_children("*", "Button", true, false):
             if node.has_meta("upgrade_key"):
                 ui_cards.append(node)
                 if String(node.get_meta("upgrade_key")) == "gun_payload":
@@ -253,7 +254,8 @@ func _run() -> void:
         live_arena.state = "upgrade"
         game.call("_choose_system", menu_offers)
         var max_card_visible := false
-        for node in game.find_children("*", "Button", true, false):
+        active_menu = game.get("modal")
+        for node in active_menu.find_children("*", "Button", true, false):
             if node.has_meta("upgrade_key") and String(node.get_meta("upgrade_key")) == "gun_payload":
                 max_card_visible = true
         _expect(not max_card_visible, "max-ranked Payload card is hidden even when offered stale data")
