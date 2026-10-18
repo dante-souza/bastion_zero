@@ -428,6 +428,24 @@ func _run() -> void:
             hangar_view.find_child("ResearchControls", true, false) != null and
             hangar_view.find_child("VisualFx", true, false) != null,
             "Deploy, research and graphics controls survive visual redesign")
+        var progression: VBoxContainer = hangar_view.find_child("ProgressSummary", true, false) as VBoxContainer
+        var balance_label: Label = hangar_view.find_child("AlloyBalance", true, false) as Label
+        var stats_label: Label = hangar_view.find_child("ProgressStats", true, false) as Label
+        _expect(progression != null and balance_label != null and stats_label != null,
+            "Phase G progression uses a real vertically stacked panel")
+        if balance_label != null and stats_label != null:
+            _expect(balance_label.autowrap_mode == TextServer.AUTOWRAP_OFF
+                and stats_label.autowrap_mode == TextServer.AUTOWRAP_OFF,
+                "Alloy and run stats never collapse into vertical letters")
+            _expect(balance_label.text.begins_with("ALLOY BANK") and
+                stats_label.text.begins_with("RUNS"),
+                "Balance and progress labels remain readable and complete")
+        var build_label_visible := false
+        for label_node in hangar_view.find_children("*", "Label", true, false):
+            if String((label_node as Label).text) == "BUILD  " + GameCatalog.GAME_VERSION:
+                build_label_visible = true
+        _expect(GameCatalog.GAME_VERSION.begins_with("0.7.1") and build_label_visible,
+            "Hangar footer displays current Phase G patch version")
     var deploy: Button
     for node in game.find_children("*", "Button", true, false):
         if (node as Button).text.begins_with("DEPLOY"):

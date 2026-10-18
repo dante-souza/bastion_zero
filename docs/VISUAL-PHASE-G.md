@@ -74,3 +74,19 @@ not only the desktop-facing `icon.svg`:
 
 This gives Android 10 launchers the correct adaptive icon. Other milestone
 presets remain unchanged, so old test builds are not unexpectedly rebranded.
+
+## Phase G.1 — J8 screenshot-driven layout fix
+
+The first real J8 Hangar screenshot exposed a vertical `ALLOY` label:
+run statistics expanded inside an HBox, leaving only a letter-width column
+for the alloy balance. Replaced that row with a VBox showing a separate
+`ALLOY BANK • number` line and a second `RUNS/WINS/BEST STAGE` line;
+wrapping is disabled on these two short telemetry labels. Removed the old
+unused hidden PROGRESSION label. The Hangar now reports Phase G patch
+version **0.7.1** (previous footer erroneously displayed Phase F 0.6.0).
+Updated Android version code 17 for the new export and added regression
+assertions about the actual UI structure, wrap policy and version footer.
+
+Android's transient launcher-controlled icon frame is separate from Godot's
+custom Last Horizon loading splash. Older Phase A–F installations can still
+show their old triangular icons; Phase G's icon is the circular Guardian.

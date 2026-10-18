@@ -95,14 +95,21 @@ func _build() -> void:
     elite.pressed.connect(func() -> void: deploy_requested.emit(2))
     stack.add_child(elite)
 
-    var progress := _panel_row("PROGRESSION", GOLD)
+    # Dedicated vertically stacked balance/stat lines. The old HBox let
+    # RUNS/WINS expand and compressed "ALLOY 0" into a one-letter column.
+    var progress := VBoxContainer.new()
+    progress.name = "ProgressSummary"
+    progress.add_theme_constant_override("separation", 5)
     stack.add_child(progress)
-    progress.add_child(_text("ALLOY  %d" % int(record.get("bank", 0)), 22, GOLD))
-    var stats := _text("RUNS %d   •   WINS %d   •   BEST %d" % [
+    var balance := _text("ALLOY BANK  •  %d" % int(record.get("bank", 0)), 23, GOLD)
+    balance.name = "AlloyBalance"
+    balance.autowrap_mode = TextServer.AUTOWRAP_OFF
+    progress.add_child(balance)
+    var stats := _text("RUNS %d   •   WINS %d   •   BEST STAGE %d" % [
         int(record.get("runs", 0)), int(record.get("wins", 0)),
-        int(record.get("best_stage", 0))], 15, PALE)
-    stats.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+        int(record.get("best_stage", 0))], 16, PALE)
+    stats.name = "ProgressStats"
+    stats.autowrap_mode = TextServer.AUTOWRAP_OFF
     progress.add_child(stats)
 
     stack.add_child(_text("RESEARCH LAB", 18, GOLD))
@@ -133,16 +140,6 @@ func _build() -> void:
 
     stack.add_child(_text("OFFLINE   •   NO ADS   •   NO PURCHASES", 15, GREEN, true))
     stack.add_child(_text("BUILD  %s" % GameCatalog.GAME_VERSION, 13, PALE, true))
-
-
-func _panel_row(label: String, tint: Color) -> HBoxContainer:
-    var bar := HBoxContainer.new()
-    bar.name = "ProgressSummary"
-    bar.add_theme_constant_override("separation", 12)
-    var name_label := _text(label, 14, tint)
-    name_label.visible = false # Metadata name retained; numbers have priority.
-    bar.add_child(name_label)
-    return bar
 
 
 func _text(value: String, size: int, tint: Color, centered: bool = false) -> Label:
