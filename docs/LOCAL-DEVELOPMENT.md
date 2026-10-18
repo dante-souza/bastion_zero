@@ -128,3 +128,24 @@ Other Phase B targets: `make phase-b-apk`, `make phase-b-install`,
 
 See [Guardian Phase B.1 technical notes](VISUAL-PHASE-B1.md). The selected
 reference image is **not** copied into the APK; all in-game art is procedural.
+
+## Phase C — enemy geometry and visual clarity
+
+This release lives on `feature/m1-visual-phase-c-enemies` (stacked on Phase B)
+and uses a **separate** `com.dantesouza.bastionzero.phasec` Android package.
+After fetching the branch, all J8 commands remain Make-only:
+
+```powershell
+make profile
+make check-tools
+make phase-c
+make phase-c-doctor
+make phase-c-screenshot
+make phase-c-logs
+```
+
+`make phase-c` fetches only a **successful Phase C** GitHub Actions run;
+it verifies the matching artifact checksum, caches under `dist/phase-c/`,
+reinstalls the Phase C app and launches. Only Phase C saves are erased.
+`make phase-c-apk`, `make phase-c-reinstall-run` and `make phase-c-run`
+are available for shorter loops. See [Phase C](VISUAL-PHASE-C.md).

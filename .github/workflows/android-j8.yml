@@ -2,7 +2,7 @@ name: Android J8 debug APK
 
 on:
   push:
-    branches: ['feature/m1-playable-game', 'feature/m1-visual-phase-a', 'feature/m1-visual-phase-b-guardian']
+    branches: ['feature/m1-playable-game', 'feature/m1-visual-phase-a', 'feature/m1-visual-phase-b-guardian', 'feature/m1-visual-phase-c-enemies']
   workflow_dispatch:
 
 permissions:
@@ -82,7 +82,10 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          if [[ "$GITHUB_REF_NAME" == "feature/m1-visual-phase-b-guardian" ]]; then
+          if [[ "$GITHUB_REF_NAME" == "feature/m1-visual-phase-c-enemies" ]]; then
+            PRESET="Android J8 Phase C Debug"
+            APK="dist/bastion-zero-phase-c-j8-debug.apk"
+          elif [[ "$GITHUB_REF_NAME" == "feature/m1-visual-phase-b-guardian" ]]; then
             PRESET="Android J8 Phase B Debug"
             APK="dist/bastion-zero-phase-b-j8-debug.apk"
           elif [[ "$GITHUB_REF_NAME" == "feature/m1-visual-phase-a" ]]; then
@@ -99,7 +102,7 @@ jobs:
       - name: Upload J8 APK
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ github.ref_name == 'feature/m1-visual-phase-b-guardian' && 'Bastion-Zero-Phase-B-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-a' && 'Bastion-Zero-Phase-A-J8-ARMv7' || 'Bastion-Zero-M1R-J8-ARMv7') }}
+          name: ${{ github.ref_name == 'feature/m1-visual-phase-c-enemies' && 'Bastion-Zero-Phase-C-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-b-guardian' && 'Bastion-Zero-Phase-B-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-a' && 'Bastion-Zero-Phase-A-J8-ARMv7' || 'Bastion-Zero-M1R-J8-ARMv7')) }}
           path: |
             dist/bastion-zero-*-j8-debug.apk
             dist/bastion-zero-j8-debug.apk
