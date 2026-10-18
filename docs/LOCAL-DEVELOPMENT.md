@@ -149,3 +149,31 @@ it verifies the matching artifact checksum, caches under `dist/phase-c/`,
 reinstalls the Phase C app and launches. Only Phase C saves are erased.
 `make phase-c-apk`, `make phase-c-reinstall-run` and `make phase-c-run`
 are available for shorter loops. See [Phase C](VISUAL-PHASE-C.md).
+
+## Phase D — all weapons + temporary NORMAL 01 showcase
+
+Branch `feature/m1-visual-phase-d-weapons` extends Phase C and uses isolated
+`com.dantesouza.bastionzero.phased` Android package and
+`Bastion-Zero-Phase-D-J8-ARMv7` CI artifact.
+
+On NORMAL 01 only, the build deliberately starts the Guardian at **LEVEL 7**
+with Sentinel rank 3, Prism/Comet/Arc/Nova rank 1, initial mixed enemies and
+an early elite visual inspection encounter. Stage 2 and ordinary Arena callers
+keep their normal starting rules. This is a temporary debug-mode gameplay
+fixture; it is not the intended final economy/balance.
+
+After switching to the Phase D branch, **all device operations use Make**:
+
+```powershell
+make profile
+make check-tools
+make check
+make phase-d
+make phase-d-doctor
+make phase-d-screenshot
+make phase-d-logs
+```
+
+`make phase-d` selects the latest successful *Phase D* Android workflow run,
+verifies the SHA-256, downloads to `dist/phase-d/`, reinstalls its isolated
+package and launches. Saves are disposable. See [Phase D](VISUAL-PHASE-D.md).

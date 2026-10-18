@@ -130,3 +130,6 @@ endpoints; Comet Volley has amber rockets and short orange impact sparks; and
 Nova Field paints a translucent jade pulse at its real area-damage center.
 J8 LOW FX keeps only inexpensive shapes and shorter electrical paths.
 See `docs/VISUAL-PHASE-D.md`.
+
+**Phase D J8 deployment:** switch to the `feature/m1-visual-phase-d-weapons`
+branch and run `make phase-d`. Isolated install: `com.dantesouza.bastionzero.phased`.
