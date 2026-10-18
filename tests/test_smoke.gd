@@ -14,6 +14,10 @@ func _expect(ok: bool, label: String) -> void:
 
 func _run() -> void:
     _expect(GameCatalog.TOTAL_STAGES == 2, "normal and elite stages")
+    _expect(load("res://assets/branding/guardian_icon.svg") != null,
+        "Last Horizon app icon resource imports")
+    _expect(HangarView.HERO != null and HangarView.HERO.get_size().x >= 680.0,
+        "Hangar visual uses J8-readable same-Guardian horizon artwork")
     _expect(EvolutionProfile.tactical_role("beam") == "PRECISE ENERGY LANE",
         "Phase F labels Prism role clearly")
     _expect(EvolutionProfile.accent("beam") == VisualProfile.PRISM_BEAM and
@@ -407,6 +411,17 @@ func _run() -> void:
     var game: Control = (load("res://scenes/main.tscn") as PackedScene).instantiate()
     root.add_child(game)
     _expect(game.mouse_filter == Control.MOUSE_FILTER_IGNORE, "fullscreen UI does not swallow taps")
+    var hangar_view: HangarView = game.get("modal") as HangarView
+    _expect(hangar_view != null, "Phase G uses dedicated Last Horizon Hangar")
+    if hangar_view != null:
+        var hero_art: TextureRect = hangar_view.get_node_or_null("HangarScroll")\
+            .find_child("HorizonArtwork", true, false) as TextureRect
+        _expect(hero_art != null and hero_art.texture != null,
+            "Hangar shows real Guardian/Horizon hero illustration")
+        _expect(hangar_view.find_child("DeployNormal", true, false) != null and
+            hangar_view.find_child("ResearchControls", true, false) != null and
+            hangar_view.find_child("VisualFx", true, false) != null,
+            "Deploy, research and graphics controls survive visual redesign")
     var deploy: Button
     for node in game.find_children("*", "Button", true, false):
         if (node as Button).text.begins_with("DEPLOY"):

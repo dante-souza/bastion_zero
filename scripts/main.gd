@@ -127,37 +127,14 @@ func _hangar() -> void:
     arena.state = "idle"
     hud.hide()
     record = SaveData.validated(record)
-    var content := _screen("BASTION ZERO", "GUARDIAN HANGAR  •  M1R")
-    content.add_child(_label("Hold the lower defense line. Build evolving weapon combinations and survive the enemy advance.", 20, PALE, true))
-    content.add_child(_label(
-        "NORMAL 01 QA: LEVEL 12 + 5 WEAPONS + GUIDED WAVES."
-        if GameCatalog.STAGE_ONE_SHOWCASE else
-        "STARTER: SENTINEL AUTOCANNON. Unlock Prism Beam from level-up cards.",
-        16, GREEN, true))
-    content.add_child(_label("TANKS: RESIST PRISM; COMET/NOVA HIT HARD. RUNNERS: WEAK TO ARC.", 15, GREEN, true))
-    content.add_child(_label("ALLOY BANK: %d" % int(record["bank"]), 27, GOLD, true))
-    content.add_child(_label("RUNS %d   •   WINS %d   •   BEST STAGE %d" % [
-        record["runs"], record["wins"], record["best_stage"]
-    ], 17, PALE, true))
-    for stage in range(1, GameCatalog.TOTAL_STAGES + 1):
-        var start := _button("DEPLOY  •  " + GameCatalog.stage_name(stage), true)
-        start.disabled = stage > int(record["stage_unlocked"])
-        start.pressed.connect(_deploy.bind(stage))
-        content.add_child(start)
-    for kind in ["hull", "damage"]:
-        var rank: int = int(record["meta"][kind])
-        var cost: int = GameCatalog.meta_cost(kind, rank)
-        var label_text := "HULL RESEARCH" if kind == "hull" else "WEAPON DAMAGE"
-        label_text += "  %d/%d  •  " % [rank, GameCatalog.META_CAP]
-        label_text += "MAX" if cost < 0 else "%d ALLOY" % cost
-        var research := _button(label_text, false)
-        research.disabled = cost < 0 or int(record["bank"]) < cost
-        research.pressed.connect(_research.bind(kind))
-        content.add_child(research)
-    var fx := _button("VISUAL FX: LOW (J8)" if bool(record["low_fx"]) else "VISUAL FX: FULL", false)
-    fx.pressed.connect(_toggle_fx)
-    content.add_child(fx)
-    content.add_child(_label("OFFLINE • NO ADS • NO PURCHASES • v%s" % GameCatalog.GAME_VERSION, 16, GREEN, true))
+    _clear()
+    var hangar := HangarView.new()
+    hangar.configure(record)
+    hangar.deploy_requested.connect(_deploy)
+    hangar.research_requested.connect(_research)
+    hangar.fx_requested.connect(_toggle_fx)
+    modal = hangar
+    add_child(hangar)
 
 func _research(kind: String) -> void:
     if SaveData.buy_meta(record, kind):
