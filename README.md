@@ -180,3 +180,8 @@ then committed normally and built by GitHub Actions. Until imported, the
 Phase G vector hero remains a safe fallback. The same phase upgrades the
 Hangar panel hierarchy, decorative accents and button styling; Phase F combat
 is unchanged. See `docs/VISUAL-PHASE-H.md`.
+
+**Phase H J8:** import the approved artwork ZIP using `make phase-h-art` and
+verify with `make phase-h-art-check`, commit/push the imported assets, then
+`make phase-h` downloads the built package. CI blocks placeholder Phase H
+APKs until the approved art is present.
