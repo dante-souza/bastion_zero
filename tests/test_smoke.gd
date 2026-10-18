@@ -529,6 +529,10 @@ func _run() -> void:
             _expect(choice.find_child("EvolutionTitle", true, false) != null and
                 choice.find_child("SynergySummary", true, false) != null,
                 "choose-one heading and real synergy summary are present")
+            var choose_header: Label = choice.find_child("EvolutionTitle", true, false) as Label
+            _expect(choose_header != null and
+                choose_header.get_theme_font_size("font_size") == 39,
+                "approved CHOOSE ONE heading typography stays unchanged")
             _expect(choice.find_child("LevelAdvance", true, false) != null and
                 choice.find_child("EvolutionFooter", true, false) != null,
                 "upgrade menu identifies level progression and paused state")
@@ -539,7 +543,16 @@ func _run() -> void:
                     for lbl in node.find_children("*", "Label", true, false):
                         if String(lbl.text).contains("OWNED 2/3") and String(lbl.text).contains("NEXT 3/3"):
                             rank_label_found = true
-                    _expect(float(node.custom_minimum_size.y) >= 180.0, "evolution choice cards have tall readable touch targets")
+                    _expect(float(node.custom_minimum_size.y) >= 210.0, "larger evolution text has space inside each touch card")
+                    var readable_name: Label = node.find_child("ChoiceName", true, false) as Label
+                    var readable_body: Label = node.find_child("ChoiceDescription", true, false) as Label
+                    var readable_rank: Label = node.find_child("ChoiceRank", true, false) as Label
+                    _expect(readable_name != null and readable_body != null
+                        and readable_rank != null and
+                        readable_name.get_theme_font_size("font_size") >= 26 and
+                        readable_body.get_theme_font_size("font_size") >= 20 and
+                        readable_rank.get_theme_font_size("font_size") >= 18,
+                        "J8 evolution cards enlarge the small fonts, not CHOOSE ONE")
                     _expect(node.find_child("UpgradeIcon", true, false) is UpgradeEmblem,
                         "upgrade option has real geometric icon instead of decorative screenshot")
                     _expect(node.find_child("ChoiceName", true, false) is Label and

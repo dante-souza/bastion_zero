@@ -48,3 +48,13 @@ clip, rank/cap information matches gameplay, the menu pauses combat
 and selecting a card resumes with the correct rank applied. The
 27 FPS observed on I.1 during crowded combat remains separate from
 the static pause menu and needs later combat optimization.
+
+## Phase I.2.1 — J8 typography correction
+
+J8 screenshot review: keep **CHOOSE ONE** title size at the approved 39,
+but increase weapon/support categories to 16, upgrade names to 26, next-rank
+descriptions to 20, rank details to 18, synergy to 19, paused state to 17,
+and small footer text to 15. Cards have a 215px minimum height, a smaller
+top margin (66px), and 12px stack separation so three choices stay legible
+in portrait. Card scrolling remains available. Regression tests explicitly
+check that the CHOOSE ONE font remains unchanged.

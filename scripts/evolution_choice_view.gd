@@ -44,23 +44,23 @@ func _compose() -> void:
     margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     margin.add_theme_constant_override("margin_left", 26)
     margin.add_theme_constant_override("margin_right", 26)
-    margin.add_theme_constant_override("margin_top", 90)
+    margin.add_theme_constant_override("margin_top", 66)
     margin.add_theme_constant_override("margin_bottom", 24)
     scroll.add_child(margin)
 
     var stack := VBoxContainer.new()
     stack.name = "EvolutionStack"
-    stack.add_theme_constant_override("separation", 15)
+    stack.add_theme_constant_override("separation", 12)
     margin.add_child(stack)
 
-    var level_line := _text("LEVEL %02d  →  %02d" % [maxi(1, new_level - 1), new_level], 17, MINT, true)
+    var level_line := _text("LEVEL %02d  →  %02d" % [maxi(1, new_level - 1), new_level], 19, MINT, true)
     level_line.name = "LevelAdvance"
     stack.add_child(level_line)
 
     var title := _text("CHOOSE ONE", 39, GOLD, true)
     title.name = "EvolutionTitle"
     stack.add_child(title)
-    stack.add_child(_text("COMBAT PAUSED  •  SELECT AN UPGRADE", 15, SUBTLE, true))
+    stack.add_child(_text("COMBAT PAUSED  •  SELECT AN UPGRADE", 17, SUBTLE, true))
 
     var separator := ColorRect.new()
     separator.color = Color("#1D3B46")
@@ -72,10 +72,10 @@ func _compose() -> void:
         if GameCatalog.upgrade_available(owned, kind):
             stack.add_child(_card(kind, int(owned.get(kind, 0))))
 
-    var summary := _text(EvolutionProfile.synergy_summary(owned), 16, MINT, true)
+    var summary := _text(EvolutionProfile.synergy_summary(owned), 19, MINT, true)
     summary.name = "SynergySummary"
     stack.add_child(summary)
-    var footer := _text("CHOOSE TO RESUME THE BATTLE", 13, SUBTLE, true)
+    var footer := _text("CHOOSE TO RESUME THE BATTLE", 15, SUBTLE, true)
     footer.name = "EvolutionFooter"
     stack.add_child(footer)
 
@@ -88,7 +88,7 @@ func _card(kind: String, current_rank: int) -> Button:
     card.name = "Choice" + kind.capitalize()
     card.text = ""
     card.set_meta("upgrade_key", kind)
-    card.custom_minimum_size.y = 191
+    card.custom_minimum_size.y = 215
     card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     card.tooltip_text = GameCatalog.upgrade_description(kind, next_rank)
     card.focus_mode = Control.FOCUS_ALL
@@ -120,7 +120,7 @@ func _card(kind: String, current_rank: int) -> Button:
     card.add_child(inset)
     var content := VBoxContainer.new()
     content.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    content.add_theme_constant_override("separation", 8)
+    content.add_theme_constant_override("separation", 9)
     inset.add_child(content)
 
     var upper := HBoxContainer.new()
@@ -141,14 +141,14 @@ func _card(kind: String, current_rank: int) -> Button:
     description_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     description_stack.add_theme_constant_override("separation", 4)
     upper.add_child(description_stack)
-    var category := _text(GameCatalog.upgrade_category(kind, current_rank), 13, color_accent)
+    var category := _text(GameCatalog.upgrade_category(kind, current_rank), 16, color_accent)
     category.name = "ChoiceCategory"
     description_stack.add_child(category)
-    var title := _text(GameCatalog.upgrade_name(kind), 22, GOLD)
+    var title := _text(GameCatalog.upgrade_name(kind), 26, GOLD)
     title.name = "ChoiceName"
     description_stack.add_child(title)
 
-    var description := _text(GameCatalog.upgrade_description(kind, next_rank), 17, SUBTLE)
+    var description := _text(GameCatalog.upgrade_description(kind, next_rank), 20, SUBTLE)
     description.name = "ChoiceDescription"
     description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     content.add_child(description)
@@ -156,10 +156,10 @@ func _card(kind: String, current_rank: int) -> Button:
     var rank := "OWNED %d/%d  →  NEXT %d/%d" % [current_rank, cap, next_rank, cap]
     if next_rank == cap:
         rank += "  •  FINAL"
-    var rank_label := _text(rank, 15, GOLD)
+    var rank_label := _text(rank, 18, GOLD)
     rank_label.name = "ChoiceRank"
     content.add_child(rank_label)
-    var pips := _text(EvolutionProfile.rank_marks(next_rank, cap), 18, MINT)
+    var pips := _text(EvolutionProfile.rank_marks(next_rank, cap), 20, MINT)
     pips.name = "ChoicePips"
     content.add_child(pips)
 
