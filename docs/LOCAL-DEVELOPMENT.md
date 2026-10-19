@@ -373,3 +373,23 @@ make phase-i4
 make phase-i4-doctor
 make phase-i4-screenshot
 ```
+
+## Phase I.5 — Color Language
+
+Branch `feature/m1-visual-phase-i5-color-language`, stacked on I.4.
+Palette pass only: cool = yours, warm = hostile, green = XP. Typed HUD
+event kinds replace text matching. No mechanics or balance changes.
+
+J8 ARMv7 version `0.9.4-phase-i5-color-language-debug`, code 24, same
+`com.dantesouza.bastionzero.phaseh` premium app package:
+
+```powershell
+git fetch origin --prune
+git switch --track origin/feature/m1-visual-phase-i5-color-language
+git merge --ff-only origin/feature/m1-visual-phase-i5-color-language
+make profile
+make check-tools
+make phase-i5
+make phase-i5-screenshot
+make phase-i5-doctor
+```
