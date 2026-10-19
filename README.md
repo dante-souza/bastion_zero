@@ -36,3 +36,13 @@ weapon shares a hue with an enemy. HUD warning colors now come from typed
 event kinds instead of message text, and a test guards the palette.
 Same premium J8 app ID; `make phase-i5` deploys it. Details in
 `docs/VISUAL-PHASE-I5.md`.
+
+## Phase I.6 — Playtest Fixes
+
+Fixes from J8 playtest screenshots: the combat header is compact and the
+threat banner transient, so enemies are no longer hidden under a 213 px HUD
+stack; level-up cards sit in the thumb zone, grow with their text, use
+real per-rank copy and distinct icons; health bars only on Tanks, Elites
+and the focused target; kill pops bloom to white instead of fading to
+brown; Android back pauses or steps back instead of quitting mid-run.
+`make phase-i6` deploys it. Details in `docs/VISUAL-PHASE-I6.md`.

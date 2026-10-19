@@ -43,9 +43,28 @@ func _run() -> void:
     _expect(HudProfile.PAUSE_SIZE.x >= 44.0 and HudProfile.PAUSE_SIZE.y >= 44.0,
         "pause remains a touch-safe control")
     _expect(HudProfile.XP_HEIGHT <= 12.0, "XP progress bar is slimmer")
-    _expect(HudProfile.TACTICAL_TOP_END < HudProfile.TACTICAL_WARNING_START and
-        HudProfile.TACTICAL_WARNING_END < HudProfile.TACTICAL_ELITE_START,
-        "I.1 tactical header, warnings and elite health never overlap")
+    _expect(HudProfile.TACTICAL_TOP_END < HudProfile.TACTICAL_ELITE_START and
+        HudProfile.TACTICAL_TOP_END < HudProfile.TACTICAL_WARNING_START and
+        HudProfile.TACTICAL_ELITE_END < HudProfile.TACTICAL_WARNING_UNDER_ELITE_START,
+        "I.6 header, elite strip and banner never overlap")
+    _expect(HudProfile.TACTICAL_TOP_END <= 106.0 and
+        HudProfile.TACTICAL_WARNING_UNDER_ELITE_END <= 164.0,
+        "I.6 persistent HUD stack ends by y=164 (was 213)")
+    for key in GameCatalog.UPGRADE_ORDER:
+        for r in range(1, GameCatalog.upgrade_cap(key) + 1):
+            var copy: String = GameCatalog.upgrade_description(key, r)
+            _expect(not copy.contains("(s)") and not copy.contains(" / ") and
+                not copy.contains("Rank ") and not copy.contains("%d") and not copy.contains("%s"),
+                "I.6 player-facing copy for %s rank %d: %s" % [key, r, copy])
+    var emblem_shapes: Dictionary = {}
+    for key in GameCatalog.UPGRADE_ORDER:
+        emblem_shapes[UpgradeEmblem.shape_for(key)] = key
+    _expect(emblem_shapes.size() == GameCatalog.UPGRADE_ORDER.size() and
+        not emblem_shapes.has("generic"),
+        "I.6 every upgrade card has its own icon silhouette")
+    _expect(UpgradeEmblem.shape_for("gun") != UpgradeEmblem.shape_for("beam") and
+        UpgradeEmblem.shape_for("gun_pierce") != UpgradeEmblem.shape_for("beam"),
+        "I.6 Sentinel and Prism icons differ by shape, not only color")
     _expect(ThreatLanguage.descriptions().size() == 12,
         "I.4 threat guide has actual friendly, hostile and signaling vocabulary")
     _expect(ThreatLanguage.color_for(ThreatLanguage.KIND_BREACH, "LINE") == ThreatLanguage.CRITICAL and
@@ -255,7 +274,10 @@ func _run() -> void:
     var triangle: PackedVector2Array = EnemyRenderer.triangle_vertices(Vector2(80.0, 80.0), 19.0)
     _expect(triangle.size() == 3 and triangle[0].y > triangle[1].y, "runner geometry forms forward/down-pointing triangle")
     _expect(not EnemyRenderer.show_health("grunt", 1.0, false), "full-health grunts omit noisy floating bars")
-    _expect(EnemyRenderer.show_health("grunt", 0.70, false), "damaged grunts reveal their real health")
+    _expect(not EnemyRenderer.show_health("grunt", 0.70, false) and
+        not EnemyRenderer.show_health("runner", 0.40, false),
+        "I.6 damaged swarm units stay bar-free (only tanks, elites, focus)")
+    _expect(EnemyRenderer.show_health("tank", 1.0, false), "tanks always show health bar")
     _expect(EnemyRenderer.show_health("runner", 1.0, true), "focused runner shows health bar")
     _expect(EnemyRenderer.show_health("elite", 1.0, false), "elites always show health bar")
     var gun_battle := Arena.new()
@@ -574,7 +596,7 @@ func _run() -> void:
         for label_node in hangar_view.find_children("*", "Label", true, false):
             if String((label_node as Label).text) == "BUILD  " + GameCatalog.GAME_VERSION:
                 build_label_visible = true
-        _expect(GameCatalog.GAME_VERSION.begins_with("0.9.4") and build_label_visible,
+        _expect(GameCatalog.GAME_VERSION.begins_with("0.9.5") and build_label_visible,
             "Hangar footer displays current Phase G patch version")
     var deploy: Button
     if hangar_view != null:
@@ -607,6 +629,26 @@ func _run() -> void:
             var strip := tactical.warning_panel.get_theme_stylebox("panel") as StyleBoxFlat
             _expect(strip != null and strip.border_color == ThreatLanguage.CYAN.darkened(0.45),
                 "I.5 banner frame follows the event severity color")
+            var quiet: Dictionary = live_arena.snapshot()
+            quiet["event"] = ""
+            quiet["event_kind"] = ""
+            quiet["elite_max_hp"] = 0.0
+            tactical.apply_snapshot(quiet)
+            _expect(not tactical.warning_panel.visible,
+                "I.6 banner is transient: hidden while no event is live")
+            var with_elite: Dictionary = quiet.duplicate()
+            with_elite["event"] = "ELITE SIGNATURE DETECTED"
+            with_elite["event_kind"] = ThreatLanguage.KIND_ELITE
+            with_elite["elite_max_hp"] = 100.0
+            with_elite["elite_hp"] = 60.0
+            tactical.apply_snapshot(with_elite)
+            _expect(tactical.warning_panel.visible and
+                tactical.warning_panel.offset_top == HudProfile.TACTICAL_WARNING_UNDER_ELITE_START,
+                "I.6 banner stacks under the elite strip while an elite lives")
+            with_elite["elite_max_hp"] = 0.0
+            tactical.apply_snapshot(with_elite)
+            _expect(tactical.warning_panel.offset_top == HudProfile.TACTICAL_WARNING_START,
+                "I.6 banner moves up into the free slot without an elite")
             _expect(tactical.slot_labels[0].text.contains("R4") and
                 tactical.slot_labels[1].text.contains("R2"),
                 "weapons show actual starting ranks, not invented mockup mechanics")
@@ -623,6 +665,24 @@ func _run() -> void:
             live_arena.enemies.pop_back()
             tactical.apply_snapshot(live_arena.snapshot())
             _expect(not tactical.elite_panel.visible, "elite bar hides after elite is removed")
+        # I.6 Android back: one screen at a time, never quitting mid-run.
+        game.set("_last_back_frame", -1)
+        game.call("go_back")
+        _expect(live_arena.state == "paused" and game.get("modal") != null,
+            "I.6 back during combat pauses instead of quitting")
+        game.set("_last_back_frame", -1)
+        game.call("go_back")
+        _expect(live_arena.state == "running", "I.6 back on the pause menu resumes")
+        game.set("_last_back_frame", -1)
+        game.call("_pause")
+        game.call("_threat_guide", true)
+        game.call("go_back")
+        _expect(live_arena.state == "paused" and
+            (game.get("modal") as ColorRect).find_child("PauseThreatGuide", true, false) != null,
+            "I.6 back in the paused guide returns to the pause menu")
+        game.call("go_back")
+        _expect(live_arena.state == "paused", "I.6 a duplicated back press in one frame is ignored")
+        game.call("_resume")
         # Paused-game guide never resumes combat implicitly.
         game.call("_pause")
         _expect(live_arena.state == "paused", "pause transitions Arena to paused")
@@ -664,6 +724,8 @@ func _run() -> void:
             _expect(choose_header != null and
                 choose_header.get_theme_font_size("font_size") == 39,
                 "approved CHOOSE ONE heading typography stays unchanged")
+            _expect(choice.find_child("ThumbSpacer", true, false) != null,
+                "I.6 cards are pushed into the bottom thumb zone")
             _expect(choice.find_child("LevelAdvance", true, false) != null and
                 choice.find_child("EvolutionFooter", true, false) != null,
                 "upgrade menu identifies level progression and paused state")
@@ -674,7 +736,11 @@ func _run() -> void:
                     for lbl in node.find_children("*", "Label", true, false):
                         if String(lbl.text).contains("OWNED 2/3") and String(lbl.text).contains("NEXT 3/3"):
                             rank_label_found = true
-                    _expect(float(node.custom_minimum_size.y) >= 210.0, "larger evolution text has space inside each touch card")
+                    _expect(float(node.custom_minimum_size.y) >= EvolutionChoiceView.CARD_MIN_HEIGHT,
+                        "evolution touch card keeps its minimum height")
+                    _expect(node.find_child("ChoiceRankRow", true, false) != null and
+                        (node.find_child("ChoicePips", true, false) as Node).get_parent().name == "ChoiceRankRow",
+                        "I.6 rank pips share the rank row instead of overflowing below it")
                     var readable_name: Label = node.find_child("ChoiceName", true, false) as Label
                     var readable_body: Label = node.find_child("ChoiceDescription", true, false) as Label
                     var readable_rank: Label = node.find_child("ChoiceRank", true, false) as Label
@@ -711,6 +777,10 @@ func _run() -> void:
                 max_card_visible = true
         _expect(not max_card_visible, "max-ranked Payload card is hidden even when offered stale data")
         _expect(live_arena.state == "upgrade", "stale card filtering does not unpause battle")
+        game.set("_last_back_frame", -1)
+        game.call("go_back")
+        _expect(live_arena.state == "upgrade" and game.get("modal") is EvolutionChoiceView,
+            "I.6 back cannot skip a pending upgrade choice")
 
     game.queue_free()
     print("RESULT: ", "PASS" if failures == 0 else "%d FAILURES" % failures)

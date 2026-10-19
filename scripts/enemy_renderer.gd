@@ -19,8 +19,10 @@ static func visual_radius(kind: String, collision_radius: float) -> float:
 
 
 static func show_health(kind: String, fraction: float, focused: bool) -> bool:
-    # Suppress the floating full-HP bar on undamaged small swarms.
-    return kind == "tank" or kind == "elite" or focused or fraction < 0.999
+    # Phase I.6: bars only where HP is a decision (multi-hit Tanks and Elites)
+    # or on the target the player picked. Damaged swarm units no longer each
+    # grow a bar, which put an ivory dash over nearly every enemy mid-fight.
+    return kind == "tank" or kind == "elite" or focused
 
 
 static func triangle_vertices(at: Vector2, size: float) -> PackedVector2Array:

@@ -712,8 +712,8 @@ func _damage_by_id(id: int, amount: float, source: String) -> float:
     if float(enemy["hp"]) <= 0.0:
         # Phase I.5: a kill pops in the enemy's own color; red rings are reserved
         # for danger (breach, enraged elite) so they never read as a hazard zone.
-        _effect("ring", Vector2(enemy["pos"]), Vector2.ZERO, float(enemy["radius"]) * 2.1,
-            VisualProfile.enemy_tint(String(enemy["kind"])), 0.36)
+        _effect("pop", Vector2(enemy["pos"]), Vector2.ZERO, float(enemy["radius"]) * 2.1,
+            VisualProfile.enemy_tint(String(enemy["kind"])), 0.26)
         xp += int(enemy["xp"])
         kills += 1
         if focused_id == id:

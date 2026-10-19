@@ -12,6 +12,7 @@ const MINT := Color("#6DC09A")
 const GOLD := Color("#EFC187")
 const CARD := Color("#0A1721")
 const BORDER := Color("#294354")
+const CARD_MIN_HEIGHT := 190.0
 
 var offers: Array[String] = []
 var owned: Dictionary = {}
@@ -48,6 +49,9 @@ func _compose() -> void:
     margin.add_theme_constant_override("margin_bottom", 24)
     scroll.add_child(margin)
 
+    # Phase I.6: the column is at least one screen tall and a spacer pushes
+    # the cards into the bottom (thumb) half; taller content still scrolls.
+    margin.custom_minimum_size.y = get_viewport_rect().size.y
     var stack := VBoxContainer.new()
     stack.name = "EvolutionStack"
     stack.add_theme_constant_override("separation", 12)
@@ -67,6 +71,12 @@ func _compose() -> void:
     separator.custom_minimum_size.y = 2
     separator.mouse_filter = Control.MOUSE_FILTER_IGNORE
     stack.add_child(separator)
+
+    var thumb_spacer := Control.new()
+    thumb_spacer.name = "ThumbSpacer"
+    thumb_spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    thumb_spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    stack.add_child(thumb_spacer)
 
     for kind in offers:
         if GameCatalog.upgrade_available(owned, kind):
@@ -88,7 +98,7 @@ func _card(kind: String, current_rank: int) -> Button:
     card.name = "Choice" + kind.capitalize()
     card.text = ""
     card.set_meta("upgrade_key", kind)
-    card.custom_minimum_size.y = 215
+    card.custom_minimum_size.y = CARD_MIN_HEIGHT
     card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     card.tooltip_text = GameCatalog.upgrade_description(kind, next_rank)
     card.focus_mode = Control.FOCUS_ALL
@@ -118,6 +128,11 @@ func _card(kind: String, current_rank: int) -> Button:
     inset.add_theme_constant_override("margin_top", 13)
     inset.add_theme_constant_override("margin_bottom", 10)
     card.add_child(inset)
+    # A Button does not grow with its children: follow the wrapped content so
+    # a two-line description can never push the rank row through the border.
+    inset.minimum_size_changed.connect(func() -> void:
+        card.custom_minimum_size.y = maxf(CARD_MIN_HEIGHT,
+            inset.get_combined_minimum_size().y))
     var content := VBoxContainer.new()
     content.mouse_filter = Control.MOUSE_FILTER_IGNORE
     content.add_theme_constant_override("separation", 9)
@@ -156,12 +171,18 @@ func _card(kind: String, current_rank: int) -> Button:
     var rank := "OWNED %d/%d  →  NEXT %d/%d" % [current_rank, cap, next_rank, cap]
     if next_rank == cap:
         rank += "  •  FINAL"
+    var rank_row := HBoxContainer.new()
+    rank_row.name = "ChoiceRankRow"
+    rank_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    rank_row.add_theme_constant_override("separation", 12)
+    content.add_child(rank_row)
     var rank_label := _text(rank, 18, GOLD)
     rank_label.name = "ChoiceRank"
-    content.add_child(rank_label)
-    var pips := _text(EvolutionProfile.rank_marks(next_rank, cap), 20, MINT)
+    rank_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    rank_row.add_child(rank_label)
+    var pips := _text(EvolutionProfile.rank_marks(next_rank, cap), 20, color_accent)
     pips.name = "ChoicePips"
-    content.add_child(pips)
+    rank_row.add_child(pips)
 
     return card
 

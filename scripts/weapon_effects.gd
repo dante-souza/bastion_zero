@@ -83,6 +83,15 @@ static func draw_effect(canvas: CanvasItem, effect: Dictionary, reduced_fx: bool
                         color, 2.1 * alpha, true)
         "ring":
             canvas.draw_arc(at, radius * (1.0 - 0.35 * alpha), 0.0, TAU, 28, color, 3.5, true)
+        "pop":
+            # Phase I.6 kill pop: the enemy's hue blooms toward white while it
+            # fades, so a dying ring reads as a flash, never as a dark maroon or
+            # olive "hazard" circle lingering on the navy field.
+            # Opacity stays high and the stroke thins instead: low alpha over navy
+            # is exactly what turned orange into brown in J8 captures.
+            var bloom: Color = Color(effect["color"]).lerp(Color.WHITE, minf(1.0, (1.0 - alpha) * 1.6))
+            bloom.a = minf(1.0, alpha * 2.2)
+            canvas.draw_arc(at, radius * (1.0 - 0.45 * alpha), 0.0, TAU, 24, bloom, 3.6 * alpha, true)
         "flash":
             canvas.draw_circle(at, radius * alpha, color)
         "number":

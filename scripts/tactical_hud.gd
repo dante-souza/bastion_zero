@@ -76,6 +76,8 @@ func _construct() -> void:
 
     warning_panel = _frame(0.025, 0.975, HudProfile.TACTICAL_WARNING_START,
         HudProfile.TACTICAL_WARNING_END, Color("#21150B"), Color("#8C502B"))
+    (warning_panel.get_theme_stylebox("panel") as StyleBoxFlat).content_margin_top = 3
+    (warning_panel.get_theme_stylebox("panel") as StyleBoxFlat).content_margin_bottom = 3
     warning_panel.name = "ThreatBanner"
     warning_panel.visible = false
     add_child(warning_panel)
@@ -90,6 +92,9 @@ func _construct() -> void:
     add_child(elite_panel)
     var elite_row := HBoxContainer.new()
     elite_row.add_theme_constant_override("separation", 10)
+    elite_row.alignment = BoxContainer.ALIGNMENT_CENTER
+    (elite_panel.get_theme_stylebox("panel") as StyleBoxFlat).content_margin_top = 2
+    (elite_panel.get_theme_stylebox("panel") as StyleBoxFlat).content_margin_bottom = 2
     elite_panel.add_child(elite_row)
     elite_label = _label("ELITE", 13, ELITE)
     elite_label.name = "EliteName"
@@ -97,6 +102,7 @@ func _construct() -> void:
     elite_bar = _bar(ELITE, 8)
     elite_bar.name = "EliteHP"
     elite_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    elite_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
     elite_row.add_child(elite_bar)
 
     var tray := _frame(0.025, 0.975, HudProfile.TACTICAL_TRAY_START,
@@ -155,7 +161,9 @@ func apply_snapshot(info: Dictionary) -> void:
     var event: String = String(info.get("event", ""))
     var kind: String = String(info.get("event_kind", ""))
     var formation := String(info.get("formation", "LINE"))
-    warning_panel.visible = threats > 0 or not event.is_empty()
+    # Phase I.6: transient. A permanent "INCOMING • N HOSTILES" strip hid
+    # the top of the playfield; the banner now shows only while an event lives.
+    warning_panel.visible = not event.is_empty()
     warning_label.text = ThreatLanguage.banner(event, kind, formation, threats)
     var severity := ThreatLanguage.color_for(kind, formation)
     if warning_label.get_theme_color("font_color") != severity:
@@ -169,6 +177,7 @@ func apply_snapshot(info: Dictionary) -> void:
 
     var maximum: float = float(info.get("elite_max_hp", 0.0))
     elite_panel.visible = maximum > 0.0
+    _stack_banner(elite_panel.visible)
     if maximum > 0.0:
         var health: float = clampf(float(info.get("elite_hp", 0.0)), 0.0, maximum)
         elite_label.text = "ELITE  •  %d%%" % roundi(100.0 * health / maximum)
@@ -184,6 +193,18 @@ func apply_snapshot(info: Dictionary) -> void:
         var rank: int = int(ranks.get(SLOT_KEYS[i], 0))
         slot_labels[i].text = "%s\n%s" % [SLOT_NAMES[i], "R%d" % rank if rank > 0 else "—"]
         slot_labels[i].modulate.a = 1.0 if rank > 0 else 0.38
+
+
+## The banner takes the first free slot under the header, below the Elite
+## strip only while an Elite is alive, so it never floats over a gap.
+func _stack_banner(elite_visible: bool) -> void:
+    var top: float = HudProfile.TACTICAL_WARNING_UNDER_ELITE_START if elite_visible \
+        else HudProfile.TACTICAL_WARNING_START
+    var bottom: float = HudProfile.TACTICAL_WARNING_UNDER_ELITE_END if elite_visible \
+        else HudProfile.TACTICAL_WARNING_END
+    if warning_panel.offset_top != top:
+        warning_panel.offset_top = top
+        warning_panel.offset_bottom = bottom
 
 
 func _frame(left: float, right: float, top: float, bottom: float,

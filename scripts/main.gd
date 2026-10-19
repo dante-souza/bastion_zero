@@ -9,6 +9,7 @@ var record: Dictionary
 var hud: TacticalHud
 var modal: ColorRect
 var current_stage := 1
+var _last_back_frame := -1
 
 func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -27,7 +28,49 @@ func _resize_arena() -> void:
     if size.x > 0.0 and size.y > 0.0:
         arena.scale = size / GameCatalog.WORLD_SIZE
 
+## Phase I.6: Android back (and Esc on desktop) walks one screen back.
+## quit_on_go_back is off, so the app only exits from the title screen.
+func _notification(what: int) -> void:
+    if what == NOTIFICATION_WM_GO_BACK_REQUEST:
+        go_back()
+
+
+## Returns true when back was consumed; false means "at title, may quit".
+func go_back() -> bool:
+    # One back press = one step, even if a platform delivers it twice.
+    var frame: int = Engine.get_process_frames()
+    if frame == _last_back_frame:
+        return true
+    _last_back_frame = frame
+    match arena.state:
+        "running":
+            _pause()
+            return true
+        "upgrade":
+            return true  # a card must be chosen; back never skips it
+        "paused":
+            if modal is ThreatGuideView:
+                (modal as ThreatGuideView).return_requested.emit()
+            else:
+                _resume()
+            return true
+    if modal is ThreatGuideView:
+        (modal as ThreatGuideView).return_requested.emit()
+        return true
+    if modal is TitleMenuView:
+        if not Engine.is_editor_hint() and OS.has_feature("mobile"):
+            get_tree().quit()
+        return false
+    _title()
+    return true
+
+
 func _unhandled_input(event: InputEvent) -> void:
+    # Android delivers back as a notification; Esc covers desktop testing only.
+    if not OS.has_feature("android") and event.is_action_pressed("ui_cancel"):
+        go_back()
+        get_viewport().set_input_as_handled()
+        return
     if arena.state != "running":
         return
     var location := Vector2(-1.0, -1.0)

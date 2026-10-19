@@ -13,12 +13,18 @@ const HUD_MARGIN_HORIZONTAL := 14
 const HUD_MARGIN_VERTICAL := 9
 
 ## Phase I.1 tactical overlays (reference: user's compact combat mockup).
+## Phase I.6: the header lost its empty bottom band (133 -> 106), the Elite
+## strip sits directly under it, and the threat banner is transient: it only
+## appears while an event is live, in the first free slot. The persistent HUD
+## stack ends at 106 (no Elite) or 132 (Elite) instead of 213.
 const TACTICAL_TOP_START := 8.0
-const TACTICAL_TOP_END := 133.0
-const TACTICAL_WARNING_START := 138.0
-const TACTICAL_WARNING_END := 172.0
-const TACTICAL_ELITE_START := 176.0
-const TACTICAL_ELITE_END := 213.0
+const TACTICAL_TOP_END := 106.0
+const TACTICAL_ELITE_START := 110.0
+const TACTICAL_ELITE_END := 132.0
+const TACTICAL_WARNING_START := 110.0
+const TACTICAL_WARNING_END := 138.0
+const TACTICAL_WARNING_UNDER_ELITE_START := 136.0
+const TACTICAL_WARNING_UNDER_ELITE_END := 164.0
 const TACTICAL_TRAY_START := -119.0
 const TACTICAL_TRAY_END := -10.0
 

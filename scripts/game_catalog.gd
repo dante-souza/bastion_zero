@@ -2,7 +2,7 @@ class_name GameCatalog
 extends RefCounted
 
 ## Bastion Zero's original combat balance; no third-party game resources.
-const GAME_VERSION := "0.9.4-color-language"
+const GAME_VERSION := "0.9.5-playtest-fixes"
 ## Phase F: temporary stress showcase on NORMAL 01 only. Not production balance.
 const STAGE_ONE_SHOWCASE := true
 const SHOWCASE_START_LEVEL := 12
@@ -190,18 +190,44 @@ static func upgrade_description(key: String, rank: int) -> String:
                 3: return "Dual-barrel bursts: two aimed rounds per volley."
                 _: return "Smart tracers: faster rounds and improved tracking."
         "gun_payload": return "+25% damage per Sentinel round."
-        "gun_pierce": return "Round passes through %d additional target(s)." % rank
-        "gun_ricochet": return "After piercing, ricochet to up to %d nearby target(s)." % rank
-        "gun_volley": return "+%d separately aimed Sentinel rounds per burst." % rank
-        "beam": return "Unlock pinpoint beam / +pierce; twin beam acquires another enemy."
-        "volley": return "Unlock rockets / add lanes, then split + blast. Rank %d" % rank
-        "arc": return "Unlock chain lightning / more jumps and stun. Rank %d" % rank
-        "nova": return "Unlock field / bigger slow pulse and detonation. Rank %d" % rank
+        # Phase I.6: player-facing copy per rank, read from Arena's real
+        # thresholds (beam pierce = 1 + rank, twin beam at 3; comets = 2 + rank,
+        # blast at 3, fragments at 4; arc strikes = 1 + rank, stun at 3;
+        # nova radius and slow grow every rank).
+        "gun_pierce": return "Rounds pass through %s." % _count(rank, "extra enemy", "extra enemies")
+        "gun_ricochet": return "After piercing, rounds bounce to %s nearby." % _count(rank, "enemy", "enemies")
+        "gun_volley": return "+%s per burst, each aimed separately." % _count(rank, "Sentinel round", "Sentinel rounds")
+        "beam":
+            match rank:
+                1: return "Unlock a beam that pierces up to 2 enemies in a line."
+                2: return "Beam pierces up to 3 enemies. Arc Relay chains +1 jump."
+                3: return "Twin beam: a second ray locks onto another enemy."
+                _: return "Beam pierces up to %d enemies, fires faster and hits harder." % (1 + rank)
+        "volley":
+            match rank:
+                1: return "Unlock homing comets: 3 per salvo."
+                2: return "4 comets per salvo. With Nova Field rank 2, novas detonate twice."
+                3: return "5 comets per salvo; every impact bursts in an area."
+                _: return "%d comets per salvo; impacts split into 3 fragments." % (2 + rank)
+        "arc":
+            match rank:
+                1: return "Unlock chain lightning that strikes 2 enemies."
+                2: return "Lightning strikes 3 enemies and reaches further."
+                3: return "Lightning strikes 4 enemies and briefly stuns each one."
+                _: return "Lightning strikes %d enemies, faster and harder." % (1 + rank)
+        "nova":
+            match rank:
+                1: return "Unlock a field that blasts the densest cluster and slows it."
+                2: return "Wider blast, longer slow. With Comet Volley rank 2, it detonates twice."
+                _: return "Wider blast, longer slow and a faster pulse."
         "hull": return "+22 maximum hull, repair 25."
         "rate": return "+13% fire rate for every weapon."
         "power": return "+15% damage for every weapon."
         "reach": return "+12% targeting range for every weapon."
     return "System upgrade."
+
+static func _count(n: int, one: String, many: String) -> String:
+    return "%d %s" % [n, one if n == 1 else many]
 
 static func next_level_xp(level: int) -> int:
     return 15 + int(pow(float(maxi(1, level)), 1.32) * 7.0)
