@@ -56,9 +56,31 @@ var showcase_active := false
 var showcase_script_index := 0
 var showcase_regular_spawns_unlocked := false
 var _showcase_elite_spawned := false
+## Perf caches (see _move_projectiles and _index_by_id); never gameplay state.
+var _id_slots: Dictionary = {}
+var _hit_ids := PackedInt32Array()
+var _hit_pos := PackedVector2Array()
+var _hit_radius := PackedFloat32Array()
+var _hit_slots: Dictionary = {}
+## Perf probe: script-side cost, smoothed. Logged as "BastionZero perf" lines
+## so `make logs` on the J8 shows where a frame goes (sim vs draw recording).
+const PERF_LOG_INTERVAL := 2.0
+var perf_sim_usec := 0.0
+var perf_draw_usec := 0.0
+var perf_ticks_per_frame := 0.0
+var _perf_ticks_this_frame := 0
+var _perf_log_timer := PERF_LOG_INTERVAL
+## The backdrop is static in reduced FX, so it lives on its own canvas item
+## that keeps its recorded commands instead of rebuilding them every frame.
+var _backdrop: Node2D
 
 func _ready() -> void:
     rng.randomize()
+    _backdrop = Node2D.new()
+    _backdrop.name = "Backdrop"
+    _backdrop.show_behind_parent = true
+    _backdrop.draw.connect(_draw_backdrop)
+    add_child(_backdrop)
     set_process(true)
     set_physics_process(true)
 
@@ -87,6 +109,7 @@ func begin_run(permanent_upgrades: Dictionary, selected_stage: int = 1, reduced_
     max_hull = float(GameCatalog.STARTING_HEALTH + int(meta.get("hull", 0)) * 16)
     hull = max_hull
     enemies.clear()
+    _id_slots.clear()
     projectiles.clear()
     effects.clear()
     _spawn_timer = 0.8
@@ -112,6 +135,8 @@ func begin_run(permanent_upgrades: Dictionary, selected_stage: int = 1, reduced_
         _tick_showcase_script()
         _spawn_timer = 0.55
     state = "running"
+    if _backdrop != null:
+        _backdrop.queue_redraw()
     stats_changed.emit(snapshot())
     queue_redraw()
 
@@ -185,10 +210,34 @@ func _process(delta: float) -> void:
     if state == "running":
         _visual_clock += delta
         queue_redraw()
+        if not low_fx and _backdrop != null:
+            _backdrop.queue_redraw()  # full FX pulses the horizon halo
+        perf_ticks_per_frame = lerpf(perf_ticks_per_frame, float(_perf_ticks_this_frame), 0.05)
+        _perf_ticks_this_frame = 0
+        _perf_log_timer -= delta
+        if _perf_log_timer <= 0.0:
+            _perf_log_timer = PERF_LOG_INTERVAL
+            print(perf_line())
+
+func perf_line() -> String:
+    # sim/draw are this script's own time; process_ms and the render counts
+    # come from the engine, so (frame time - sim - draw) is engine/GPU work.
+    return "BastionZero perf: fps=%d sim=%.2fms/tick ticks/frame=%.2f draw=%.2fms process_ms=%.2f draw_calls=%d primitives=%d enemies=%d bullets=%d fx=%d low_fx=%s showcase=%s" % [
+        Engine.get_frames_per_second(), perf_sim_usec / 1000.0, perf_ticks_per_frame,
+        perf_draw_usec / 1000.0, Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0,
+        int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),
+        int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)),
+        enemies.size(), projectiles.size(), effects.size(), low_fx, showcase_active]
 
 func _physics_process(delta: float) -> void:
     if state != "running":
         return
+    var started: int = Time.get_ticks_usec()
+    _simulate(delta)
+    perf_sim_usec = lerpf(perf_sim_usec, float(Time.get_ticks_usec() - started), 0.05)
+    _perf_ticks_this_frame += 1
+
+func _simulate(delta: float) -> void:
     elapsed += delta
     event_time = maxf(0.0, event_time - delta)
     if showcase_active:
@@ -304,6 +353,7 @@ func _spawn_enemy(kind: String, x: float = 360.0, y: float = 150.0, intro_only: 
         "xp": reward_xp, "slow": 0.0, "stun": 0.0,
         "phase": rng.randf_range(0.0, TAU), "flash": 0.0
     })
+    _id_slots[next_enemy_id] = enemies.size() - 1
     next_enemy_id += 1
 
 func _move_enemies(delta: float) -> void:
@@ -341,6 +391,7 @@ func _move_enemies(delta: float) -> void:
             if int(enemy["id"]) == focused_id:
                 focused_id = -1
             enemies.remove_at(i)
+            _id_slots.clear()
             if hull <= 0.0:
                 _finish(false)
                 return
@@ -364,33 +415,49 @@ func _process_elite_phase() -> void:
 
 
 func _move_projectiles(delta: float) -> void:
+    # Perf: the bullet-vs-enemy sweep is the hottest loop in combat (bullets x
+    # enemies every tick). It reads enemy positions from packed arrays copied
+    # once per tick instead of String-keyed Dictionary lookups per pair, and
+    # re-copies only when a hit removes an enemy.
+    _refresh_hit_cache()
     for i in range(projectiles.size() - 1, -1, -1):
         var bullet: Dictionary = projectiles[i]
         bullet["life"] = float(bullet["life"]) - delta
         var pos: Vector2 = bullet["pos"]
-        var target_idx: int = _index_by_id(int(bullet["target"]))
         var velocity: Vector2 = bullet["velocity"]
         var kind: String = String(bullet["kind"])
-        if target_idx >= 0 and (kind == "rocket" or kind == "gun"):
-            var destination: Vector2 = enemies[target_idx]["pos"]
-            var aim: Vector2 = (destination - pos).normalized()
-            var bullet_speed: float = 670.0 if kind == "rocket" else (1250.0 if int(levels["gun"]) >= 4 else 1100.0)
-            var turning: float = 7.0 if kind == "rocket" else (9.0 if int(levels["gun"]) >= 4 else 6.0)
-            velocity = velocity.lerp(aim * bullet_speed, minf(delta * turning, 1.0))
-            bullet["velocity"] = velocity
+        if kind == "rocket" or kind == "gun":
+            var target_slot: int = _hit_slots.get(int(bullet["target"]), -1)
+            if target_slot >= 0:
+                var destination: Vector2 = _hit_pos[target_slot]
+                var aim: Vector2 = (destination - pos).normalized()
+                var bullet_speed: float = 670.0 if kind == "rocket" else (1250.0 if int(levels["gun"]) >= 4 else 1100.0)
+                var turning: float = 7.0 if kind == "rocket" else (9.0 if int(levels["gun"]) >= 4 else 6.0)
+                velocity = velocity.lerp(aim * bullet_speed, minf(delta * turning, 1.0))
+                bullet["velocity"] = velocity
         var next: Vector2 = pos + velocity * delta
         bullet["pos"] = next
         var collision := -1
         var along_first := 2.0
-        for enemy in enemies:
-            var enemy_id: int = int(enemy["id"])
-            if kind == "gun" and Array(bullet.get("hit_ids", [])).has(enemy_id):
+        var touched_ids: Array = bullet["hit_ids"] if kind == "gun" else []
+        var pad: float = 10.0 if kind == "rocket" else (9.0 if kind == "gun" else 7.0)
+        # Check the swept path; choose earliest physical contact, not spawn-array order.
+        var path: Vector2 = next - pos
+        var path_length_squared: float = maxf(0.01, path.length_squared())
+        var low: Vector2 = Vector2(minf(pos.x, next.x), minf(pos.y, next.y))
+        var high: Vector2 = Vector2(maxf(pos.x, next.x), maxf(pos.y, next.y))
+        for slot in range(_hit_ids.size()):
+            var center: Vector2 = _hit_pos[slot]
+            var radius: float = _hit_radius[slot] + pad
+            # Cheap box reject before the swept-segment test.
+            if center.x + radius < low.x or center.x - radius > high.x \
+                    or center.y + radius < low.y or center.y - radius > high.y:
                 continue
-            var radius: float = float(enemy["radius"]) + (10.0 if kind == "rocket" else (9.0 if kind == "gun" else 7.0))
-            # Check the swept path; choose earliest physical contact, not spawn-array order.
-            var path: Vector2 = next - pos
-            var along: float = clampf((Vector2(enemy["pos"]) - pos).dot(path) / maxf(0.01, path.length_squared()), 0.0, 1.0)
-            if along < along_first and Vector2(enemy["pos"]).distance_to(pos.lerp(next, along)) <= radius:
+            var enemy_id: int = _hit_ids[slot]
+            if not touched_ids.is_empty() and touched_ids.has(enemy_id):
+                continue
+            var along: float = clampf((center - pos).dot(path) / path_length_squared, 0.0, 1.0)
+            if along < along_first and center.distance_squared_to(pos.lerp(next, along)) <= radius * radius:
                 collision = enemy_id
                 along_first = along
         if collision >= 0:
@@ -407,9 +474,8 @@ func _move_projectiles(delta: float) -> void:
                 projectiles.remove_at(i)
             elif kind == "gun":
                 _damage_by_id(collision, base_damage, "gun")
-                var touched: Array = bullet.get("hit_ids", [])
+                var touched: Array = bullet["hit_ids"]
                 touched.append(collision)
-                bullet["hit_ids"] = touched
                 if int(bullet["pierce_left"]) > 0:
                     # Penetration carries on in the same direction, never rehitting targets.
                     bullet["pierce_left"] = int(bullet["pierce_left"]) - 1
@@ -419,12 +485,13 @@ func _move_projectiles(delta: float) -> void:
                 elif int(bullet["ricochet_left"]) > 0:
                     var bounced_id: int = _nearest_unhit_enemy(hit_at, touched, 500.0)
                     if bounced_id >= 0:
+                        var bounce_to: Vector2 = enemies[_index_by_id(bounced_id)]["pos"]
                         bullet["ricochet_left"] = int(bullet["ricochet_left"]) - 1
                         bullet["target"] = bounced_id
                         bullet["pos"] = hit_at
-                        bullet["velocity"] = (Vector2(enemies[_index_by_id(bounced_id)]["pos"]) - hit_at).normalized() * 1100.0
+                        bullet["velocity"] = (bounce_to - hit_at).normalized() * 1100.0
                         bullet["damage"] = base_damage * 0.74
-                        _effect("beam", hit_at, Vector2(enemies[_index_by_id(bounced_id)]["pos"]), 1.0, CYAN, 0.08)
+                        _effect("beam", hit_at, bounce_to, 1.0, CYAN, 0.08)
                     else:
                         projectiles.remove_at(i)
                 else:
@@ -436,8 +503,25 @@ func _move_projectiles(delta: float) -> void:
                 hit_at, Vector2.ZERO, 12.0 if kind == "gun" else 22.0,
                 VisualProfile.GUN_TRACER if kind == "gun" else VisualProfile.COMET_IMPACT,
                 0.14 if kind == "gun" else (0.34 if showcase_active else 0.24))
+            if _hit_ids.size() != enemies.size():
+                _refresh_hit_cache()
         elif float(bullet["life"]) <= 0.0 or next.y < 110.0 or next.y > 1180.0:
             projectiles.remove_at(i)
+
+## Copies live enemy ids, positions and radii into packed arrays for the sweep.
+func _refresh_hit_cache() -> void:
+    var count: int = enemies.size()
+    _hit_ids.resize(count)
+    _hit_pos.resize(count)
+    _hit_radius.resize(count)
+    _hit_slots.clear()
+    for slot in range(count):
+        var enemy: Dictionary = enemies[slot]
+        var id: int = int(enemy["id"])
+        _hit_ids[slot] = id
+        _hit_pos[slot] = enemy["pos"]
+        _hit_radius[slot] = float(enemy["radius"])
+        _hit_slots[id] = slot
 
 func _nearest_unhit_enemy(point: Vector2, touched: Array, radius: float) -> int:
     var result := -1
@@ -660,13 +744,18 @@ func _fire_nova() -> void:
     var radius := 94.0 + int(levels["nova"]) * 29.0
     var center: Vector2 = enemies[target_idx]["pos"]
     var best_score := -1
-    for candidate in enemies:
-        var pos: Vector2 = candidate["pos"]
-        if pos.distance_to(G) > _range(850.0):
+    # Perf: the densest-cluster search is enemies x enemies; run it on packed
+    # positions with squared distances (same winner, same tie order).
+    _refresh_hit_cache()
+    var reach_squared: float = _range(850.0) * _range(850.0)
+    var radius_squared: float = radius * radius
+    for slot in range(_hit_pos.size()):
+        var pos: Vector2 = _hit_pos[slot]
+        if pos.distance_squared_to(G) > reach_squared:
             continue
         var neighbors := 0
-        for other in enemies:
-            if pos.distance_to(other["pos"]) <= radius:
+        for other in _hit_pos:
+            if pos.distance_squared_to(other) <= radius_squared:
                 neighbors += 1
         if neighbors > best_score:
             best_score = neighbors
@@ -691,11 +780,18 @@ func _blast(pos: Vector2, radius: float, amount: float, source: String, color: C
     for id in victims:
         _damage_by_id(id, amount, source)
 
+## O(1) id -> index through a cache that validates itself: a stale slot or a
+## size mismatch (an enemy removed anywhere, tests included) rebuilds it once.
 func _index_by_id(id: int) -> int:
+    var slot: int = _id_slots.get(id, -1)
+    if slot >= 0 and slot < enemies.size() and int(enemies[slot]["id"]) == id:
+        return slot
+    if slot < 0 and _id_slots.size() == enemies.size():
+        return -1
+    _id_slots.clear()
     for i in range(enemies.size()):
-        if int(enemies[i]["id"]) == id:
-            return i
-    return -1
+        _id_slots[int(enemies[i]["id"])] = i
+    return _id_slots.get(id, -1)
 
 func _damage_by_id(id: int, amount: float, source: String) -> float:
     var idx: int = _index_by_id(id)
@@ -719,6 +815,7 @@ func _damage_by_id(id: int, amount: float, source: String) -> float:
         if focused_id == id:
             focused_id = -1
         enemies.remove_at(idx)
+        _id_slots.clear()
     return actual
 
 func _check_level_up() -> void:
@@ -757,8 +854,11 @@ func _effect(kind: String, a: Vector2, b: Vector2, radius: float, color: Color, 
         effects.pop_front()
     effects.append({"kind": kind, "a": a, "b": b, "radius": radius, "color": color, "ttl": duration, "duration": duration})
 
+func _draw_backdrop() -> void:
+    ArenaBackground.draw_to(_backdrop, low_fx, _visual_clock)
+
 func _draw() -> void:
-    ArenaBackground.draw_to(self, low_fx, _visual_clock)
+    var started: int = Time.get_ticks_usec()
     var damage_fraction: float = clampf((_guardian_damage_until - _visual_clock) / 0.32, 0.0, 1.0)
     GuardianRenderer.draw_to(self, G, low_fx, _visual_clock,
         GuardianRenderer.sentinel_barrel_count(int(levels.get("gun", 1)), int(levels.get("gun_volley", 0))),
@@ -770,3 +870,4 @@ func _draw() -> void:
         WeaponEffects.draw_projectile(self, bullet, low_fx)
     for fx in effects:
         WeaponEffects.draw_effect(self, fx, low_fx, _visual_clock)
+    perf_draw_usec = lerpf(perf_draw_usec, float(Time.get_ticks_usec() - started), 0.05)
