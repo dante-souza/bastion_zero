@@ -793,6 +793,39 @@ func _run() -> void:
             "I.6 back cannot skip a pending upgrade choice")
 
     game.queue_free()
+
+    # Perf pass: caches must never change who gets hit or found.
+    var perf := Arena.new()
+    root.add_child(perf)
+    perf.begin_run({}, 1, true)
+    perf._spawn_enemy("grunt", 200.0, 400.0)
+    perf._spawn_enemy("grunt", 360.0, 400.0)
+    perf._spawn_enemy("grunt", 520.0, 400.0)
+    var first_id: int = int(perf.enemies[0]["id"])
+    var middle_id: int = int(perf.enemies[1]["id"])
+    var last_id: int = int(perf.enemies[2]["id"])
+    _expect(perf._index_by_id(last_id) == 2, "perf id cache finds a fresh spawn")
+    perf._damage_by_id(middle_id, 1.0e9, "beam")
+    _expect(perf._index_by_id(middle_id) == -1 and perf._index_by_id(last_id) == 1
+        and perf._index_by_id(first_id) == 0, "perf id cache follows a kill that shifts indices")
+    perf.enemies.clear()
+    perf._spawn_enemy("tank", 360.0, 500.0)
+    _expect(perf._index_by_id(int(perf.enemies[0]["id"])) == 0 and perf._index_by_id(first_id) == -1,
+        "perf id cache survives the enemy list being cleared from outside")
+    perf.projectiles.clear()
+    perf.projectiles.append({"pos": Vector2(360.0, 560.0), "velocity": Vector2(0.0, -6000.0),
+        "damage": 5.0, "life": 1.0, "target": -1, "kind": "gun",
+        "pierce_left": 0, "ricochet_left": 0, "hit_ids": []})
+    perf._move_projectiles(1.0 / 60.0)
+    _expect(float(perf.enemies[0]["hp"]) < float(perf.enemies[0]["max_hp"]) and perf.projectiles.is_empty(),
+        "perf swept hit test still catches a fast round crossing a target in one tick")
+    var backdrop: SectorBackdrop = perf.get_node_or_null("SectorBackdrop") as SectorBackdrop
+    _expect(backdrop != null and backdrop.show_behind_parent,
+        "backdrop draws on its own GPU layer behind combat")
+    _expect(perf.perf_line().begins_with("BastionZero perf: fps=") and perf.perf_line().contains("draw_calls="),
+        "perf probe line is logcat-ready")
+    perf.queue_free()
+
     _sector_checks()
     _neon_checks()
     print("RESULT: ", "PASS" if failures == 0 else "%d FAILURES" % failures)
