@@ -3,7 +3,9 @@ extends RefCounted
 
 ## Playable maps (sectors). Each one is its own encounter: enemy mix and
 ## formation cycle, one field rule, pacing and an original cool backdrop.
-## Stage numbers stay 1-based; 1 and 2 keep their original balance exactly.
+## Stage numbers stay 1-based. 0.9.7 appends the WARDEN and CONVOY
+## formations to the end of every cycle (hard-start openers use the first
+## three entries, so they are unchanged).
 ##
 ## Field rules:
 ##   "none"  - no extra rule.
@@ -21,7 +23,7 @@ const MAPS := [
         "brief": "The original line. Mixed waves, no field rule.",
         "seconds": 96.0, "hp": 1.0, "pace": 0.0, "speed": 1.0, "heavy": false, "hard_hp": 1.0,
         "opening": "LINE", "opening_phase": 0.13,
-        "cycle": ["LINE", "WEDGE", "PINCER", "RUSH", "ARMORED"],
+        "cycle": ["LINE", "WEDGE", "PINCER", "RUSH", "ARMORED", "WARDEN"],
         "elite_at": 0.0, "rule": "none",
         "sky_top": Color("#020509"), "sky_bottom": Color("#081e39"),
         "horizon": Color("#168BFF"), "horizon_core": Color("#67D8FF"), "shape": "crest"
@@ -31,7 +33,7 @@ const MAPS := [
         "brief": "Heavier waves and an elite with escorts at 60%.",
         "seconds": 115.0, "hp": 1.33, "pace": 0.24, "speed": 1.0, "heavy": true, "hard_hp": 1.4,
         "opening": "PINCER", "opening_phase": 0.12,
-        "cycle": ["ARMORED", "PINCER", "RUSH", "PHALANX", "WEDGE"],
+        "cycle": ["ARMORED", "PINCER", "RUSH", "PHALANX", "WEDGE", "CONVOY", "WARDEN"],
         "elite_at": 0.60, "rule": "none",
         "sky_top": Color("#020509"), "sky_bottom": Color("#081e39"),
         "horizon": Color("#168BFF"), "horizon_core": Color("#67D8FF"), "shape": "crest"
@@ -41,7 +43,7 @@ const MAPS := [
         "brief": "Fast, fragile swarms. Runner surges hit both flanks every 15s.",
         "seconds": 100.0, "hp": 0.92, "pace": 0.30, "speed": 1.10, "heavy": false, "hard_hp": 1.9,
         "opening": "RUSH", "opening_phase": 0.10,
-        "cycle": ["SWARM", "RUSH", "PINCER", "SWARM", "WEDGE"],
+        "cycle": ["SWARM", "RUSH", "PINCER", "SWARM", "WEDGE", "CONVOY"],
         "elite_at": 0.0, "rule": "surge", "rule_every": 15.0,
         "rule_label": "RUNNER SURGE",
         "sky_top": Color("#03031a"), "sky_bottom": Color("#111848"),
@@ -52,7 +54,7 @@ const MAPS := [
         "brief": "Armored columns that repair 1.5% HP per second. Burst them down.",
         "seconds": 110.0, "hp": 1.20, "pace": 0.10, "speed": 0.95, "heavy": true, "hard_hp": 1.15,
         "opening": "ARMORED", "opening_phase": 0.10,
-        "cycle": ["SIEGE", "ARMORED", "PHALANX", "LINE", "SIEGE", "WEDGE"],
+        "cycle": ["SIEGE", "ARMORED", "PHALANX", "LINE", "SIEGE", "WEDGE", "WARDEN"],
         "elite_at": 0.72, "rule": "regen", "regen": 0.015,
         "rule_label": "NANITE REPAIR",
         "sky_top": Color("#03070b"), "sky_bottom": Color("#14293b"),
@@ -63,7 +65,7 @@ const MAPS := [
         "brief": "Drop pods land squads mid-field every 13s. Watch the warm markers.",
         "seconds": 105.0, "hp": 1.12, "pace": 0.18, "speed": 1.0, "heavy": false, "hard_hp": 2.0,
         "opening": "SCATTER", "opening_phase": 0.10,
-        "cycle": ["SCATTER", "PINCER", "LINE", "RUSH", "ARMORED", "SCATTER"],
+        "cycle": ["SCATTER", "PINCER", "LINE", "RUSH", "ARMORED", "SCATTER", "WARDEN"],
         "elite_at": 0.0, "rule": "drop", "rule_every": 13.0, "drop_delay": 1.6,
         "rule_label": "DROP POD",
         "sky_top": Color("#010910"), "sky_bottom": Color("#06283c"),
@@ -74,7 +76,7 @@ const MAPS := [
         "brief": "Fog cuts weapon range by 18%. Elite at 50% behind armored waves.",
         "seconds": 120.0, "hp": 1.45, "pace": 0.32, "speed": 1.05, "heavy": true, "hard_hp": 1.3,
         "opening": "PHALANX", "opening_phase": 0.10,
-        "cycle": ["PHALANX", "SWARM", "SIEGE", "PINCER", "RUSH", "ARMORED"],
+        "cycle": ["PHALANX", "SWARM", "SIEGE", "PINCER", "RUSH", "ARMORED", "CONVOY", "WARDEN"],
         "elite_at": 0.50, "rule": "fog", "range_scale": 0.82,
         "rule_label": "NULL FOG",
         "sky_top": Color("#010205"), "sky_bottom": Color("#0b1331"),

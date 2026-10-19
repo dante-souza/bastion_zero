@@ -5,7 +5,7 @@ extends RefCounted
 ## Original patterns, deterministic given stage, time, index and RNG.
 ## Each sector picks its opening and its cycle in SectorCatalog.
 const PATTERNS := ["LINE", "PINCER", "WEDGE", "ARMORED", "RUSH", "PHALANX",
-    "SWARM", "SIEGE", "SCATTER"]
+    "SWARM", "SIEGE", "SCATTER", "WARDEN", "CONVOY"]
 
 static func pattern_for(stage: int, elapsed: float, formation_index: int) -> String:
     var phase: float = clampf(elapsed / GameCatalog.stage_duration(stage), 0.0, 1.0)
@@ -76,6 +76,26 @@ static func build(pattern: String, stage: int, phase: float, rng: RandomNumberGe
             for i in range(loose):
                 var x: float = 70.0 + (580.0 * (float(i) + rng.randf_range(0.15, 0.85)) / float(loose))
                 result.append(_slot("runner" if i % 2 else "grunt", x, rng.randf_range(40.0, 170.0)))
+        "WARDEN":
+            # A Warden trails a screen of grunts; its aura shields them all.
+            # Killing the Warden first is the point of tap-to-focus.
+            result.append(_slot("warden", center, 40.0))
+            for i in range(3):
+                result.append(_slot("grunt", center + (float(i) - 1.0) * 80.0, 150.0 - absf(float(i) - 1.0) * 24.0))
+            if heavy or phase >= 0.60:
+                result.append(_slot("tank", center, 205.0))
+        "CONVOY":
+            # Tanks escort runners. Runners ride shielded behind their tank and
+            # break loose, faster, once it dies.
+            var convoys: int = 2 if heavy or phase >= 0.45 else 1
+            for c in range(convoys):
+                var cx: float = center + (float(c) - (convoys - 1.0) * 0.5) * 210.0
+                var tank_index: int = result.size()
+                result.append(_slot("tank", cx, 170.0))
+                for side in [-1.0, 1.0]:
+                    var rider := _slot("runner", cx + side * 30.0, 118.0)
+                    rider["escort"] = tank_index
+                    result.append(rider)
     return result
 
 static func _slot(kind: String, x: float, y: float) -> Dictionary:

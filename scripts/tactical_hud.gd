@@ -4,6 +4,7 @@ extends Control
 ## Phase I.1: native J8 tactical overlay. Every field is from Arena.snapshot,
 ## which is emitted ~6.7 times per second; no new per-frame HUD render loop.
 signal pause_requested
+signal overdrive_requested
 
 const ICE := Color("#E8FCFF")
 const CYAN := Color("#5FEFFF")
@@ -31,6 +32,8 @@ var xp_bar: ProgressBar
 var xp_label: Label
 var fps_label: Label
 var slot_labels: Array[Label] = []
+var overdrive_button: Button
+var _overdrive_ready := false
 
 
 func _ready() -> void:
@@ -144,7 +147,40 @@ func _construct() -> void:
         rank.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
         card.add_child(rank)
         slot_labels.append(rank)
+    _construct_overdrive()
 
+
+## 0.9.7: Overdrive sits in the right thumb zone, above the tray and beside
+## the Guardian, below the breach line so it never covers hostiles.
+func _construct_overdrive() -> void:
+    overdrive_button = Button.new()
+    overdrive_button.name = "Overdrive"
+    overdrive_button.anchor_left = 1.0
+    overdrive_button.anchor_right = 1.0
+    overdrive_button.anchor_top = 1.0
+    overdrive_button.anchor_bottom = 1.0
+    overdrive_button.offset_left = -168.0
+    overdrive_button.offset_right = -18.0
+    overdrive_button.offset_top = HudProfile.TACTICAL_TRAY_START - 78.0
+    overdrive_button.offset_bottom = HudProfile.TACTICAL_TRAY_START - 8.0
+    overdrive_button.add_theme_font_size_override("font_size", 15)
+    overdrive_button.focus_mode = Control.FOCUS_NONE
+    overdrive_button.pressed.connect(func() -> void: overdrive_requested.emit())
+    add_child(overdrive_button)
+    _style_overdrive(false, 0.0)
+
+
+func _style_overdrive(is_ready: bool, fraction: float) -> void:
+    _overdrive_ready = is_ready
+    var tint: Color = VisualProfile.OVERDRIVE
+    overdrive_button.text = "OVERDRIVE\nREADY" if is_ready else "OVERDRIVE\n%d%%" % roundi(fraction * 100.0)
+    overdrive_button.add_theme_color_override("font_color", VisualProfile.OVERDRIVE_CORE if is_ready else MUTED)
+    overdrive_button.add_theme_color_override("font_disabled_color", MUTED)
+    var fill: Color = tint.darkened(0.55) if is_ready else Color("#0B1E2B")
+    for variant in ["normal", "hover", "pressed", "disabled"]:
+        overdrive_button.add_theme_stylebox_override(variant,
+            _style(fill.lightened(0.15) if variant == "pressed" else fill, tint if is_ready else Color("#2B5266"), 3 if is_ready else 2))
+    overdrive_button.disabled = not is_ready
 
 func apply_snapshot(info: Dictionary) -> void:
     var stage: int = int(info.get("stage", 1))
@@ -189,6 +225,14 @@ func apply_snapshot(info: Dictionary) -> void:
     xp_bar.max_value = maxi(1, int(info.get("next_xp", 1)))
     xp_bar.value = clampi(int(info.get("xp", 0)), 0, int(xp_bar.max_value))
     fps_label.text = "FPS %d" % Engine.get_frames_per_second()
+    var od_ready: bool = bool(info.get("overdrive_ready", false))
+    var od_fraction: float = float(info.get("overdrive", 0.0))
+    if od_ready != _overdrive_ready:
+        _style_overdrive(od_ready, od_fraction)
+    elif not od_ready:
+        overdrive_button.text = "OVERDRIVE\n%d%%" % roundi(od_fraction * 100.0)
+    if bool(info.get("line_on", false)):
+        hull_label.text += "   •   LINE %d%%" % roundi(float(info.get("line", 0.0)) * 100.0)
     var ranks: Dictionary = info.get("weapons", {})
     for i in range(SLOT_KEYS.size()):
         var rank: int = int(ranks.get(SLOT_KEYS[i], 0))

@@ -37,6 +37,17 @@ func _draw() -> void:
                 var angle := float(i) * TAU / 4.0 + 0.11
                 draw_arc(center, 18, angle, angle + 1.22, 8, tint, 4, true)
             draw_circle(center, 5, VisualProfile.ELITE_RIM)
+        "warden":
+            draw_polyline(MechanicVisuals.hexagon(center, 21.0), tint, 4.0, true)
+            draw_polyline(MechanicVisuals.hexagon(center, 11.0), tint, 2.0, true)
+            draw_circle(center, 3, Color("#C8FFFF"))
+        "shield":
+            draw_arc(center, 11, 0, TAU, 24, VisualProfile.GRUNT, 4, true)
+            draw_polyline(MechanicVisuals.hexagon(center, 21.0, PI / 6.0), tint, 2.5, true)
+        "overdrive":
+            draw_line(center + Vector2(-16, 20), center + Vector2(8, -6), tint, 4, true)
+            draw_arc(center + Vector2(8, -6), 14, 0, TAU, 26, tint, 3, true)
+            draw_circle(center + Vector2(8, -6), 4, VisualProfile.OVERDRIVE_CORE)
         "guardian":
             draw_circle(center, 23, Color("#092845"))
             draw_arc(center, 20, 0, TAU, 32, VisualProfile.GUARDIAN_RING_LIGHT, 5, true)

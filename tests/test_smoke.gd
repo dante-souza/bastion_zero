@@ -66,7 +66,7 @@ func _run() -> void:
     _expect(UpgradeEmblem.shape_for("gun") != UpgradeEmblem.shape_for("beam") and
         UpgradeEmblem.shape_for("gun_pierce") != UpgradeEmblem.shape_for("beam"),
         "I.6 Sentinel and Prism icons differ by shape, not only color")
-    _expect(ThreatLanguage.descriptions().size() == 12,
+    _expect(ThreatLanguage.descriptions().size() == 15,
         "I.4 threat guide has actual friendly, hostile and signaling vocabulary")
     _expect(ThreatLanguage.color_for(ThreatLanguage.KIND_BREACH, "LINE") == ThreatLanguage.CRITICAL and
         ThreatLanguage.color_for(ThreatLanguage.KIND_ELITE, "LINE") == ThreatLanguage.ELITE and
@@ -100,7 +100,7 @@ func _run() -> void:
         "slow ring keeps the color of Nova Field, its only source")
     for entry in ThreatLanguage.descriptions():
         var legend_kind: String = String(entry["id"])
-        if ["grunt", "runner", "tank", "elite"].has(legend_kind):
+        if ["grunt", "runner", "tank", "elite", "warden"].has(legend_kind):
             _expect(Color(entry["color"]) == VisualProfile.enemy_tint(legend_kind),
                 "codex enemy colors match actual combat renderer: " + legend_kind)
     _expect(HudProfile.TACTICAL_TRAY_START < -110.0 and
@@ -464,9 +464,9 @@ func _run() -> void:
     elite_battle._spawn_enemy("elite", 360.0, 195.0)
     elite_battle.enemies[0]["hp"] = float(elite_battle.enemies[0]["max_hp"]) * 0.49
     elite_battle._process_elite_phase()
-    _expect(elite_battle._elite_enraged and elite_battle.enemies.size() == 3, "elite summons escorts at half health")
+    _expect(elite_battle._elite_enraged and elite_battle.enemies.size() == 4, "elite summons two runners and a Warden at half health")
     elite_battle._process_elite_phase()
-    _expect(elite_battle.enemies.size() == 3, "elite escorts summon only once")
+    _expect(elite_battle.enemies.size() == 4, "elite escorts summon only once")
     elite_battle.queue_free()
     arena._finish(false)
     _expect(arena.state == "finished", "stage loss ends battle")
@@ -518,8 +518,8 @@ func _run() -> void:
                 "threat guide is a scrolling native menu, not a screenshot")
             if codex != null:
                 var hostile_grid: GridContainer = codex.find_child("HOSTILEGrid", true, false) as GridContainer
-                _expect(hostile_grid != null and hostile_grid.get_child_count() == 4,
-                    "codex covers the four existing hostile silhouettes")
+                _expect(hostile_grid != null and hostile_grid.get_child_count() == 5,
+                    "codex covers the five hostile silhouettes, Warden included")
                 var icon: ThreatGlyph = codex.find_child("GruntLegend", true, false).find_child(
                     "ThreatSymbol", true, false) as ThreatGlyph
                 _expect(icon != null and icon.tint == VisualProfile.GRUNT,
@@ -606,7 +606,7 @@ func _run() -> void:
         for label_node in hangar_view.find_children("*", "Label", true, false):
             if String((label_node as Label).text) == "BUILD  " + GameCatalog.GAME_VERSION:
                 build_label_visible = true
-        _expect(GameCatalog.GAME_VERSION.begins_with("0.9.6") and build_label_visible,
+        _expect(GameCatalog.GAME_VERSION.begins_with("0.9.7") and build_label_visible,
             "Hangar footer displays current Phase G patch version")
     var deploy: Button
     if hangar_view != null:
@@ -794,6 +794,7 @@ func _run() -> void:
 
     game.queue_free()
     _sector_checks()
+    _mechanic_checks()
     print("RESULT: ", "PASS" if failures == 0 else "%d FAILURES" % failures)
     quit(0 if failures == 0 else 1)
 
@@ -923,3 +924,140 @@ func _sector_checks() -> void:
         elite_count += 1 if String(enemy["kind"]) == "elite" else 0
     _expect(elite_count == 1 and fog._elite_spawned, "ELITE 02 elite arrives at half time")
     fog.queue_free()
+
+
+## 0.9.7: enemy relationships, Overdrive, Moving Line and their cards.
+func _mechanic_checks() -> void:
+    _expect(CombatDirector.PATTERNS.has("WARDEN") and CombatDirector.PATTERNS.has("CONVOY"),
+        "WARDEN and CONVOY are authored formations")
+    for stage in range(1, SectorCatalog.count() + 1):
+        var cycle: Array = SectorCatalog.value(stage, "cycle", [])
+        _expect(cycle.has("WARDEN") or cycle.has("CONVOY"),
+            "%s cycle uses a relationship formation" % GameCatalog.stage_name(stage))
+    _expect(ThreatLanguage.ARMORED_FORMATIONS.has("CONVOY"), "CONVOY warns yellow like other armored waves")
+
+    # Warden aura shields neighbours; killing the Warden drops the shield.
+    var a := Arena.new()
+    root.add_child(a)
+    a.begin_run({}, 1, true, false)
+    var warden_id: int = a._spawn_enemy("warden", 360.0, 500.0)
+    var tank_id: int = a._spawn_enemy("tank", 420.0, 520.0)
+    var far_id: int = a._spawn_enemy("tank", 120.0, 300.0)
+    a._refresh_relationships()
+    _expect(a.wardens_alive == 1 and a.shielded_count == 1, "one Warden shields only the hostile inside its aura")
+    var warden_idx: int = a._index_by_id(warden_id)
+    _expect(int(a.enemies[warden_idx]["shield"]) == 0, "a Warden is never shielded itself")
+    var shielded_hit: float = a._damage_by_id(tank_id, 10.0, "gun")
+    var open_hit: float = a._damage_by_id(far_id, 10.0, "gun")
+    _expect(is_equal_approx(shielded_hit, 10.0 * GameCatalog.SHIELD_TAKEN) and is_equal_approx(open_hit, 10.0),
+        "shielded hostiles take %d%% damage" % roundi(GameCatalog.SHIELD_TAKEN * 100.0))
+    a.levels["breaker"] = 1
+    _expect(is_equal_approx(a._damage_by_id(tank_id, 10.0, "gun"), 6.0), "Shield Breaker rank 1 lets 60% through")
+    a.levels["breaker"] = 0
+    _expect(is_equal_approx(a._damage_by_id(tank_id, 10.0, "overdrive"), 10.0), "Overdrive ignores shields")
+    a._damage_by_id(warden_id, 10000.0, "gun")
+    a._refresh_relationships()
+    _expect(a.wardens_alive == 0 and a.shielded_count == 0, "killing the Warden drops every shield")
+    a.queue_free()
+
+    # Convoy: runners ride their tank, shielded, then break loose faster.
+    var c := Arena.new()
+    root.add_child(c)
+    c.begin_run({}, 2, true, false)
+    var rng := RandomNumberGenerator.new()
+    rng.seed = 4
+    var convoy: Array[Dictionary] = CombatDirector.build("CONVOY", 2, 0.5, rng)
+    var riders := 0
+    for slot in convoy:
+        riders += 1 if int(slot.get("escort", -1)) >= 0 else 0
+    _expect(riders == 4, "heavy CONVOY has two tanks escorting two runners each")
+    var escort: int = c._spawn_enemy("tank", 360.0, 300.0)
+    var rider: int = c._spawn_enemy("runner", 390.0, 250.0)
+    c.attach_escort(rider, escort)
+    c._move_enemies(0.5)
+    c._refresh_relationships()
+    var r_idx: int = c._index_by_id(rider)
+    var t_idx: int = c._index_by_id(escort)
+    _expect(Vector2(c.enemies[r_idx]["pos"]) - Vector2(c.enemies[t_idx]["pos"]) == Vector2(30.0, -50.0),
+        "escorted runner keeps formation behind its tank")
+    _expect(int(c.enemies[r_idx]["shield"]) == 2, "escorted runner is shielded by its tank")
+    var base_speed: float = float(c.enemies[r_idx]["speed"])
+    c._damage_by_id(escort, 100000.0, "volley")
+    c._move_enemies(0.1)
+    c._refresh_relationships()
+    r_idx = c._index_by_id(rider)
+    _expect(int(c.enemies[r_idx]["escort"]) == -1 and int(c.enemies[r_idx]["shield"]) == 0 and
+        float(c.enemies[r_idx]["speed"]) > base_speed * 1.3, "runner breaks loose, unshielded and faster")
+    c.queue_free()
+
+    # Overdrive: charges from kills, hits the focus, boosts cadence.
+    var o := Arena.new()
+    root.add_child(o)
+    o.begin_run({}, 1, true, false)
+    _expect(not o.overdrive_ready() and not o.trigger_overdrive(), "Overdrive starts empty and cannot fire")
+    for i in range(int(GameCatalog.OVERDRIVE_FULL)):
+        var id: int = o._spawn_enemy("grunt", 80.0 + (i % 40) * 14.0, 300.0)
+        o._damage_by_id(id, 1000.0, "gun")
+    _expect(o.overdrive_ready() and bool(o.snapshot()["overdrive_ready"]), "one grunt kill per charge point fills Overdrive")
+    var target: int = o._spawn_enemy("elite", 600.0, 400.0)
+    var bystander: int = o._spawn_enemy("elite", 120.0, 400.0)
+    o.focused_id = target
+    var before: float = float(o.enemies[o._index_by_id(target)]["hp"])
+    _expect(o.trigger_overdrive(), "a full Overdrive fires")
+    _expect(float(o.enemies[o._index_by_id(target)]["hp"]) < before - 100.0 and
+        is_equal_approx(float(o.enemies[o._index_by_id(bystander)]["hp"]),
+            float(o.enemies[o._index_by_id(bystander)]["max_hp"])),
+        "Overdrive strikes the focused target, not the far side")
+    _expect(o.overdrive_charge == 0.0 and o.overdrive_boost > 0.0 and o.overdrives_fired == 1,
+        "firing spends the charge and starts the fire-rate surge")
+    o.queue_free()
+
+    # Target Uplink: the focused target takes more damage; rank 3 re-locks onto a Warden.
+    var u := Arena.new()
+    root.add_child(u)
+    u.begin_run({}, 1, true, false)
+    var focus: int = u._spawn_enemy("tank", 300.0, 400.0)
+    var next_warden: int = u._spawn_enemy("warden", 500.0, 300.0)
+    u.focused_id = focus
+    u.levels["uplink"] = 1
+    _expect(is_equal_approx(u._damage_by_id(focus, 10.0, "gun"), 12.0), "Target Uplink adds 20% on the focus")
+    u.levels["uplink"] = 3
+    u._damage_by_id(focus, 100000.0, "gun")
+    _expect(u.focused_id == next_warden, "Uplink rank 3 jumps the lock to the next Warden")
+    u.queue_free()
+
+    # Moving Line prototype.
+    var off := Arena.new()
+    root.add_child(off)
+    off.begin_run({}, 1, true, false)
+    _expect(not off.line_enabled and not GameCatalog.upgrade_available(off.levels, "line_anchor"),
+        "the Line is off by default and Line Anchor is not offered")
+    off.queue_free()
+    var l := Arena.new()
+    root.add_child(l)
+    l.begin_run({}, 1, true, false, true)
+    _expect(l.line_enabled and GameCatalog.upgrade_available(l.levels, "line_anchor"),
+        "Line on: Line Anchor joins the card pool")
+    for i in range(6):
+        l._spawn_enemy("grunt", 100.0 + i * 90.0, l.line_y() + 40.0)
+    var start_line: float = l.line
+    l._tick_line(1.0)
+    _expect(l.line < start_line, "hostiles past the line push it toward the core")
+    var low: float = l.line
+    l._damage_by_id(int(l.enemies[0]["id"]), 1000.0, "gun")
+    _expect(l.line > low, "kills push the line back up")
+    l.line = 0.0
+    var hull_before: float = l.hull
+    l._tick_line(1.0)
+    _expect(l.hull < hull_before and l.combat_event.contains("CORE"), "a line at the core drains hull")
+    l.line = 0.9
+    _expect(is_equal_approx(l._range(100.0), 100.0), "a high line keeps full range")
+    l.line = 0.2
+    _expect(is_equal_approx(l._range(100.0), 85.0), "a low line cuts range")
+    l.queue_free()
+
+    for key in ["od_capacitor", "od_yield", "breaker", "uplink", "line_anchor"]:
+        _expect(GameCatalog.upgrade_cap(key) == 3 and GameCatalog.upgrade_name(key) != key.to_upper(),
+            "card %s has a name and three ranks" % key)
+    _expect(SaveData.validated({"moving_line": true})["moving_line"] == GameCatalog.PLAYTEST_TOOLS and
+        SaveData.defaults()["moving_line"] == false, "Moving Line setting saves and defaults off")

@@ -87,6 +87,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func _build_hud() -> void:
     hud = TacticalHud.new()
     hud.pause_requested.connect(_pause)
+    hud.overdrive_requested.connect(func() -> void: arena.trigger_overdrive())
     add_child(hud)
     hud.hide()
 
@@ -169,11 +170,24 @@ func _settings() -> void:
     fx.name = "SettingsFx"
     fx.pressed.connect(_settings_toggle_fx)
     content.add_child(fx)
+    if GameCatalog.PLAYTEST_TOOLS:
+        var line_on: bool = bool(record.get("moving_line", false))
+        var line_toggle := _button("MOVING LINE: " + ("ON" if line_on else "OFF") + "  •  PROTOTYPE  •  CHANGE", line_on)
+        line_toggle.name = "SettingsMovingLine"
+        line_toggle.pressed.connect(_settings_toggle_line)
+        content.add_child(line_toggle)
+        content.add_child(_label("Hostiles past the line push it down, kills push it up. At the core it drains hull. High line: faster fire and more XP. Low line: shorter range.", 15, PALE, true))
     content.add_child(_label("OFFLINE  •  NO ADS  •  NO PURCHASES", 17, GREEN, true))
     var back := _button("RETURN TO TITLE", false)
     back.name = "SettingsBack"
     back.pressed.connect(_title)
     content.add_child(back)
+
+
+func _settings_toggle_line() -> void:
+    record["moving_line"] = not bool(record.get("moving_line", false))
+    SaveData.write_game(record)
+    _settings()
 
 
 func _settings_toggle_fx() -> void:
@@ -213,7 +227,7 @@ func _deploy(selected_stage: int = 1) -> void:
     _clear()
     hud.show()
     arena.begin_run(record["meta"], current_stage, bool(record["low_fx"]),
-        bool(record.get("hard_start", false)))
+        bool(record.get("hard_start", false)), bool(record.get("moving_line", false)))
 
 func _pause() -> void:
     if arena.state != "running":
@@ -282,6 +296,8 @@ func _results(victory: bool, stats: Dictionary) -> void:
     for key in GameCatalog.WEAPON_ORDER:
         var dmg: float = float(stats["damage"].get(key, 0.0))
         content.add_child(_label("%s: %d" % [GameCatalog.upgrade_name(key), roundi(dmg)], 18, PALE, true))
+    content.add_child(_label("OVERDRIVE: %d  •  FIRED %d" % [
+        roundi(float(stats["damage"].get("overdrive", 0.0))), int(stats.get("overdrives", 0))], 18, PALE, true))
     if victory and current_stage < GameCatalog.TOTAL_STAGES:
         content.add_child(_label("NEXT STAGE UNLOCKED!", 21, GREEN, true))
         var next := _button("DEPLOY NEXT STAGE", true)
