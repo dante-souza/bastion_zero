@@ -24,7 +24,10 @@ make profile        # shows the branch profile and APK path (dist/<branch-slug>/
 make fresh          # latest successful APK of THIS branch: download, verify, reinstall, launch
 make doctor
 make screenshot
-make logs           # includes the "BastionZero perf:" lines
+make logs           # includes the "BastionZero perf:" lines (last 350 log lines only)
+make perf-clean     # clear the phone log before a perf run
+make perf           # every "BastionZero perf:" line since the last perf-clean
+make enemies        # only perf lines with enemies >= COUNT (default 30)
 ```
 
 New branches need no Make target, preset or workflow edit. `PROFILE=<branch>`

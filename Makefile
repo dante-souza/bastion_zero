@@ -7,11 +7,12 @@ PROFILE ?= auto
 APK ?= auto
 RUN_ID ?= latest
 REPO ?= dante-souza/bastion_zero
+COUNT ?= 30
 GODOT ?= godot
 J8 = $(PYTHON) scripts/android_j8.py --device "$(DEVICE)" --profile "$(PROFILE)" --apk "$(APK)"
 
 .DEFAULT_GOAL := help
-.PHONY: help profile doctor installed version apk install uninstall reinstall run reinstall-run deploy fresh logs screenshot sync git-status check-tools check sim-sectors phase-h-art phase-h-art-check
+.PHONY: help profile doctor installed version apk install uninstall reinstall run reinstall-run deploy fresh logs perf perf-clean enemies screenshot sync git-status check-tools check sim-sectors phase-h-art phase-h-art-check
 
 help:
 	@$(J8) help
@@ -51,6 +52,20 @@ fresh:
 
 logs:
 	@$(J8) logs
+
+# Perf probe lines straight from logcat (PowerShell). Clear before a run,
+# read after it; `make enemies COUNT=30` keeps only lines with that many enemies.
+perf-clean: SHELL := powershell.exe
+perf-clean:
+	@adb -s $(DEVICE) logcat -c
+
+perf: SHELL := powershell.exe
+perf:
+	@adb -s $(DEVICE) logcat -d -s godot | Select-String "BastionZero perf"
+
+enemies: SHELL := powershell.exe
+enemies:
+	@adb -s $(DEVICE) logcat -d -s godot | Select-String "BastionZero perf" | ForEach-Object { if ($$_ -match 'enemies\s*[:=]\s*(?<count>\d+)' -and [int]$$Matches.count -ge $(COUNT)) { $$_ } }
 
 screenshot:
 	@$(J8) screenshot
