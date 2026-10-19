@@ -11,7 +11,7 @@ GODOT ?= godot
 J8 = $(PYTHON) scripts/android_j8.py --device "$(DEVICE)" --profile "$(PROFILE)" --apk "$(APK)"
 
 .DEFAULT_GOAL := help
-.PHONY: help profile doctor installed version apk install uninstall reinstall run reinstall-run deploy fresh logs screenshot sync git-status check-tools check phase-h-art phase-h-art-check
+.PHONY: help profile doctor installed version apk install uninstall reinstall run reinstall-run deploy fresh logs screenshot sync git-status check-tools check sim-sectors phase-h-art phase-h-art-check
 
 help:
 	@$(J8) help
@@ -104,3 +104,7 @@ check: check-tools
 	@$(GODOT) --headless --path . --editor --quit --quit-after 240
 	@$(GODOT) --headless --path . --script res://tests/test_smoke.gd
 	@$(GODOT) --headless --path . --quit-after 10
+
+# Headless balance probe: a bot plays every sector at LV1 and HARD START.
+sim-sectors:
+	@$(GODOT) --headless --path . --script res://tests/sim_sectors.gd

@@ -128,3 +128,16 @@ static func _closed(vertices: PackedVector2Array) -> PackedVector2Array:
     var result: PackedVector2Array = vertices.duplicate()
     result.append(vertices[0])
     return result
+
+
+## Drop pod telegraph (AMBUSH sector): a warm ring that closes in on the
+## landing point as the pod falls. Warm, because it marks a hostile arrival.
+static func draw_drop_marker(canvas: CanvasItem, drop: Dictionary, visual_time: float) -> void:
+    var at: Vector2 = drop["pos"]
+    var left: float = clampf(float(drop["t"]) / maxf(0.01, float(drop["duration"])), 0.0, 1.0)
+    var warn: Color = ThreatLanguage.WARNING
+    var blink: float = 0.55 + 0.45 * sin(visual_time * 14.0)
+    canvas.draw_arc(at, 30.0 + 60.0 * left, 0.0, TAU, 28, Color(warn.r, warn.g, warn.b, 0.75 * blink), 3.0, true)
+    canvas.draw_arc(at, 26.0, 0.0, TAU, 20, Color(warn.r, warn.g, warn.b, 0.35), 2.0, true)
+    canvas.draw_line(at + Vector2(-12.0, 0.0), at + Vector2(12.0, 0.0), warn, 2.0, true)
+    canvas.draw_line(at + Vector2(0.0, -12.0), at + Vector2(0.0, 12.0), warn, 2.0, true)

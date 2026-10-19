@@ -2,9 +2,12 @@ class_name GameCatalog
 extends RefCounted
 
 ## Bastion Zero's original combat balance; no third-party game resources.
-const GAME_VERSION := "0.9.5-playtest-fixes"
+const GAME_VERSION := "0.9.6-sectors"
 ## Phase F: temporary stress showcase on NORMAL 01 only. Not production balance.
 const STAGE_ONE_SHOWCASE := true
+## Playtest builds open every sector and offer the HARD START toggle
+## (LV12 loadout + pressure scaling on any map). Turn off for release.
+const PLAYTEST_TOOLS := true
 const SHOWCASE_START_LEVEL := 12
 const SHOWCASE_LOADOUT := {
     "gun": 4, "beam": 2, "volley": 2, "arc": 2, "nova": 2,
@@ -18,6 +21,12 @@ const SHOWCASE_ELITE_HP_SCALE := 2.0
 const SHOWCASE_SPEED_SCALE := 1.18
 const SHOWCASE_DAMAGE_SCALE := 1.35
 const SHOWCASE_FORMATION_INTERVAL := 1.20
+## HARD START keeps escalating: hostile HP grows by up to +HARD_HP_RAMP
+## and formations arrive faster as the stage clock runs out.
+const HARD_HP_RAMP := 2.0
+const HARD_INTERVAL_END := 0.65
+## Less XP per kill so a hard run cannot level its way out of the pressure.
+const HARD_XP_SCALE := 0.7
 const SHOWCASE_SCRIPT := [
     {
         "at": 0.0, "label": "PRESSURE • THREE FRONTS",
@@ -111,8 +120,8 @@ const SHOWCASE_SCRIPT := [
 const WORLD_SIZE := Vector2(720.0, 1280.0)
 const GUARDIAN := Vector2(360.0, 1080.0)
 const BREACH_Y := 1040.0
-const TOTAL_STAGES := 2
-const STAGE_SECONDS := [96.0, 115.0]
+## Must match SectorCatalog.MAPS.size() (checked by tests/test_smoke.gd).
+const TOTAL_STAGES := 6
 const STARTING_HEALTH := 100
 const UPGRADE_CAP := 4
 const META_CAP := 8
@@ -160,10 +169,10 @@ static func damage_factor(enemy_kind: String, weapon: String) -> float:
     return 1.0
 
 static func stage_name(stage: int) -> String:
-    return "NORMAL 01" if stage <= 1 else "ELITE 01"
+    return String(SectorCatalog.value(stage, "code", "NORMAL 01"))
 
 static func stage_duration(stage: int) -> float:
-    return STAGE_SECONDS[clampi(stage, 1, TOTAL_STAGES) - 1]
+    return float(SectorCatalog.value(stage, "seconds", 96.0))
 
 static func upgrade_name(key: String) -> String:
     match key:

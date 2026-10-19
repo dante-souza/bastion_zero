@@ -18,26 +18,44 @@ const SPECKS := [
     Vector2(224, 744), Vector2(544, 792), Vector2(112, 870)
 ]
 
-static func horizon_y(x: float) -> float:
+## Sector backdrops reshape the horizon; every shape keeps its lowest point
+## near the Guardian so breach logic (a straight BREACH_Y) is unchanged.
+static func horizon_y(x: float, shape: String = "crest") -> float:
     var unit_x: float = clampf(2.0 * x / GameCatalog.WORLD_SIZE.x - 1.0, -1.0, 1.0)
+    var cx: float = clampf(x, 0.0, GameCatalog.WORLD_SIZE.x)
+    match shape:
+        "twin":
+            var left_hump: float = exp(-pow((cx - 190.0) / 135.0, 2.0))
+            var right_hump: float = exp(-pow((cx - 530.0) / 135.0, 2.0))
+            return 1118.0 - 112.0 * maxf(left_hump, right_hump)
+        "shelf":
+            return 1032.0 + 88.0 * smoothstep(0.72, 1.0, absf(unit_x))
+        "jagged":
+            var saw: float = absf(fposmod(cx, 60.0) - 30.0) / 30.0
+            return lerpf(CREST_Y + 8.0, EDGE_Y, unit_x * unit_x) - 16.0 * saw
     return lerpf(CREST_Y, EDGE_Y, unit_x * unit_x)
 
-static func horizon_points() -> PackedVector2Array:
+static func horizon_points(shape: String = "crest") -> PackedVector2Array:
     var path := PackedVector2Array()
     for i in range(SEGMENTS + 1):
         var x: float = GameCatalog.WORLD_SIZE.x * float(i) / float(SEGMENTS)
-        path.append(Vector2(x, horizon_y(x)))
+        path.append(Vector2(x, horizon_y(x, shape)))
     return path
 
-static func draw_to(canvas: CanvasItem, reduced_fx: bool, visual_time: float) -> void:
+static func draw_to(canvas: CanvasItem, reduced_fx: bool, visual_time: float, stage: int = 1) -> void:
+    var sector: Dictionary = SectorCatalog.get_map(stage)
+    var top: Color = sector.get("sky_top", VisualProfile.BACKDROP)
+    var bottom: Color = sector.get("sky_bottom", VisualProfile.BACKDROP_BOTTOM)
+    var line: Color = sector.get("horizon", VisualProfile.HORIZON_BLUE)
+    var core: Color = sector.get("horizon_core", VisualProfile.HORIZON_CORE)
+    var shape: String = String(sector.get("shape", "crest"))
     # Four-vertex interpolated colors: one smooth vertical gradient, not bands.
     var w: float = GameCatalog.WORLD_SIZE.x
     var h: float = GameCatalog.WORLD_SIZE.y
     canvas.draw_polygon(
         PackedVector2Array([Vector2(0, 0), Vector2(w, 0), Vector2(w, h), Vector2(0, h)]),
         PackedColorArray([
-            VisualProfile.BACKDROP, VisualProfile.BACKDROP,
-            VisualProfile.BACKDROP_BOTTOM, VisualProfile.BACKDROP_BOTTOM
+            top, top, bottom, bottom
         ])
     )
 
@@ -62,15 +80,33 @@ static func draw_to(canvas: CanvasItem, reduced_fx: bool, visual_time: float) ->
         for speck in SPECKS:
             canvas.draw_circle(speck, 1.25, VisualProfile.BACKGROUND_SPECK)
 
-    var curve := horizon_points()
+    if SectorCatalog.rule(stage) == "fog":
+        # Null fog: three soft bands over the upper field, cheap on J8.
+        for band in range(3):
+            var y0: float = 170.0 + band * 120.0 + sin(visual_time * 0.35 + band) * 18.0
+            var mist := Color(0.62, 0.70, 0.85, 0.08)
+            var clear := Color(mist.r, mist.g, mist.b, 0.0)
+            # Vertex-colored quads: soft fade in and out, no hard band edges.
+            canvas.draw_polygon(PackedVector2Array([Vector2(0, y0), Vector2(w, y0),
+                Vector2(w, y0 + 45.0), Vector2(0, y0 + 45.0)]), PackedColorArray([clear, clear, mist, mist]))
+            canvas.draw_polygon(PackedVector2Array([Vector2(0, y0 + 45.0), Vector2(w, y0 + 45.0),
+                Vector2(w, y0 + 90.0), Vector2(0, y0 + 90.0)]), PackedColorArray([mist, mist, clear, clear]))
+    if shape == "shelf":
+        # Iron Shelf struts: faint vertical ribs below the flat horizon.
+        var rib := Color(line.r, line.g, line.b, 0.10)
+        for i in range(1, 8):
+            var rx: float = w * float(i) / 8.0
+            canvas.draw_line(Vector2(rx, horizon_y(rx, shape) + 6.0), Vector2(rx, h), rib, 2.0)
+
+    var curve := horizon_points(shape)
     if not reduced_fx:
         # Translucent strokes mimic a modest halo without a costly bloom pass.
-        var halo := VisualProfile.HORIZON_HALO_OUTER
+        var halo := Color(line.r, line.g, line.b, VisualProfile.HORIZON_HALO_OUTER.a)
         halo.a *= 0.92 + 0.08 * sin(visual_time * 1.4)
         canvas.draw_polyline(curve, halo, 22.0, true)
-        canvas.draw_polyline(curve, VisualProfile.HORIZON_HALO_INNER, 9.0, true)
-    canvas.draw_polyline(curve, VisualProfile.HORIZON_BLUE, 3.0, true)
-    canvas.draw_polyline(curve, VisualProfile.HORIZON_CORE, 1.0, true)
+        canvas.draw_polyline(curve, Color(line.r, line.g, line.b, VisualProfile.HORIZON_HALO_INNER.a), 9.0, true)
+    canvas.draw_polyline(curve, line, 3.0, true)
+    canvas.draw_polyline(curve, core, 1.0, true)
 
     # The simulation's straight breach threshold still exists at BREACH_Y.
     # Tiny boundary ticks signal its position without a red screen-wide bar.

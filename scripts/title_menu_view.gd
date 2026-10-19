@@ -79,7 +79,7 @@ func _build() -> void:
     deploy.name = "DeployPrimary"
     deploy.pressed.connect(func() -> void: deploy_requested.emit(1))
     stack.add_child(deploy)
-    var mission_line := "NORMAL 01  •  PRESSURE SHOWCASE" if GameCatalog.STAGE_ONE_SHOWCASE else "NORMAL 01  •  FIRST DEFENSE"
+    var mission_line := "NORMAL 01  •  HARD START LV12" if bool(record.get("hard_start", false)) else "NORMAL 01  •  FIRST DEFENSE"
     stack.add_child(_text(mission_line, 14, MUTED, true))
 
     var nav := HBoxContainer.new()
