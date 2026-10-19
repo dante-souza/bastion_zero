@@ -37,6 +37,9 @@ const TANK_SHIELD := Color("#FFF19B")
 const ELITE := Color("#FF3B52")
 const ELITE_RIM := Color("#FFC2CB")
 const GRUNT := Color("#FF5FA8")
+## 0.9.7: Wardens are pale salmon hexagons; their aura and the shield mark on
+## the hostiles they protect use the same warm hue. Escort shields use TANK.
+const WARDEN := Color("#FFA07A")
 const ENEMY_INTERIOR := Color("#06131B")
 const ENEMY_CENTER := Color("#C8FFFF")
 const ENEMY_ENRAGED := Color("#FFE9EC")
@@ -57,16 +60,21 @@ const COMET_HOT := Color("#FFFFFF")
 const COMET_IMPACT := Color("#BDE8FF")
 const DAMAGE_NUMBER := Color("#EAF6FF")
 const XP_GREEN := Color("#6BBD98")
+## Overdrive strike and the Moving Line are the player's: cool, never warm.
+const OVERDRIVE := Color("#7FD8FF")
+const OVERDRIVE_CORE := Color("#F2FCFF")
+const LINE := Color("#4FB6FF")
 
 ## Colors the player owns, and colors that mean "this hurts you".
 ## tests/test_smoke.gd keeps the two sets visually apart.
 const FRIENDLY_SET := [GUN_TRACER, PRISM_BEAM, ARC_BOLT, NOVA_FIELD,
-    COMET_BODY, COMET_IMPACT, TARGET_LOCK, DAMAGE_NUMBER]
-const HOSTILE_SET := [GRUNT, RUNNER, TANK, ELITE]
+    COMET_BODY, COMET_IMPACT, TARGET_LOCK, DAMAGE_NUMBER, OVERDRIVE, LINE]
+const HOSTILE_SET := [GRUNT, RUNNER, TANK, ELITE, WARDEN]
 
 static func enemy_tint(kind: String) -> Color:
     match kind:
         "runner": return RUNNER
         "tank": return TANK
         "elite": return ELITE
+        "warden": return WARDEN
     return GRUNT

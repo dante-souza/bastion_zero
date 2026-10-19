@@ -21,6 +21,11 @@ const SHAPES := {
     "rate": "chevrons",
     "power": "amplify",
     "reach": "range",
+    "od_capacitor": "capacitor",
+    "od_yield": "lance",
+    "breaker": "broken_hex",
+    "uplink": "crosshair",
+    "line_anchor": "anchor_line",
 }
 
 
@@ -100,5 +105,30 @@ func _draw() -> void:
             for r in [7.0, 13.0, 19.0]:
                 draw_arc(m + Vector2(0, 10), r, -PI * 0.85, -PI * 0.15, 14, tint, 2.6, true)
             draw_circle(m + Vector2(0, 10), 3.0, tint)
+        "capacitor":
+            # A battery cell filling up: Overdrive charge.
+            draw_rect(Rect2(m + Vector2(-9, -15), Vector2(18, 30)), tint, false, 3.0, true)
+            draw_rect(Rect2(m + Vector2(-4, -19), Vector2(8, 4)), tint, true)
+            for i in range(3):
+                draw_rect(Rect2(m + Vector2(-5, 6 - i * 8), Vector2(10, 5)), tint, true)
+        "lance":
+            draw_line(m + Vector2(-14, 16), m + Vector2(10, -10), tint, 4.0, true)
+            draw_arc(m + Vector2(10, -10), 8.0, 0.0, TAU, 18, tint, 3.0, true)
+            draw_circle(m + Vector2(10, -10), 3.0, tint)
+        "broken_hex":
+            var hex := MechanicVisuals.hexagon(m, 17.0, PI / 6.0)
+            draw_polyline(hex.slice(0, 3), tint, 3.0, true)
+            draw_polyline(hex.slice(4, 7), tint, 3.0, true)
+            draw_line(m + Vector2(-6, -12), m + Vector2(4, 0), tint, 3.0, true)
+            draw_line(m + Vector2(4, 0), m + Vector2(-3, 12), tint, 3.0, true)
+        "crosshair":
+            draw_arc(m, 13.0, 0.0, TAU, 24, tint, 3.0, true)
+            for dir in [Vector2.UP, Vector2.DOWN, Vector2.LEFT, Vector2.RIGHT]:
+                draw_line(m + dir * 8.0, m + dir * 20.0, tint, 3.0, true)
+            draw_circle(m, 3.0, tint)
+        "anchor_line":
+            draw_line(m + Vector2(-20, -4), m + Vector2(20, -4), tint, 4.0, true)
+            draw_line(m + Vector2(0, 16), m + Vector2(0, 2), tint, 3.0, true)
+            draw_polyline(PackedVector2Array([m + Vector2(-7, 9), m + Vector2(0, 2), m + Vector2(7, 9)]), tint, 3.0, true)
         _:
             draw_circle(m, 6.0, tint)

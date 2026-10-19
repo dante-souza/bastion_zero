@@ -31,4 +31,9 @@ func _draw() -> void:
         var kind: String = String(enemy["kind"])
         if cache.has_sprite(kind, reduced):
             cache.stamp(self, kind, enemy["pos"], reduced)
+        var shield: int = int(enemy.get("shield", 0))
+        if shield > 0:
+            var mark: String = MechanicVisuals.shield_key(kind, shield)
+            if cache.has_sprite(mark, reduced):
+                cache.stamp(self, mark, enemy["pos"], reduced)
     perf_usec = lerpf(perf_usec, float(Time.get_ticks_usec() - started), 0.05)

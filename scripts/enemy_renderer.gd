@@ -8,6 +8,7 @@ const GRUNT_VISUAL_MIN := 19.0
 const RUNNER_VISUAL_MIN := 19.0
 const TANK_VISUAL_MIN := 27.0
 const ELITE_VISUAL_MIN := 48.0
+const WARDEN_VISUAL_MIN := 21.0
 const HEALTH_BAR_WIDTH := 5.0
 
 static func visual_radius(kind: String, collision_radius: float) -> float:
@@ -15,6 +16,7 @@ static func visual_radius(kind: String, collision_radius: float) -> float:
         "runner": return maxf(RUNNER_VISUAL_MIN, collision_radius)
         "tank": return maxf(TANK_VISUAL_MIN, collision_radius)
         "elite": return maxf(ELITE_VISUAL_MIN, collision_radius)
+        "warden": return maxf(WARDEN_VISUAL_MIN, collision_radius)
     return maxf(GRUNT_VISUAL_MIN, collision_radius)
 
 
@@ -22,7 +24,8 @@ static func show_health(kind: String, fraction: float, focused: bool) -> bool:
     # Phase I.6: bars only where HP is a decision (multi-hit Tanks and Elites)
     # or on the target the player picked. Damaged swarm units no longer each
     # grow a bar, which put an ivory dash over nearly every enemy mid-fight.
-    return kind == "tank" or kind == "elite" or focused
+    # Wardens too: killing one first is the decision their bar informs.
+    return kind == "tank" or kind == "elite" or kind == "warden" or focused
 
 
 static func triangle_vertices(at: Vector2, size: float) -> PackedVector2Array:

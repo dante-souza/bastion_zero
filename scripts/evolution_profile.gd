@@ -16,6 +16,12 @@ static func accent(kind: String) -> Color:
             return VisualProfile.NOVA_FIELD
         "hull":
             return Color("#CFF4FF")
+        "od_capacitor", "od_yield":
+            return VisualProfile.OVERDRIVE
+        "breaker", "uplink":
+            return VisualProfile.TARGET_LOCK
+        "line_anchor":
+            return VisualProfile.LINE
         _:
             return Color("#92CDFF")
 
@@ -35,6 +41,11 @@ static func tactical_role(kind: String) -> String:
         "rate": return "ALL-WEAPON CADENCE"
         "power": return "ALL-WEAPON DAMAGE"
         "reach": return "ALL-WEAPON RANGE"
+        "od_capacitor": return "OVERDRIVE CHARGE"
+        "od_yield": return "OVERDRIVE STRIKE"
+        "breaker": return "ANTI-SHIELD"
+        "uplink": return "FOCUS FIRE"
+        "line_anchor": return "LINE CONTROL"
     return "SYSTEM EVOLUTION"
 
 

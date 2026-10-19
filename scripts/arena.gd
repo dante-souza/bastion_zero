@@ -62,6 +62,16 @@ var _hard_formations_start := GameCatalog.SHOWCASE_FORMATIONS_START
 var _rule_timer := 0.0
 var _range_scale := 1.0
 var pending_drops: Array[Dictionary] = []
+## 0.9.7 mechanics: enemy relationships, Overdrive and the Moving Line prototype.
+var overdrive_charge := 0.0
+var overdrive_boost := 0.0
+var overdrives_fired := 0
+var line_enabled := false
+var line := GameCatalog.LINE_START
+var _line_core_warned := false
+var wardens_alive := 0
+var shielded_count := 0
+var _pending_shocks: Array[Vector2] = []
 ## Perf caches (see _move_projectiles and _index_by_id); never gameplay state.
 var _id_slots: Dictionary = {}
 var _hit_ids := PackedInt32Array()
@@ -97,6 +107,7 @@ func _ready() -> void:
     glow = NeonGlowLayer.new()
     glow.arena = self
     add_child(glow)
+    MechanicVisuals.register_sprites()
     sprite_cache = EnemySpriteCache.new()
     add_child(sprite_cache)
     bodies = EnemyBodyLayer.new()
@@ -105,7 +116,7 @@ func _ready() -> void:
     set_process(true)
     set_physics_process(true)
 
-func begin_run(permanent_upgrades: Dictionary, selected_stage: int = 1, reduced_fx: bool = true, showcase: bool = false) -> void:
+func begin_run(permanent_upgrades: Dictionary, selected_stage: int = 1, reduced_fx: bool = true, showcase: bool = false, moving_line: bool = false) -> void:
     meta = permanent_upgrades.duplicate(true)
     stage = clampi(selected_stage, 1, GameCatalog.TOTAL_STAGES)
     low_fx = reduced_fx
@@ -121,9 +132,22 @@ func begin_run(permanent_upgrades: Dictionary, selected_stage: int = 1, reduced_
     levels = {
         "gun": 1, "beam": 0, "volley": 0, "arc": 0, "nova": 0,
         "gun_payload": 0, "gun_pierce": 0, "gun_ricochet": 0, "gun_volley": 0,
-        "hull": 0, "rate": 0, "power": 0, "reach": 0
+        "hull": 0, "rate": 0, "power": 0, "reach": 0,
+        "od_capacitor": 0, "od_yield": 0, "breaker": 0, "uplink": 0
     }
-    weapon_damage = {"gun": 0.0, "beam": 0.0, "volley": 0.0, "arc": 0.0, "nova": 0.0}
+    line_enabled = moving_line
+    line = GameCatalog.LINE_START
+    _line_core_warned = false
+    if line_enabled:
+        # Line Anchor is only offered while the Line exists.
+        levels["line_anchor"] = 0
+    overdrive_charge = 0.0
+    overdrive_boost = 0.0
+    overdrives_fired = 0
+    wardens_alive = 0
+    shielded_count = 0
+    _pending_shocks.clear()
+    weapon_damage = {"gun": 0.0, "beam": 0.0, "volley": 0.0, "arc": 0.0, "nova": 0.0, "overdrive": 0.0}
     elapsed = 0.0
     level = 1
     if showcase_active:
@@ -193,6 +217,10 @@ func snapshot() -> Dictionary:
         "tag": SectorCatalog.value(stage, "tag", "NORMAL"),
         "rule": SectorCatalog.rule(stage),
         "showcase_beat": showcase_script_index,
+        "overdrive": clampf(overdrive_charge / GameCatalog.OVERDRIVE_FULL, 0.0, 1.0),
+        "overdrive_ready": overdrive_ready(), "overdrive_boost": overdrive_boost,
+        "line_on": line_enabled, "line": line,
+        "wardens": wardens_alive, "shielded": shielded_count,
         "event": combat_event if event_time > 0.0 else "",
         "event_kind": combat_event_kind if event_time > 0.0 else ""
     }
@@ -292,10 +320,16 @@ func _simulate(delta: float) -> void:
     _move_enemies(delta)
     if state != "running":
         return
+    _refresh_relationships()
+    _tick_line(delta)
+    if state != "running":
+        return
+    overdrive_boost = maxf(0.0, overdrive_boost - delta)
     _process_elite_phase()
     _move_projectiles(delta)
     _update_effects(delta)
     _tick_weapons(delta)
+    _release_shocks()
     _check_level_up()
     if state != "running":
         return
@@ -380,17 +414,21 @@ func _spawn_formation() -> void:
     formation_name = CombatDirector.pattern_for(stage, elapsed, formation_index)
     var members: Array[Dictionary] = CombatDirector.formation(stage, elapsed, formation_index, rng)
     var created := 0
+    var ids: Array[int] = []
     for member in members:
         if enemies.size() >= MAX_ENEMIES:
             break
-        _spawn_enemy(String(member["kind"]), float(member["x"]), float(member["y"]))
+        ids.append(_spawn_enemy(String(member["kind"]), float(member["x"]), float(member["y"])))
+        var escort_slot: int = int(member.get("escort", -1))
+        if escort_slot >= 0 and escort_slot < ids.size() - 1:
+            attach_escort(ids[ids.size() - 1], ids[escort_slot])
         created += 1
     if created > 0:
         _announce("THREATS: %s" % formation_name, ThreatLanguage.KIND_FORMATION, 2.4)
         formation_index += 1
 
 
-func _spawn_enemy(kind: String, x: float = 360.0, y: float = 150.0, intro_only: bool = false) -> void:
+func _spawn_enemy(kind: String, x: float = 360.0, y: float = 150.0, intro_only: bool = false) -> int:
     var hp := 29.0
     var speed := 82.0
     var radius := 16.0
@@ -415,6 +453,12 @@ func _spawn_enemy(kind: String, x: float = 360.0, y: float = 150.0, intro_only: 
             radius = 48.0
             hit = 28.0
             reward_xp = 95
+        "warden":
+            hp = 72.0
+            speed = 64.0
+            radius = 19.0
+            hit = 9.0
+            reward_xp = 18
     var scaling: float = float(SectorCatalog.value(stage, "hp", 1.0)) + (elapsed / GameCatalog.stage_duration(stage)) * 0.55
     speed *= float(SectorCatalog.value(stage, "speed", 1.0))
     # Stress-test pressure only applies to opt-in HARD START deployments.
@@ -433,10 +477,22 @@ func _spawn_enemy(kind: String, x: float = 360.0, y: float = 150.0, intro_only: 
         "origin_x": x, "hp": hp * scaling, "max_hp": hp * scaling,
         "speed": speed, "radius": radius, "damage": hit,
         "xp": reward_xp, "slow": 0.0, "stun": 0.0,
-        "phase": rng.randf_range(0.0, TAU), "flash": 0.0
+        "phase": rng.randf_range(0.0, TAU), "flash": 0.0,
+        "shield": 0, "escort": -1, "escort_offset": Vector2.ZERO
     })
     _id_slots[next_enemy_id] = enemies.size() - 1
     next_enemy_id += 1
+    return next_enemy_id - 1
+
+
+## A Runner rides behind its escort Tank, shielded, until the Tank dies.
+func attach_escort(rider_id: int, tank_id: int) -> void:
+    var rider: int = _index_by_id(rider_id)
+    var tank: int = _index_by_id(tank_id)
+    if rider < 0 or tank < 0:
+        return
+    enemies[rider]["escort"] = tank_id
+    enemies[rider]["escort_offset"] = Vector2(enemies[rider]["pos"]) - Vector2(enemies[tank]["pos"])
 
 func _move_enemies(delta: float) -> void:
     var regen: float = float(SectorCatalog.value(stage, "regen", 0.0)) * delta
@@ -450,6 +506,8 @@ func _move_enemies(delta: float) -> void:
         enemy["slow"] = maxf(0.0, slow - delta)
         enemy["stun"] = maxf(0.0, stun - delta)
         enemy["flash"] = maxf(0.0, float(enemy["flash"]) - delta)
+        if int(enemy["escort"]) >= 0:
+            continue  # placed after its tank moves, below
         if stun <= 0.0:
             var kind: String = String(enemy["kind"])
             var pace: float = float(enemy["speed"])
@@ -465,6 +523,8 @@ func _move_enemies(delta: float) -> void:
                 amplitude = 7.0
             elif kind == "elite":
                 amplitude = 19.0
+            elif kind == "warden":
+                amplitude = 10.0
             pos.x = clampf(float(enemy["origin_x"]) + sin(pos.y * frequency + float(enemy["phase"])) * amplitude, 24.0, 696.0)
             enemy["pos"] = pos
         if pos.y >= GameCatalog.BREACH_Y:
@@ -480,6 +540,180 @@ func _move_enemies(delta: float) -> void:
             if hull <= 0.0:
                 _finish(false)
                 return
+    # Escorted runners ride behind their tank; a dead tank sets them loose.
+    for enemy in enemies:
+        var escort_id: int = int(enemy["escort"])
+        if escort_id < 0:
+            continue
+        var tank: int = _index_by_id(escort_id)
+        if tank >= 0:
+            enemy["pos"] = Vector2(enemies[tank]["pos"]) + Vector2(enemy["escort_offset"])
+        else:
+            _break_loose(enemy)
+
+## The escort died: the Runner keeps its place, loses its shield and sprints.
+func _break_loose(enemy: Dictionary) -> void:
+    enemy["escort"] = -1
+    enemy["shield"] = 0
+    enemy["speed"] = float(enemy["speed"]) * GameCatalog.LOOSE_SPEED_SCALE
+    var pos: Vector2 = enemy["pos"]
+    # Keep x continuous with the runner weave used by _move_enemies.
+    enemy["origin_x"] = pos.x - sin(pos.y * 0.023 + float(enemy["phase"])) * 66.0
+    _effect("ring", pos, Vector2.ZERO, 30.0, VisualProfile.RUNNER, 0.30)
+
+
+## Shield flags for this tick: 2 = riding a living escort, 1 = inside a Warden
+## aura. Wardens never shield each other.
+func _refresh_relationships() -> void:
+    var warden_spots: Array[Vector2] = []
+    for enemy in enemies:
+        if String(enemy["kind"]) == "warden":
+            warden_spots.append(enemy["pos"])
+    wardens_alive = warden_spots.size()
+    shielded_count = 0
+    var reach: float = GameCatalog.WARDEN_AURA * GameCatalog.WARDEN_AURA
+    for enemy in enemies:
+        var shield := 0
+        if int(enemy["escort"]) >= 0:
+            shield = 2
+        elif not warden_spots.is_empty() and String(enemy["kind"]) != "warden":
+            var pos: Vector2 = enemy["pos"]
+            for spot in warden_spots:
+                if pos.distance_squared_to(spot) <= reach:
+                    shield = 1
+                    break
+        enemy["shield"] = shield
+        if shield > 0:
+            shielded_count += 1
+
+
+func shield_taken() -> float:
+    return minf(1.0, GameCatalog.SHIELD_TAKEN + 0.15 * int(levels.get("breaker", 0)))
+
+
+func line_y() -> float:
+    return lerpf(GameCatalog.BREACH_Y, GameCatalog.LINE_TOP_Y, line)
+
+
+## Moving Line prototype: hostiles past the line push it toward the core.
+func _tick_line(delta: float) -> void:
+    if not line_enabled:
+        return
+    var at: float = line_y()
+    var crowd := 0.0
+    var past := 0.0
+    for enemy in enemies:
+        var weight: float = GameCatalog.line_weight(String(enemy["kind"]))
+        crowd += weight
+        if Vector2(enemy["pos"]).y > at:
+            past += weight
+    # The crowd lean saturates so a packed HARD START field cannot spiral the
+    # line to the core on its own; hostiles past the line always count.
+    var pressure: float = minf(crowd, GameCatalog.LINE_DRIFT_CAP) * GameCatalog.LINE_DRIFT \
+        + past * GameCatalog.LINE_PUSH
+    line = clampf(line - pressure * delta, 0.0, 1.0)
+    if line > 0.0:
+        if line > 0.10:
+            _line_core_warned = false
+        return
+    hull = maxf(0.0, hull - GameCatalog.LINE_CORE_DPS * delta)
+    _guardian_damage_until = _visual_clock + 0.20
+    if not _line_core_warned:
+        _line_core_warned = true
+        _announce("LINE AT THE CORE  •  HULL DRAINING", ThreatLanguage.KIND_BREACH, 2.4)
+    if hull <= 0.0:
+        _finish(false)
+
+
+func overdrive_ready() -> bool:
+    return overdrive_charge >= GameCatalog.OVERDRIVE_FULL
+
+
+## Player-triggered strike (HUD button). Hits the focused target, else the
+## densest cluster in range; ignores shields. Returns false when it cannot fire.
+func trigger_overdrive() -> bool:
+    if state != "running" or not overdrive_ready() or enemies.is_empty():
+        return false
+    var yield_rank: int = int(levels.get("od_yield", 0))
+    var radius: float = GameCatalog.OVERDRIVE_RADIUS * (1.0 + 0.15 * yield_rank)
+    var center: Vector2
+    var focus: int = _index_by_id(focused_id)
+    if focus >= 0:
+        center = enemies[focus]["pos"]
+    else:
+        center = _densest_point(radius)
+    overdrive_boost = GameCatalog.OVERDRIVE_BOOST_SECONDS + (2.0 if int(levels.get("od_capacitor", 0)) >= 3 else 0.0)
+    overdrives_fired += 1
+    _effect("overdrive", G + Vector2(0.0, -48.0), center, radius, VisualProfile.OVERDRIVE, 0.62)
+    var victims: Array[int] = []
+    for enemy in enemies:
+        if Vector2(enemy["pos"]).distance_to(center) <= radius + float(enemy["radius"]):
+            victims.append(int(enemy["id"]))
+    var amount: float = _power(GameCatalog.OVERDRIVE_DAMAGE) * (1.0 + 0.40 * yield_rank)
+    for id in victims:
+        _damage_by_id(id, amount, "overdrive")
+        if yield_rank >= 2:
+            var idx: int = _index_by_id(id)
+            if idx >= 0:
+                enemies[idx]["stun"] = maxf(float(enemies[idx]["stun"]), 1.2)
+    # Set after the strike so its own kills never refill it.
+    overdrive_charge = GameCatalog.OVERDRIVE_FULL * 0.30 if yield_rank >= 3 else 0.0
+    if line_enabled:
+        # Line slam: the strike shoves the line and everything past it back up.
+        line = minf(1.0, line + GameCatalog.LINE_SLAM)
+        var at: float = line_y()
+        for enemy in enemies:
+            var pos: Vector2 = enemy["pos"]
+            if pos.y > at and int(enemy["escort"]) < 0:
+                enemy["pos"] = Vector2(pos.x, maxf(at - 20.0, pos.y - 110.0))
+    _announce("OVERDRIVE", ThreatLanguage.KIND_INFO, 1.6)
+    stats_changed.emit(snapshot())
+    return true
+
+
+func _densest_point(radius: float) -> Vector2:
+    var best: Vector2 = enemies[0]["pos"]
+    var best_score := -1
+    for candidate in enemies:
+        var pos: Vector2 = candidate["pos"]
+        if pos.distance_to(G) > _range(1170.0):
+            continue
+        var neighbors := 0
+        for other in enemies:
+            if pos.distance_squared_to(other["pos"]) <= radius * radius:
+                neighbors += 1
+        if neighbors > best_score:
+            best_score = neighbors
+            best = pos
+    return best
+
+
+## Shield Breaker rank 3: a dying Warden bursts. Deferred so a burst never
+## removes enemies while another weapon is still walking the list.
+func _release_shocks() -> void:
+    while not _pending_shocks.is_empty():
+        var at: Vector2 = _pending_shocks.pop_back()
+        _blast(at, GameCatalog.WARDEN_AURA, _power(60.0), "overdrive", VisualProfile.OVERDRIVE)
+
+
+## Target Uplink rank 3: the lock jumps to the nearest Warden, else the
+## nearest shielded hostile.
+func _next_priority_target(from: Vector2, exclude: int) -> int:
+    var best := -1
+    var best_score := INF
+    for enemy in enemies:
+        var id: int = int(enemy["id"])
+        if id == exclude:
+            continue
+        var kind: String = String(enemy["kind"])
+        if kind != "warden" and int(enemy["shield"]) == 0:
+            continue
+        var score: float = from.distance_to(enemy["pos"]) - (10000.0 if kind == "warden" else 0.0)
+        if score < best_score:
+            best_score = score
+            best = id
+    return best
+
 
 func _process_elite_phase() -> void:
     if not SectorCatalog.has_elite(stage) or not _elite_spawned or _elite_enraged:
@@ -490,12 +724,15 @@ func _process_elite_phase() -> void:
         if float(enemy["hp"]) / maxf(1.0, float(enemy["max_hp"])) > 0.55:
             return
         _elite_enraged = true
-        _announce("ELITE PHASE II - ESCORTS", ThreatLanguage.KIND_ELITE, 5.0)
+        _announce("ELITE PHASE II - WARDEN + ESCORTS", ThreatLanguage.KIND_ELITE, 5.0)
         var at: Vector2 = enemy["pos"]
         _effect("ring", at, Vector2.ZERO, 148.0, RED, 0.80)
         if enemies.size() <= MAX_ENEMIES - 2:
             _spawn_enemy("runner", clampf(at.x - 150.0, 40.0, 680.0), at.y - 35.0)
             _spawn_enemy("runner", clampf(at.x + 150.0, 40.0, 680.0), at.y - 35.0)
+        if enemies.size() < MAX_ENEMIES:
+            # A Warden shields the enraged Elite: focus it to open the boss up.
+            _spawn_enemy("warden", at.x, at.y - 72.0)
         return
 
 
@@ -627,7 +864,9 @@ func _update_effects(delta: float) -> void:
             effects.remove_at(i)
 
 func _tick_weapons(delta: float) -> void:
-    var cadence: float = 1.0 + 0.13 * int(levels["rate"])
+    var cadence: float = (1.0 + 0.13 * int(levels["rate"])) \
+        * (GameCatalog.OVERDRIVE_BOOST_CADENCE if overdrive_boost > 0.0 else 1.0) \
+        * (GameCatalog.LINE_HIGH_CADENCE if line_enabled and line >= GameCatalog.LINE_HIGH else 1.0)
     _gun_timer -= delta
     _beam_timer -= delta
     _volley_timer -= delta
@@ -650,7 +889,8 @@ func _tick_weapons(delta: float) -> void:
         _nova_timer = maxf(1.1, 4.2 - 0.38 * int(levels["nova"])) / cadence
         _fire_nova()
 func _range(base: float) -> float:
-    return base * (1.0 + 0.12 * int(levels["reach"])) * _range_scale
+    return base * (1.0 + 0.12 * int(levels["reach"])) * _range_scale \
+        * (GameCatalog.LINE_LOW_RANGE if line_enabled and line <= GameCatalog.LINE_LOW else 1.0)
 
 func _power(base: float) -> float:
     return base * (1.0 + 0.15 * int(levels["power"]) + 0.10 * int(meta.get("damage", 0)))
@@ -883,7 +1123,15 @@ func _damage_by_id(id: int, amount: float, source: String) -> float:
     if idx < 0:
         return 0.0
     var enemy: Dictionary = enemies[idx]
-    var effective: float = amount * GameCatalog.damage_factor(String(enemy["kind"]), source)
+    var kind: String = String(enemy["kind"])
+    var effective: float = amount * GameCatalog.damage_factor(kind, source)
+    # Overdrive ignores shields; everything else is cut while one holds.
+    if int(enemy.get("shield", 0)) > 0 and source != "overdrive":
+        effective *= shield_taken()
+    if kind == "warden" and int(levels.get("breaker", 0)) >= 2:
+        effective *= 1.4
+    if id == focused_id:
+        effective *= 1.0 + 0.20 * int(levels.get("uplink", 0))
     var actual: float = minf(maxf(0.0, effective), maxf(0.0, float(enemy["hp"])))
     enemy["flash"] = 0.16
     enemy["hp"] = float(enemy["hp"]) - actual
@@ -895,13 +1143,31 @@ func _damage_by_id(id: int, amount: float, source: String) -> float:
         # for danger (breach, enraged elite) so they never read as a hazard zone.
         _effect("pop", Vector2(enemy["pos"]), Vector2.ZERO, float(enemy["radius"]) * 2.1,
             VisualProfile.enemy_tint(String(enemy["kind"])), 0.26)
-        xp += int(enemy["xp"])
-        kills += 1
-        if focused_id == id:
-            focused_id = -1
+        _on_kill(enemy, id)
         enemies.remove_at(idx)
         _id_slots.clear()
     return actual
+
+func _on_kill(enemy: Dictionary, id: int) -> void:
+    var kind: String = String(enemy["kind"])
+    var high_line: bool = line_enabled and line >= GameCatalog.LINE_HIGH
+    xp += roundi(int(enemy["xp"]) * (GameCatalog.LINE_HIGH_XP if high_line else 1.0))
+    kills += 1
+    var capacitor: int = int(levels.get("od_capacitor", 0))
+    var charge: float = GameCatalog.overdrive_charge_for(kind) * (1.9 if capacitor >= 3 else 1.0 + 0.30 * capacitor)
+    if showcase_active:
+        charge *= GameCatalog.HARD_OVERDRIVE_SCALE
+    if id == focused_id and int(levels.get("uplink", 0)) >= 2:
+        charge += 4.0
+    overdrive_charge = minf(GameCatalog.OVERDRIVE_FULL, overdrive_charge + charge)
+    if line_enabled:
+        line = minf(1.0, line + GameCatalog.LINE_KILL * GameCatalog.line_weight(kind)
+            * (1.0 + 0.35 * int(levels.get("line_anchor", 0))))
+    if kind == "warden" and int(levels.get("breaker", 0)) >= 3:
+        _pending_shocks.append(Vector2(enemy["pos"]))
+    if focused_id == id:
+        focused_id = _next_priority_target(enemy["pos"], id) if int(levels.get("uplink", 0)) >= 3 else -1
+
 
 func _check_level_up() -> void:
     var needed: int = GameCatalog.next_level_xp(level)
@@ -931,7 +1197,7 @@ func _finish(victory: bool) -> void:
         "stage": stage, "kills": kills, "time": elapsed, "level": level,
         "reward": GameCatalog.reward(kills, stage, victory),
         "damage": weapon_damage.duplicate(), "breaches": breaches,
-        "formations": formation_index
+        "formations": formation_index, "overdrives": overdrives_fired
     })
 
 func _effect(kind: String, a: Vector2, b: Vector2, radius: float, color: Color, duration: float) -> void:
@@ -962,6 +1228,11 @@ func _draw() -> void:
         return
     var started: int = Time.get_ticks_usec()
     ArenaBackground.draw_to(self)
+    if line_enabled:
+        MechanicVisuals.draw_line_marker(self, line_y(), line, low_fx, _visual_clock)
+    for enemy in enemies:
+        if String(enemy["kind"]) == "warden":
+            MechanicVisuals.draw_warden_aura(self, enemy["pos"], low_fx, _visual_clock)
     for drop in pending_drops:
         EnemyRenderer.draw_drop_marker(self, drop, _visual_clock)
     var damage_fraction: float = clampf((_guardian_damage_until - _visual_clock) / 0.32, 0.0, 1.0)
@@ -974,8 +1245,17 @@ func _draw() -> void:
             EnemyRenderer.draw_body(self, enemy["pos"], kind, low_fx)
         EnemyRenderer.draw_overlays(self, enemy, low_fx, _visual_clock,
             int(enemy["id"]) == focused_id, _elite_enraged)
+        # Shield marks are baked too (EnemyBodyLayer stamps them); vector only
+        # when the atlas has no cell for this kind.
+        var shield: int = int(enemy["shield"])
+        if shield > 0 and (sprite_cache == null or not sprite_cache.has_sprite(
+                MechanicVisuals.shield_key(kind, shield), low_fx)):
+            MechanicVisuals.draw_shield_mark(self, enemy, low_fx)
     for bullet in projectiles:
         WeaponEffects.draw_projectile(self, bullet, low_fx)
     for fx in effects:
-        WeaponEffects.draw_effect(self, fx, low_fx, _visual_clock)
+        if String(fx["kind"]) == "overdrive":
+            MechanicVisuals.draw_overdrive(self, fx, low_fx)
+        else:
+            WeaponEffects.draw_effect(self, fx, low_fx, _visual_clock)
     perf_draw_usec = lerpf(perf_draw_usec, float(Time.get_ticks_usec() - started), 0.05)

@@ -2,7 +2,7 @@ class_name GameCatalog
 extends RefCounted
 
 ## Bastion Zero's original combat balance; no third-party game resources.
-const GAME_VERSION := "0.9.6-sectors"
+const GAME_VERSION := "0.9.7-overdrive"
 ## Phase F: temporary stress showcase on NORMAL 01 only. Not production balance.
 const STAGE_ONE_SHOWCASE := true
 ## Playtest builds open every sector and offer the HARD START toggle
@@ -127,10 +127,51 @@ const UPGRADE_CAP := 4
 const META_CAP := 8
 const UPGRADE_ORDER: Array[String] = [
     "gun", "gun_payload", "gun_pierce", "gun_ricochet", "gun_volley",
-    "beam", "volley", "arc", "nova", "hull", "rate", "power", "reach"
+    "beam", "volley", "arc", "nova", "hull", "rate", "power", "reach",
+    "od_capacitor", "od_yield", "breaker", "uplink", "line_anchor"
 ]
 const WEAPON_ORDER: Array[String] = ["gun", "beam", "volley", "arc", "nova"]
 const GUN_MODS: Array[String] = ["gun_payload", "gun_pierce", "gun_ricochet", "gun_volley"]
+const OVERDRIVE_MODS: Array[String] = ["od_capacitor", "od_yield"]
+const PRIORITY_MODS: Array[String] = ["breaker", "uplink"]
+## Cards a run only offers when it seeded the key in its levels (see Arena.begin_run).
+const CONDITIONAL_UPGRADES: Array[String] = ["line_anchor"]
+
+## Enemy relationships. Hostiles inside a Warden's aura, and Runners riding
+## behind a living escort Tank, are shielded: they take SHIELD_TAKEN of the damage.
+## Wardens themselves are never shielded, so focusing one is the counter.
+const SHIELD_TAKEN := 0.45
+const WARDEN_AURA := 130.0
+## Runners whose escort dies break loose and sprint.
+const LOOSE_SPEED_SCALE := 1.35
+
+## Overdrive: an active strike the player fires from the HUD. Kills charge it;
+## it hits the focused target (else the densest cluster) and ignores shields.
+const OVERDRIVE_FULL := 50.0
+## HARD START kills come fast; charge slower so the strike stays a decision.
+const HARD_OVERDRIVE_SCALE := 0.7
+const OVERDRIVE_RADIUS := 165.0
+const OVERDRIVE_DAMAGE := 240.0
+const OVERDRIVE_BOOST_SECONDS := 4.0
+const OVERDRIVE_BOOST_CADENCE := 1.4
+
+## Moving Line prototype (off unless the playtest setting turns it on).
+## Line value 1.0 sits at LINE_TOP_Y, 0.0 at the breach line. Every living
+## hostile leans on it (LINE_DRIFT), those past it push harder (LINE_PUSH);
+## kills push it up. At 0.0 the core takes LINE_CORE_DPS.
+const LINE_START := 0.6
+const LINE_DRIFT := 0.0026
+const LINE_DRIFT_CAP := 12.0
+const LINE_TOP_Y := 360.0
+const LINE_PUSH := 0.0055
+const LINE_KILL := 0.006
+const LINE_CORE_DPS := 5.0
+const LINE_HIGH := 0.70
+const LINE_LOW := 0.30
+const LINE_HIGH_CADENCE := 1.12
+const LINE_HIGH_XP := 1.2
+const LINE_LOW_RANGE := 0.85
+const LINE_SLAM := 0.25
 
 static func upgrade_cap(key: String) -> int:
     match key:
@@ -138,13 +179,37 @@ static func upgrade_cap(key: String) -> int:
         "gun_pierce": return 2
         "gun_ricochet": return 2
         "gun_volley": return 2
+        "od_capacitor", "od_yield", "breaker", "uplink", "line_anchor": return 3
     return UPGRADE_CAP
+
+
+## Overdrive charge per kill, by enemy weight.
+static func overdrive_charge_for(kind: String) -> float:
+    match kind:
+        "tank": return 3.0
+        "warden": return 4.0
+        "elite": return 12.0
+    return 1.0
+
+
+## How hard a hostile leans on (or a kill lifts) the Moving Line.
+static func line_weight(kind: String) -> float:
+    match kind:
+        "tank": return 2.0
+        "elite": return 4.0
+    return 1.0
 
 static func upgrade_category(key: String, current_rank: int) -> String:
     if WEAPON_ORDER.has(key) and current_rank == 0:
         return "NEW WEAPON"
     if GUN_MODS.has(key):
         return "SENTINEL MOD"
+    if OVERDRIVE_MODS.has(key):
+        return "OVERDRIVE"
+    if PRIORITY_MODS.has(key):
+        return "TARGET PRIORITY"
+    if key == "line_anchor":
+        return "MOVING LINE"
     if WEAPON_ORDER.has(key):
         return "WEAPON EVOLUTION"
     return "SUPPORT SYSTEM"
@@ -166,6 +231,9 @@ static func damage_factor(enemy_kind: String, weapon: String) -> float:
         match weapon:
             "beam": return 0.90
             "volley": return 1.12
+    elif enemy_kind == "warden":
+        match weapon:
+            "arc": return 1.20
     return 1.0
 
 static func stage_name(stage: int) -> String:
@@ -189,6 +257,11 @@ static func upgrade_name(key: String) -> String:
         "rate": return "OVERCLOCK"
         "power": return "AMPLIFIER"
         "reach": return "RANGE ARRAY"
+        "od_capacitor": return "OVERDRIVE CAPACITOR"
+        "od_yield": return "OVERDRIVE YIELD"
+        "breaker": return "SHIELD BREAKER"
+        "uplink": return "TARGET UPLINK"
+        "line_anchor": return "LINE ANCHOR"
     return key.to_upper()
 
 static func upgrade_description(key: String, rank: int) -> String:
@@ -233,6 +306,26 @@ static func upgrade_description(key: String, rank: int) -> String:
         "rate": return "+13% fire rate for every weapon."
         "power": return "+15% damage for every weapon."
         "reach": return "+12% targeting range for every weapon."
+        "od_capacitor":
+            match rank:
+                3: return "Overdrive charges 90% faster and its fire-rate surge lasts 6 seconds."
+                _: return "Overdrive charges %d%% faster from kills." % (30 * rank)
+        "od_yield":
+            match rank:
+                1: return "Overdrive strike: +40% damage and a wider blast."
+                2: return "Overdrive strike: +80% damage; survivors are stunned."
+                _: return "Overdrive strike: +120% damage; refunds 30% of its charge."
+        "breaker":
+            match rank:
+                1: return "Shields block less: shielded enemies take 60% damage."
+                2: return "Shielded enemies take 75% damage; Wardens take 40% more."
+                _: return "Shielded enemies take 90% damage; a dying Warden bursts."
+        "uplink":
+            match rank:
+                1: return "Your focused target takes 20% more damage."
+                2: return "Focused target takes 40% more; killing it charges Overdrive."
+                _: return "Focused target takes 60% more; the lock jumps to the next Warden."
+        "line_anchor": return "Kills push the Moving Line up %d%% harder." % (35 * rank)
     return "System upgrade."
 
 static func _count(n: int, one: String, many: String) -> String:
@@ -242,6 +335,8 @@ static func next_level_xp(level: int) -> int:
     return 15 + int(pow(float(maxi(1, level)), 1.32) * 7.0)
 
 static func upgrade_available(levels: Dictionary, key: String) -> bool:
+    if CONDITIONAL_UPGRADES.has(key) and not levels.has(key):
+        return false
     return UPGRADE_ORDER.has(key) and int(levels.get(key, 0)) < upgrade_cap(key)
 
 static func upgrade_offers(levels: Dictionary, rng: RandomNumberGenerator, count: int = 3) -> Array[String]:

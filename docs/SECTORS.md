@@ -2,7 +2,8 @@
 
 Build `0.9.6-sectors`. Six playable sectors, all reachable from **SECTORS** on the
 title screen. Data lives in `scripts/sector_catalog.gd`; NORMAL 01 and ELITE 01
-keep their original balance exactly.
+keep their original balance exactly, except that 0.9.7 appends the WARDEN and CONVOY
+formations to every cycle (see docs/MECHANICS-0.9.7.md).
 
 | # | Code | Place | Identity | Field rule | Horizon |
 |---|------|-------|----------|-----------|---------|
