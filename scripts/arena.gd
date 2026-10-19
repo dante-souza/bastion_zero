@@ -81,6 +81,10 @@ var _perf_log_timer := PERF_LOG_INTERVAL
 ## animates on its own, so the backdrop needs no per-frame script work.
 var backdrop: SectorBackdrop
 var glow: NeonGlowLayer
+## Enemy bodies are baked once (sprite_cache) and stamped by `bodies`, one
+## batched layer; Arena._draw keeps only their per-frame overlays.
+var sprite_cache: EnemySpriteCache
+var bodies: EnemyBodyLayer
 
 func _ready() -> void:
     rng.randomize()
@@ -93,6 +97,11 @@ func _ready() -> void:
     glow = NeonGlowLayer.new()
     glow.arena = self
     add_child(glow)
+    sprite_cache = EnemySpriteCache.new()
+    add_child(sprite_cache)
+    bodies = EnemyBodyLayer.new()
+    bodies.arena = self
+    add_child(bodies)
     set_process(true)
     set_physics_process(true)
 
@@ -234,6 +243,7 @@ func _process(delta: float) -> void:
         _visual_clock += delta
         queue_redraw()
         glow.queue_redraw()
+        bodies.queue_redraw()
         perf_ticks_per_frame = lerpf(perf_ticks_per_frame, float(_perf_ticks_this_frame), 0.05)
         _perf_ticks_this_frame = 0
         _perf_log_timer -= delta
@@ -246,7 +256,7 @@ func perf_line() -> String:
     # come from the engine, so (frame time - sim - draw) is engine/GPU work.
     return "BastionZero perf: fps=%d sim=%.2fms/tick ticks/frame=%.2f draw=%.2fms process_ms=%.2f draw_calls=%d primitives=%d enemies=%d bullets=%d fx=%d low_fx=%s showcase=%s" % [
         Engine.get_frames_per_second(), perf_sim_usec / 1000.0, perf_ticks_per_frame,
-        perf_draw_usec / 1000.0, Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0,
+        perf_total_draw_usec() / 1000.0, Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0,
         int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),
         int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)),
         enemies.size(), projectiles.size(), effects.size(), low_fx, showcase_active]
@@ -935,6 +945,12 @@ func show_menu_backdrop(reduced_fx: bool) -> void:
     backdrop.configure_menu(reduced_fx)
     queue_redraw()
     glow.queue_redraw()
+    bodies.queue_redraw()
+
+
+## Script time spent recording this frame's drawing: Arena plus the body layer.
+func perf_total_draw_usec() -> float:
+    return perf_draw_usec + (bodies.perf_usec if bodies != null else 0.0)
 
 
 func visual_clock() -> float:
@@ -953,7 +969,10 @@ func _draw() -> void:
         GuardianRenderer.sentinel_barrel_count(int(levels.get("gun", 1)), int(levels.get("gun_volley", 0))),
         gun_visual_lanes, damage_fraction)
     for enemy in enemies:
-        EnemyRenderer.draw_to(self, enemy, low_fx, _visual_clock,
+        var kind: String = String(enemy["kind"])
+        if sprite_cache == null or not sprite_cache.has_sprite(kind, low_fx):
+            EnemyRenderer.draw_body(self, enemy["pos"], kind, low_fx)
+        EnemyRenderer.draw_overlays(self, enemy, low_fx, _visual_clock,
             int(enemy["id"]) == focused_id, _elite_enraged)
     for bullet in projectiles:
         WeaponEffects.draw_projectile(self, bullet, low_fx)

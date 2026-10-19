@@ -92,8 +92,8 @@ func _bench_draw() -> void:
         if arena.elapsed < GameCatalog.SHOWCASE_ELITE_TIME:
             continue
         frames += 1
-        draw_total += arena.perf_draw_usec
-        peak_draw = maxf(peak_draw, arena.perf_draw_usec)
+        draw_total += arena.perf_total_draw_usec()
+        peak_draw = maxf(peak_draw, arena.perf_total_draw_usec())
         peak_enemies = maxi(peak_enemies, arena.enemies.size())
     print("BENCH draw (elite fight): %d frames, ~%.1f us/frame, peak %.1f us, peak %d enemies" % [
         frames, draw_total / maxf(1.0, frames), peak_draw, peak_enemies])
