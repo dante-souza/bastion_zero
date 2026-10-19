@@ -10,7 +10,8 @@ static func defaults() -> Dictionary:
         "bank": 0,
         "meta": {"hull": 0, "damage": 0},
         "runs": 0, "wins": 0, "best_wave": 0, "best_kills": 0,
-        "stage_unlocked": 1, "best_stage": 0, "low_fx": true
+        "stage_unlocked": 1, "best_stage": 0, "low_fx": true,
+        "hard_start": GameCatalog.PLAYTEST_TOOLS
     }
 
 static func validated(data: Variant) -> Dictionary:
@@ -25,6 +26,7 @@ static func validated(data: Variant) -> Dictionary:
     clean["stage_unlocked"] = clampi(int(data.get("stage_unlocked", 1)), 1, GameCatalog.TOTAL_STAGES)
     clean["best_stage"] = clampi(int(data.get("best_stage", 0)), 0, GameCatalog.TOTAL_STAGES)
     clean["low_fx"] = bool(data.get("low_fx", true))
+    clean["hard_start"] = GameCatalog.PLAYTEST_TOOLS and bool(data.get("hard_start", true))
     var raw_meta: Variant = data.get("meta", {})
     if typeof(raw_meta) == TYPE_DICTIONARY:
         for key in ["hull", "damage"]:

@@ -46,12 +46,45 @@ class J8ToolsTests(unittest.TestCase):
             ):
                 self.assertEqual(android_j8.resolve_profile("auto").key, key)
 
-    def test_unknown_branch_rejected_not_guessed(self):
+    def test_any_other_branch_gets_the_single_branch_profile(self):
+        for branch in ["dev", "main", "feature/perf-baseline"]:
+            with self.subTest(branch=branch), mock.patch.object(
+                android_j8, "execute", return_value=mock.Mock(stdout=branch + "\n")
+            ):
+                profile = android_j8.resolve_profile("auto")
+                self.assertEqual(profile.branch, branch)
+                self.assertEqual(profile.artifact, android_j8.BRANCH_ARTIFACT)
+                self.assertEqual(profile.apk_name, android_j8.BRANCH_APK)
+                self.assertEqual(profile.package, android_j8.PROFILES["phase-i6"].package)
+        self.assertEqual(android_j8.resolve_profile("feature/perf-baseline").key, "feature-perf-baseline")
+        self.assertIn("feature-perf-baseline",
+            str(android_j8.resolve_apk("auto", android_j8.resolve_profile("feature/perf-baseline"))))
+
+    def test_branch_caches_do_not_collide(self):
+        a = android_j8.resolve_apk("auto", android_j8.resolve_profile("dev"))
+        b = android_j8.resolve_apk("auto", android_j8.resolve_profile("feature/perf-baseline"))
+        self.assertNotEqual(a.parent, b.parent)
+
+    def test_detached_head_rejected_not_guessed(self):
         with mock.patch.object(
-            android_j8, "execute", return_value=mock.Mock(stdout="dev\n")
+            android_j8, "execute", return_value=mock.Mock(stdout="\n")
         ):
             with self.assertRaisesRegex(RuntimeError, "Cannot infer"):
                 android_j8.resolve_profile("auto")
+
+    def test_unknown_profile_name_rejected(self):
+        with self.assertRaisesRegex(RuntimeError, "Unknown PROFILE"):
+            android_j8.resolve_profile("phase-zz")
+
+    def test_branch_preset_matches_branch_profile(self):
+        root = Path(__file__).resolve().parent.parent
+        presets = (root / "export_presets.cfg").read_text(encoding="utf-8")
+        branch_block = presets.split('name="Android J8 Branch Debug"', 1)[1]
+        self.assertIn('export_path="dist/%s"' % android_j8.BRANCH_APK, branch_block)
+        self.assertIn('package/unique_name="%s"' % android_j8.BRANCH_PACKAGE, branch_block)
+        workflow = (root / ".github" / "workflows" / "android-j8.yml").read_text(encoding="utf-8")
+        self.assertIn("name: " + android_j8.BRANCH_ARTIFACT, workflow)
+        self.assertIn("dist/" + android_j8.BRANCH_APK, workflow)
 
     def test_phase_a_artifact_and_package_isolation(self):
         a = android_j8.resolve_profile("phase-a")

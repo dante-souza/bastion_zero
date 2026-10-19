@@ -6,6 +6,35 @@
 
 From PowerShell in `M:\ATOL\GitProjects\bastion_zero`, have GNU Make, Python 3.10+, ADB, Git, and authenticated `gh` available in PATH. The default device is Samsung Galaxy J8 serial `38c19745`; use `DEVICE=...` to override.
 
+## Any branch: one build profile (2026-10-19)
+
+Every branch except the frozen phase branches (`dev`, `main`, any
+`feature/...`) now builds the same way. A push runs **Android J8 debug APK**
+with the single `Android J8 Branch Debug` preset and uploads artifact
+`Bastion-Zero-J8-ARMv7`. The app installs over the premium package
+(`com.dantesouza.bastionzero.phaseh`, the same one Phase H–I6 used), so the J8
+keeps one Bastion Zero icon. CI stamps versionCode `1000 + run number` and a
+versionName like `0.9.5-playtest-fixes-feature-perf-baseline-1a2b3c4`, so
+`make installed` shows which branch and commit is on the phone.
+
+```powershell
+git fetch origin --prune
+git switch --track origin/<branch>   # or: git switch <branch>; git merge --ff-only origin/<branch>
+make profile        # shows the branch profile and APK path (dist/<branch-slug>/)
+make fresh          # latest successful APK of THIS branch: download, verify, reinstall, launch
+make doctor
+make screenshot
+make logs           # includes the "BastionZero perf:" lines
+```
+
+New branches need no Make target, preset or workflow edit. `PROFILE=<branch>`
+works from any checkout (for example `make fresh PROFILE=dev`).
+
+The frozen phase builds stay reachable with `make phase-a` … `make phase-i6`
+(plus `-apk`, `-install`, `-reinstall-run`, `-run`, `-doctor`, `-logs`,
+`-screenshot`). Those branches keep their own copy of the workflow, and
+their CI artifacts expire after 30 days.
+
 ## Get Phase A Makefile locally
 
 The code lives on `feature/m1-visual-phase-a` (PR #2 targets `feature/m1-playable-game`). Switching branches is allowed; do not reset or discard local edits.

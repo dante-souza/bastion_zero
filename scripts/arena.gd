@@ -56,6 +56,12 @@ var showcase_active := false
 var showcase_script_index := 0
 var showcase_regular_spawns_unlocked := false
 var _showcase_elite_spawned := false
+## Sector (map) state: hard-start opener, field-rule timer and pending drop pods.
+var _hard_script: Array = []
+var _hard_formations_start := GameCatalog.SHOWCASE_FORMATIONS_START
+var _rule_timer := 0.0
+var _range_scale := 1.0
+var pending_drops: Array[Dictionary] = []
 
 func _ready() -> void:
     rng.randomize()
@@ -66,7 +72,13 @@ func begin_run(permanent_upgrades: Dictionary, selected_stage: int = 1, reduced_
     meta = permanent_upgrades.duplicate(true)
     stage = clampi(selected_stage, 1, GameCatalog.TOTAL_STAGES)
     low_fx = reduced_fx
-    showcase_active = showcase and stage == 1
+    # HARD START: any sector can open at LV12 with the QA loadout and pressure.
+    showcase_active = showcase
+    _hard_script = SectorCatalog.hard_script(stage) if showcase_active else []
+    _hard_formations_start = GameCatalog.SHOWCASE_FORMATIONS_START if stage == 1 else 6.0
+    _rule_timer = float(SectorCatalog.value(stage, "rule_every", 0.0)) * (0.5 if showcase_active else 1.0)
+    _range_scale = float(SectorCatalog.value(stage, "range_scale", 1.0))
+    pending_drops.clear()
     rng.seed = 14057 + stage * 137
     levels = {
         "gun": 1, "beam": 0, "volley": 0, "arc": 0, "nova": 0,
@@ -108,6 +120,9 @@ func begin_run(permanent_upgrades: Dictionary, selected_stage: int = 1, reduced_
     formation_name = "LINE"
     breaches = 0
     _announce("DEFENSE ONLINE", ThreatLanguage.KIND_INFO, 3.0)
+    if SectorCatalog.rule(stage) != "none":
+        _announce("%s  •  %s" % [SectorCatalog.value(stage, "place", ""),
+            SectorCatalog.value(stage, "rule_label", "")], ThreatLanguage.KIND_INFO, 3.0)
     if showcase_active:
         _tick_showcase_script()
         _spawn_timer = 0.55
@@ -135,6 +150,9 @@ func snapshot() -> Dictionary:
         "elite_hp": elite_hp, "elite_max_hp": elite_max_hp,
         "formation": formation_name, "breaches": breaches,
         "showcase": showcase_active,
+        "sector": SectorCatalog.value(stage, "place", ""),
+        "tag": SectorCatalog.value(stage, "tag", "NORMAL"),
+        "rule": SectorCatalog.rule(stage),
         "showcase_beat": showcase_script_index,
         "event": combat_event if event_time > 0.0 else "",
         "event_kind": combat_event_kind if event_time > 0.0 else ""
@@ -199,10 +217,12 @@ func _physics_process(delta: float) -> void:
             _spawn_formation()
             var progress: float = minf(1.0, elapsed / GameCatalog.stage_duration(stage))
             if showcase_active:
-                _spawn_timer = GameCatalog.SHOWCASE_FORMATION_INTERVAL * rng.randf_range(0.90, 1.10)
+                _spawn_timer = lerpf(GameCatalog.SHOWCASE_FORMATION_INTERVAL,
+                    GameCatalog.HARD_INTERVAL_END, progress) * rng.randf_range(0.90, 1.10)
             else:
-                _spawn_timer = maxf(1.30, 2.55 - 0.74 * progress - float(stage - 1) * 0.24) * rng.randf_range(0.85, 1.15)
-    if stage == 2 and not _elite_spawned and elapsed > GameCatalog.stage_duration(stage) * 0.60:
+                _spawn_timer = maxf(1.30, 2.55 - 0.74 * progress - float(SectorCatalog.value(stage, "pace", 0.0))) * rng.randf_range(0.85, 1.15)
+    _tick_field_rule(delta)
+    if SectorCatalog.has_elite(stage) and not _elite_spawned and elapsed > GameCatalog.stage_duration(stage) * float(SectorCatalog.value(stage, "elite_at", 0.0)):
         _elite_spawned = true
         _spawn_enemy("elite", 360.0, 155.0)
         _announce("ELITE SIGNATURE DETECTED", ThreatLanguage.KIND_ELITE, 4.0)
@@ -227,23 +247,68 @@ func _physics_process(delta: float) -> void:
 func _tick_showcase_script() -> void:
     if not showcase_active:
         return
-    while showcase_script_index < GameCatalog.SHOWCASE_SCRIPT.size():
-        var beat: Dictionary = GameCatalog.SHOWCASE_SCRIPT[showcase_script_index]
+    while showcase_script_index < _hard_script.size():
+        var beat: Dictionary = _hard_script[showcase_script_index]
         if elapsed < float(beat["at"]):
             break
         for spec in beat["spawns"]:
             if enemies.size() >= MAX_ENEMIES:
                 break
             var kind: String = String(spec[0])
-            _spawn_enemy(kind, float(spec[1]), float(spec[2]), true)
+            _spawn_enemy(kind, float(spec[1]), float(spec[2]), bool(beat.get("intro", true)))
             if kind == "elite":
                 _showcase_elite_spawned = true
         _announce("SHOWCASE • " + String(beat["label"]), ThreatLanguage.KIND_INFO, 3.2)
         showcase_script_index += 1
-    if not showcase_regular_spawns_unlocked and elapsed >= GameCatalog.SHOWCASE_FORMATIONS_START:
+    if not showcase_regular_spawns_unlocked and elapsed >= _hard_formations_start:
         showcase_regular_spawns_unlocked = true
         _spawn_timer = 0.55
         _announce("SHOWCASE • FORMATIONS ONLINE", ThreatLanguage.KIND_INFO, 2.6)
+
+
+## Sector field rules (see SectorCatalog). They stop with the stage clock so
+## a cleared field still ends the run.
+func _tick_field_rule(delta: float) -> void:
+    for i in range(pending_drops.size() - 1, -1, -1):
+        var drop: Dictionary = pending_drops[i]
+        drop["t"] = float(drop["t"]) - delta
+        if float(drop["t"]) <= 0.0:
+            pending_drops.remove_at(i)
+            _land_drop(drop["pos"])
+    var every: float = float(SectorCatalog.value(stage, "rule_every", 0.0))
+    if every <= 0.0 or elapsed >= GameCatalog.stage_duration(stage):
+        return
+    _rule_timer -= delta
+    if _rule_timer > 0.0:
+        return
+    _rule_timer = every
+    match SectorCatalog.rule(stage):
+        "surge":
+            var per_side: int = 3 + (1 if elapsed > GameCatalog.stage_duration(stage) * 0.5 else 0)
+            for side in [0, 1]:
+                for i in range(per_side):
+                    if enemies.size() >= MAX_ENEMIES:
+                        break
+                    var x: float = (70.0 + i * 34.0) if side == 0 else (650.0 - i * 34.0)
+                    _spawn_enemy("runner", x, 165.0 - i * 30.0)
+            _announce("RUNNER SURGE • BOTH FLANKS", ThreatLanguage.KIND_FORMATION, 2.2)
+        "drop":
+            var at := Vector2(rng.randf_range(120.0, 600.0), rng.randf_range(430.0, 610.0))
+            pending_drops.append({"pos": at, "t": float(SectorCatalog.value(stage, "drop_delay", 1.6)),
+                "duration": float(SectorCatalog.value(stage, "drop_delay", 1.6))})
+            _announce("DROP POD INBOUND", ThreatLanguage.KIND_FORMATION, 2.0)
+
+
+func _land_drop(at: Vector2) -> void:
+    var squad: Array[String] = ["grunt", "grunt", "runner"]
+    if elapsed > GameCatalog.stage_duration(stage) * 0.5:
+        squad.append("tank")
+    for i in range(squad.size()):
+        if enemies.size() >= MAX_ENEMIES:
+            break
+        var angle: float = TAU * float(i) / float(squad.size())
+        _spawn_enemy(squad[i], clampf(at.x + cos(angle) * 46.0, 40.0, 680.0), at.y + sin(angle) * 34.0)
+    _effect("ring", at, Vector2.ZERO, 92.0, ThreatLanguage.WARNING, 0.55)
 
 
 func _spawn_formation() -> void:
@@ -287,13 +352,16 @@ func _spawn_enemy(kind: String, x: float = 360.0, y: float = 150.0, intro_only: 
             radius = 48.0
             hit = 28.0
             reward_xp = 95
-    var scaling: float = 1.0 + (stage - 1) * 0.33 + (elapsed / GameCatalog.stage_duration(stage)) * 0.55
-    # Stress-test pressure is isolated to NORMAL 01's opt-in QA deployment.
-    # Standard and ELITE stages retain untouched HP, speed and breach damage.
+    var scaling: float = float(SectorCatalog.value(stage, "hp", 1.0)) + (elapsed / GameCatalog.stage_duration(stage)) * 0.55
+    speed *= float(SectorCatalog.value(stage, "speed", 1.0))
+    # Stress-test pressure only applies to opt-in HARD START deployments.
+    # Standard runs retain each sector's own HP, speed and breach damage.
     if showcase_active:
-        scaling *= GameCatalog.SHOWCASE_HP_SCALE
+        scaling *= GameCatalog.SHOWCASE_HP_SCALE * float(SectorCatalog.value(stage, "hard_hp", 1.0)) * (1.0 + GameCatalog.HARD_HP_RAMP
+            * minf(1.0, elapsed / GameCatalog.stage_duration(stage)))
         speed *= GameCatalog.SHOWCASE_SPEED_SCALE
         hit *= GameCatalog.SHOWCASE_DAMAGE_SCALE
+        reward_xp = maxi(1, roundi(reward_xp * GameCatalog.HARD_XP_SCALE))
         if intro_only:
             scaling *= (GameCatalog.SHOWCASE_ELITE_HP_SCALE
                 if kind == "elite" else GameCatalog.SHOWCASE_INTRO_HP_SCALE)
@@ -307,9 +375,12 @@ func _spawn_enemy(kind: String, x: float = 360.0, y: float = 150.0, intro_only: 
     next_enemy_id += 1
 
 func _move_enemies(delta: float) -> void:
+    var regen: float = float(SectorCatalog.value(stage, "regen", 0.0)) * delta
     for i in range(enemies.size() - 1, -1, -1):
         var enemy: Dictionary = enemies[i]
         var pos: Vector2 = enemy["pos"]
+        if regen > 0.0:
+            enemy["hp"] = minf(float(enemy["max_hp"]), float(enemy["hp"]) + float(enemy["max_hp"]) * regen)
         var slow: float = float(enemy["slow"])
         var stun: float = float(enemy["stun"])
         enemy["slow"] = maxf(0.0, slow - delta)
@@ -346,7 +417,7 @@ func _move_enemies(delta: float) -> void:
                 return
 
 func _process_elite_phase() -> void:
-    if stage != 2 or not _elite_spawned or _elite_enraged:
+    if not SectorCatalog.has_elite(stage) or not _elite_spawned or _elite_enraged:
         return
     for enemy in enemies:
         if String(enemy["kind"]) != "elite":
@@ -481,7 +552,7 @@ func _tick_weapons(delta: float) -> void:
         _nova_timer = maxf(1.1, 4.2 - 0.38 * int(levels["nova"])) / cadence
         _fire_nova()
 func _range(base: float) -> float:
-    return base * (1.0 + 0.12 * int(levels["reach"]))
+    return base * (1.0 + 0.12 * int(levels["reach"])) * _range_scale
 
 func _power(base: float) -> float:
     return base * (1.0 + 0.15 * int(levels["power"]) + 0.10 * int(meta.get("damage", 0)))
@@ -758,7 +829,9 @@ func _effect(kind: String, a: Vector2, b: Vector2, radius: float, color: Color, 
     effects.append({"kind": kind, "a": a, "b": b, "radius": radius, "color": color, "ttl": duration, "duration": duration})
 
 func _draw() -> void:
-    ArenaBackground.draw_to(self, low_fx, _visual_clock)
+    ArenaBackground.draw_to(self, low_fx, _visual_clock, stage)
+    for drop in pending_drops:
+        EnemyRenderer.draw_drop_marker(self, drop, _visual_clock)
     var damage_fraction: float = clampf((_guardian_damage_until - _visual_clock) / 0.32, 0.0, 1.0)
     GuardianRenderer.draw_to(self, G, low_fx, _visual_clock,
         GuardianRenderer.sentinel_barrel_count(int(levels.get("gun", 1)), int(levels.get("gun_volley", 0))),

@@ -90,7 +90,7 @@ func _build() -> void:
     hero.add_child(art)
 
     stack.add_child(_text("HOLD THE LAST DEFENSIVE LINE", 18, PALE, true))
-    var showcase_title: String = "PRESSURE TEST • LV12 • FIVE WEAPONS ONLINE" if GameCatalog.STAGE_ONE_SHOWCASE else "SENTINEL AUTOCANNON • BUILD YOUR DEFENSE"
+    var showcase_title: String = "HARD START • LV12 • FIVE WEAPONS ONLINE" if bool(record.get("hard_start", false)) else "SENTINEL AUTOCANNON • BUILD YOUR DEFENSE"
     stack.add_child(_text(showcase_title, 15, PALE, true))
 
     stack.add_child(_section("MISSION CONTROL"))
@@ -101,7 +101,7 @@ func _build() -> void:
 
     var elite := _button("DEPLOY • ELITE 01", false, 55.0)
     elite.name = "DeployElite"
-    elite.disabled = int(record.get("stage_unlocked", 1)) < 2
+    elite.disabled = not SectorCatalog.is_open(2, int(record.get("stage_unlocked", 1)), GameCatalog.PLAYTEST_TOOLS)
     if elite.disabled:
         elite.text = "ELITE 01 • LOCKED — CLEAR NORMAL 01"
     elite.pressed.connect(func() -> void: deploy_requested.emit(2))

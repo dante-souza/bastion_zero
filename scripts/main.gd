@@ -10,6 +10,8 @@ var hud: TacticalHud
 var modal: ColorRect
 var current_stage := 1
 var _last_back_frame := -1
+## The first two sectors keep their original node names for tests and tools.
+const SECTOR_BUTTON_NAMES := {1: "SectorNormal", 2: "SectorElite"}
 
 func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -127,22 +129,35 @@ func _threat_guide(from_pause: bool = false) -> void:
 func _sectors() -> void:
     arena.state = "idle"
     hud.hide()
-    var content := _screen("SECTORS", "SELECT A REAL MISSION")
-    var normal := _button("NORMAL 01  •  DEPLOY", true)
-    normal.name = "SectorNormal"
-    normal.pressed.connect(_deploy.bind(1))
-    content.add_child(normal)
-    var elite := _button("ELITE 01  •  DEPLOY", false)
-    elite.name = "SectorElite"
-    elite.disabled = int(record.get("stage_unlocked", 1)) < 2
-    if elite.disabled:
-        elite.text = "ELITE 01  •  LOCKED — CLEAR NORMAL 01"
-    elite.pressed.connect(_deploy.bind(2))
-    content.add_child(elite)
+    var content := _screen("SECTORS", "SELECT A MAP", true)
+    if GameCatalog.PLAYTEST_TOOLS:
+        var hard: bool = bool(record.get("hard_start", false))
+        var toggle := _button("START: " + ("HARD  •  LV12 LOADOUT" if hard else "LEVEL 1  •  NORMAL") + "  •  CHANGE", hard)
+        toggle.name = "SectorHardStart"
+        toggle.pressed.connect(_toggle_hard_start)
+        content.add_child(toggle)
+    var unlocked: int = int(record.get("stage_unlocked", 1))
+    for stage in range(1, SectorCatalog.count() + 1):
+        var map: Dictionary = SectorCatalog.get_map(stage)
+        var caption: String = "%s  •  %s" % [map["code"], map["place"]]
+        var deploy := _button(caption, stage == 1)
+        deploy.name = SECTOR_BUTTON_NAMES.get(stage, "Sector%d" % stage)
+        deploy.disabled = not SectorCatalog.is_open(stage, unlocked, GameCatalog.PLAYTEST_TOOLS)
+        if deploy.disabled:
+            deploy.text = "%s  •  LOCKED — CLEAR %s" % [map["code"], GameCatalog.stage_name(stage - 1)]
+        deploy.pressed.connect(_deploy.bind(stage))
+        content.add_child(deploy)
+        content.add_child(_label(String(map["brief"]), 15, PALE, true))
     var back := _button("RETURN TO TITLE", false)
     back.name = "SectorsBack"
     back.pressed.connect(_title)
     content.add_child(back)
+
+
+func _toggle_hard_start() -> void:
+    record["hard_start"] = not bool(record.get("hard_start", false))
+    SaveData.write_game(record)
+    _sectors()
 
 
 func _settings() -> void:
@@ -192,13 +207,13 @@ func _toggle_fx() -> void:
     _hangar()
 
 func _deploy(selected_stage: int = 1) -> void:
-    if selected_stage > int(record["stage_unlocked"]):
+    if not SectorCatalog.is_open(selected_stage, int(record["stage_unlocked"]), GameCatalog.PLAYTEST_TOOLS):
         return
     current_stage = selected_stage
     _clear()
     hud.show()
     arena.begin_run(record["meta"], current_stage, bool(record["low_fx"]),
-        GameCatalog.STAGE_ONE_SHOWCASE and current_stage == 1)
+        bool(record.get("hard_start", false)))
 
 func _pause() -> void:
     if arena.state != "running":

@@ -18,7 +18,7 @@ const ELITE := VisualProfile.ELITE
 const MINT := VisualProfile.XP_GREEN
 const CYAN := Color("#28D9FF")
 
-const ARMORED_FORMATIONS := ["ARMORED", "PHALANX"]
+const ARMORED_FORMATIONS := ["ARMORED", "PHALANX", "SIEGE"]
 
 
 static func descriptions() -> Array[Dictionary]:
