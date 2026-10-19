@@ -393,3 +393,23 @@ make phase-i5
 make phase-i5-screenshot
 make phase-i5-doctor
 ```
+
+## Phase I.6 — Playtest Fixes
+
+Branch `feature/m1-visual-phase-i6-playtest-fixes`, stacked on I.5.
+Compact combat HUD, level-up card fixes, health-bar and kill-pop clutter,
+Android back navigation. No mechanics or balance changes.
+
+J8 ARMv7 version `0.9.5-phase-i6-playtest-fixes-debug`, code 25, same
+`com.dantesouza.bastionzero.phaseh` premium app package:
+
+```powershell
+git fetch origin --prune
+git switch --track origin/feature/m1-visual-phase-i6-playtest-fixes
+git merge --ff-only origin/feature/m1-visual-phase-i6-playtest-fixes
+make profile
+make check-tools
+make phase-i6
+make phase-i6-screenshot
+make phase-i6-doctor
+```

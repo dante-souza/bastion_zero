@@ -38,7 +38,8 @@ class J8ToolsTests(unittest.TestCase):
             ("phase-i2", "feature/m1-visual-phase-i2-evolution"),
             ("phase-i3", "feature/m1-visual-phase-i3-title-menu"),
             ("phase-i4", "feature/m1-visual-phase-i4-threat-language"),
-            ("phase-i5", "feature/m1-visual-phase-i5-color-language")
+            ("phase-i5", "feature/m1-visual-phase-i5-color-language"),
+            ("phase-i6", "feature/m1-visual-phase-i6-playtest-fixes")
         ]:
             with self.subTest(key=key), mock.patch.object(
                 android_j8, "execute", return_value=mock.Mock(stdout=branch + "\n")
@@ -257,6 +258,17 @@ class J8ToolsTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "cross-profile"):
             android_j8.resolve_apk("dist/phase-i4/bastion-zero-phase-i4-j8-debug.apk", i5)
 
+    def test_phase_i6_playtest_fixes_reuses_premium_app(self):
+        i5 = android_j8.resolve_profile("phase-i5")
+        i6 = android_j8.resolve_profile("phase-i6")
+        self.assertEqual(i6.branch, "feature/m1-visual-phase-i6-playtest-fixes")
+        self.assertEqual(i6.artifact, "Bastion-Zero-Phase-I6-J8-ARMv7")
+        self.assertEqual(i6.package, i5.package)
+        self.assertNotEqual(i6.apk_name, i5.apk_name)
+        self.assertIn("phase-i6", str(android_j8.resolve_apk("auto", i6)))
+        with self.assertRaisesRegex(RuntimeError, "cross-profile"):
+            android_j8.resolve_apk("dist/phase-i5/bastion-zero-phase-i5-j8-debug.apk", i6)
+
     def test_reject_cross_profile_apk_basename(self):
         with self.assertRaisesRegex(RuntimeError, "cross-profile"):
             android_j8.resolve_apk("dist/bastion-zero-j8-debug.apk", android_j8.PROFILES["phase-a"])
@@ -390,6 +402,7 @@ class J8ToolsTests(unittest.TestCase):
         self.assertIn("feature/m1-visual-phase-i3-title-menu", repo_sync.BRANCHES)
         self.assertIn("feature/m1-visual-phase-i4-threat-language", repo_sync.BRANCHES)
         self.assertIn("feature/m1-visual-phase-i5-color-language", repo_sync.BRANCHES)
+        self.assertIn("feature/m1-visual-phase-i6-playtest-fixes", repo_sync.BRANCHES)
 
 
 if __name__ == "__main__":
