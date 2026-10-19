@@ -61,3 +61,33 @@ after. [Certo]
    - If `sim` is large, the next step is a spatial grid for the sweep.
    - If `ticks/frame` sits near 2, physics is catching up for slow frames;
      fixing the frame cost fixes that too.
+
+## Step 2: baked enemy bodies (after the neon pass)
+
+The J8 Elite fight (ELITE 01, HARD START, LOW FX) ran at 20–24 FPS with
+~30 enemies and 14–17 FPS with 40–49. Our own drawing took 15–24 ms per
+frame, and slow frames triggered up to 4 catch-up physics ticks each.
+
+- **Enemy bodies are baked once** (`EnemySpriteCache`, a 2× atlas on a
+  SubViewport) and stamped by `EnemyBodyLayer` as one textured quad each.
+  One texture and one material for the whole swarm, so it batches. The
+  per-frame parts (slow, flash, focus, health bar, Elite pulse and rage)
+  stay vector in `EnemyRenderer.draw_overlays`.
+- **Catch-up capped at 2 ticks per frame**
+  (`physics/common/max_physics_steps_per_frame=2`, was 8). A heavy frame
+  now slows the game a little instead of making the next frame heavier.
+- New enemy kinds opt in with `EnemySpriteCache.register(kind, half_extent,
+  paint)`; a kind nobody registers keeps vector drawing.
+
+Desktop, real renderer (xvfb + opengl3), 45 enemies incl. an Elite, LOW FX:
+
+| | Vector | Baked |
+|---|---|---|
+| Draw calls per frame | 349 | 11 |
+| Primitives per frame | 10,276 | 473 |
+| Script draw time | 1.4–1.5 ms | 0.36–0.43 ms |
+
+Pixel comparison of every kind in both FX modes: identical apart from
+edge antialiasing (0.1% of pixels differ visibly). [Certo] Expected on the
+J8 [Provável]: draw script falls from ~16–24 ms to ~4–6 ms in the Elite
+fight. Confirm with `make perf-clean`, play, then `make enemies`.

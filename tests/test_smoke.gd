@@ -824,6 +824,31 @@ func _run() -> void:
         "backdrop draws on its own GPU layer behind combat")
     _expect(perf.perf_line().begins_with("BastionZero perf: fps=") and perf.perf_line().contains("draw_calls="),
         "perf probe line is logcat-ready")
+    var cache: EnemySpriteCache = perf.sprite_cache
+    var all_baked := true
+    for kind in EnemySpriteCache.BUILTIN_KINDS:
+        for reduced in [true, false]:
+            var region: Rect2 = cache.region_of(kind, reduced)
+            var needed: float = 2.0 * EnemyRenderer.visual_radius(kind, 0.0) * EnemySpriteCache.SCALE
+            all_baked = all_baked and cache.has_sprite(kind, reduced) and region.size.x > needed
+    _expect(all_baked, "every enemy kind has a baked body in both FX modes, with room for its edges")
+    _expect(not cache.has_sprite("warden", true), "unregistered kinds fall back to vector drawing")
+    var regions: Array = []
+    for kind in EnemySpriteCache.BUILTIN_KINDS:
+        regions.append(cache.region_of(kind, true))
+        regions.append(cache.region_of(kind, false))
+    var overlap := false
+    for i in range(regions.size()):
+        for j in range(i + 1, regions.size()):
+            overlap = overlap or Rect2(regions[i]).intersects(regions[j])
+    _expect(not overlap and Vector2(cache.size).x >= Rect2(regions[0]).end.x,
+        "baked enemy bodies sit in separate cells inside the atlas")
+    var body_layer: EnemyBodyLayer = perf.bodies
+    _expect(body_layer.show_behind_parent and (body_layer.material as CanvasItemMaterial).blend_mode
+        == CanvasItemMaterial.BLEND_MODE_PREMULT_ALPHA and body_layer.get_index() > perf.glow.get_index(),
+        "enemy bodies draw premultiplied, above the glow and behind the overlays")
+    _expect(int(ProjectSettings.get_setting("physics/common/max_physics_steps_per_frame")) == 2,
+        "a slow frame runs at most 2 catch-up physics ticks")
     perf.queue_free()
 
     _sector_checks()

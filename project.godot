@@ -30,3 +30,8 @@ environment/defaults/default_clear_color=Color(0.024, 0.035, 0.075, 1)
 [input_devices]
 pointing/emulate_mouse_from_touch=true
 pointing/emulate_touch_from_mouse=true
+
+[physics]
+; A slow frame runs at most 2 catch-up ticks instead of 8, so one heavy frame
+; slows the game slightly instead of making the next frame heavier too.
+common/max_physics_steps_per_frame=2
