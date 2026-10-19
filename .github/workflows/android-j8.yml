@@ -1,0 +1,149 @@
+name: Android J8 debug APK
+
+on:
+  push:
+    branches: ['feature/m1-playable-game', 'feature/m1-visual-phase-a', 'feature/m1-visual-phase-b-guardian', 'feature/m1-visual-phase-c-enemies', 'feature/m1-visual-phase-d-weapons', 'feature/m1-visual-phase-e-hud', 'feature/m1-visual-phase-f-evolution', 'feature/m1-visual-phase-g-identity-hangar', 'feature/m1-visual-phase-h-premium', 'feature/m1-visual-phase-i1-combat-hud', 'feature/m1-visual-phase-i2-evolution', 'feature/m1-visual-phase-i3-title-menu', 'feature/m1-visual-phase-i4-threat-language', 'feature/m1-visual-phase-i5-color-language', 'feature/m1-visual-phase-i6-playtest-fixes']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android-debug:
+    name: ARMv7 APK • Samsung Galaxy J8
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+
+      - name: Install JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # Ubuntu hosted runners already include the Android SDK. Avoid the setup-android@v3
+      # action: its legacy "tools" installation is no longer available upstream.
+      - name: Locate runner Android SDK
+        shell: bash
+        run: |
+          echo "ANDROID_HOME=${ANDROID_HOME}"
+          test -d "${ANDROID_HOME}/cmdline-tools"
+          SDKMANAGER="$(find "${ANDROID_HOME}/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)"
+          test -n "$SDKMANAGER"
+          echo "$(dirname "$SDKMANAGER")" >> "$GITHUB_PATH"
+          echo "Using $SDKMANAGER"
+
+      - name: Install Godot 4.4 Android SDK dependencies
+        shell: bash
+        run: |
+          sdkmanager "platform-tools" "build-tools;34.0.0" "platforms;android-34"
+          echo "Android SDK: ${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+
+      - name: Install Godot and export templates
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.4.1
+          use-dotnet: false
+          include-templates: true
+
+      - name: Configure Godot Android paths
+        shell: bash
+        env:
+          BASTION_DEBUG_KEYSTORE_BASE64: ${{ secrets.BASTION_DEBUG_KEYSTORE_BASE64 }}
+        run: |
+          mkdir -p "$HOME/.config/godot"
+          cat > "$HOME/.config/godot/editor_settings-4.tres" <<EOF
+          [gd_resource type="EditorSettings" format=3]
+
+          [resource]
+          export/android/java_sdk_path = "${JAVA_HOME}"
+          export/android/android_sdk_path = "${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          EOF
+          if [ -n "$BASTION_DEBUG_KEYSTORE_BASE64" ]; then
+            printf '%s' "$BASTION_DEBUG_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/bastion-zero-debug.keystore"
+            echo "Using stable secret-provided CI debug keystore."
+          else
+            echo "::warning::No BASTION_DEBUG_KEYSTORE_BASE64 secret: generating ephemeral key; updates will require uninstall."
+            keytool -genkeypair -noprompt -keystore "$RUNNER_TEMP/bastion-zero-debug.keystore" \
+              -storepass android -alias androiddebugkey -keypass android \
+              -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Bastion Zero,C=BR"
+          fi
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_PATH=$RUNNER_TEMP/bastion-zero-debug.keystore" >> "$GITHUB_ENV"
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_USER=androiddebugkey" >> "$GITHUB_ENV"
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=android" >> "$GITHUB_ENV"
+
+      - name: Verify Phase H approved art
+        if: github.ref_name == 'feature/m1-visual-phase-h-premium' || github.ref_name == 'feature/m1-visual-phase-i1-combat-hud' || github.ref_name == 'feature/m1-visual-phase-i2-evolution' || github.ref_name == 'feature/m1-visual-phase-i3-title-menu' || github.ref_name == 'feature/m1-visual-phase-i4-threat-language' || github.ref_name == 'feature/m1-visual-phase-i5-color-language' || github.ref_name == 'feature/m1-visual-phase-i6-playtest-fixes'
+        shell: bash
+        run: python scripts/phase_h_assets.py verify --require
+
+      - name: Import Godot resources
+        shell: bash
+        run: godot --headless --path . --editor --quit --quit-after 240
+
+      - name: Create 32-bit ARM debug APK
+        shell: bash
+        run: |
+          mkdir -p dist
+          if [[ "$GITHUB_REF_NAME" == "feature/m1-visual-phase-i6-playtest-fixes" ]]; then
+            PRESET="Android J8 Phase I6 Debug"
+            APK="dist/bastion-zero-phase-i6-j8-debug.apk"
+          elif [[ "$GITHUB_REF_NAME" == "feature/m1-visual-phase-i5-color-language" ]]; then
+            PRESET="Android J8 Phase I5 Debug"
+            APK="dist/bastion-zero-phase-i5-j8-debug.apk"
+          elif [[ "$GITHUB_REF_NAME" == "feature/m1-visual-phase-i4-threat-language" ]]; then
+            PRESET="Android J8 Phase I4 Debug"
+            APK="dist/bastion-zero-phase-i4-j8-debug.apk"
+          elif [[ "$GITHUB_REF_NAME" == "feature/m1-visual-phase-i3-title-menu" ]]; then
+            PRESET="Android J8 Phase I3 Debug"
+            APK="dist/bastion-zero-phase-i3-j8-debug.apk"
+          elif [[ "$GITHUB_REF_NAME" == "feature/m1-visual-phase-i2-evolution" ]]; then
+            PRESET="Android J8 Phase I2 Debug"
+            APK="dist/bastion-zero-phase-i2-j8-debug.apk"
+          elif [[ "$GITHUB_REF_NAME" == "feature/m1-visual-phase-i1-combat-hud" ]]; then
+            PRESET="Android J8 Phase I1 Debug"
+            APK="dist/bastion-zero-phase-i1-j8-debug.apk"
+          elif [[ "$GITHUB_REF_NAME" == "feature/m1-visual-phase-h-premium" ]]; then
+            PRESET="Android J8 Phase H Debug"
+            APK="dist/bastion-zero-phase-h-j8-debug.apk"
+          elif [[ "$GITHUB_REF_NAME" == "feature/m1-visual-phase-g-identity-hangar" ]]; then
+            PRESET="Android J8 Phase G Debug"
+            APK="dist/bastion-zero-phase-g-j8-debug.apk"
+          elif [[ "$GITHUB_REF_NAME" == "feature/m1-visual-phase-f-evolution" ]]; then
+            PRESET="Android J8 Phase F Debug"
+            APK="dist/bastion-zero-phase-f-j8-debug.apk"
+          elif [[ "$GITHUB_REF_NAME" == "feature/m1-visual-phase-e-hud" ]]; then
+            PRESET="Android J8 Phase E Debug"
+            APK="dist/bastion-zero-phase-e-j8-debug.apk"
+          elif [[ "$GITHUB_REF_NAME" == "feature/m1-visual-phase-d-weapons" ]]; then
+            PRESET="Android J8 Phase D Debug"
+            APK="dist/bastion-zero-phase-d-j8-debug.apk"
+          elif [[ "$GITHUB_REF_NAME" == "feature/m1-visual-phase-c-enemies" ]]; then
+            PRESET="Android J8 Phase C Debug"
+            APK="dist/bastion-zero-phase-c-j8-debug.apk"
+          elif [[ "$GITHUB_REF_NAME" == "feature/m1-visual-phase-b-guardian" ]]; then
+            PRESET="Android J8 Phase B Debug"
+            APK="dist/bastion-zero-phase-b-j8-debug.apk"
+          elif [[ "$GITHUB_REF_NAME" == "feature/m1-visual-phase-a" ]]; then
+            PRESET="Android J8 Phase A Debug"
+            APK="dist/bastion-zero-phase-a-j8-debug.apk"
+          else
+            PRESET="Android J8 Debug"
+            APK="dist/bastion-zero-j8-debug.apk"
+          fi
+          godot --headless --path . --export-debug "$PRESET" "$APK"
+          test -s "$APK"
+          sha256sum "$APK" | tee dist/SHA256SUMS.txt
+
+      - name: Upload J8 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.ref_name == 'feature/m1-visual-phase-i6-playtest-fixes' && 'Bastion-Zero-Phase-I6-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-i5-color-language' && 'Bastion-Zero-Phase-I5-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-i4-threat-language' && 'Bastion-Zero-Phase-I4-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-i3-title-menu' && 'Bastion-Zero-Phase-I3-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-i2-evolution' && 'Bastion-Zero-Phase-I2-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-i1-combat-hud' && 'Bastion-Zero-Phase-I1-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-h-premium' && 'Bastion-Zero-Phase-H-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-g-identity-hangar' && 'Bastion-Zero-Phase-G-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-f-evolution' && 'Bastion-Zero-Phase-F-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-e-hud' && 'Bastion-Zero-Phase-E-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-d-weapons' && 'Bastion-Zero-Phase-D-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-c-enemies' && 'Bastion-Zero-Phase-C-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-b-guardian' && 'Bastion-Zero-Phase-B-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-a' && 'Bastion-Zero-Phase-A-J8-ARMv7' || 'Bastion-Zero-M1R-J8-ARMv7'))))))))))))) }}
+          path: |
+            dist/bastion-zero-*-j8-debug.apk
+            dist/bastion-zero-j8-debug.apk
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30

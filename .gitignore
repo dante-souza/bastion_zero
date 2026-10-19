@@ -33,3 +33,10 @@ google-services.json
 
 # Android Profiling
 *.hprof
+
+# Godot import/cache and downloaded CI artifacts
+.godot/
+dist/
+__pycache__/
+*.py[cod]
+screenshots/

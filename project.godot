@@ -1,0 +1,32 @@
+; Bastion Zero — original offline neon tower-defense roguelite
+; Godot 4.4+ project, source-only.
+config_version=5
+
+[application]
+config/name="Bastion Zero"
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.4", "GL Compatibility")
+config/description="Bastion Zero: tactical offline arcade defense"
+config/icon="res://icon.svg"
+config/quit_on_go_back=false
+boot_splash/bg_color=Color(0.008, 0.024, 0.055, 1)
+boot_splash/image="res://assets/branding/premium_splash_720.png"
+boot_splash/fullsize=true
+boot_splash/use_filter=true
+
+[display]
+window/size/viewport_width=720
+window/size/viewport_height=1280
+window/stretch/mode="canvas_items"
+window/handheld/orientation=1
+
+[rendering]
+textures/vram_compression/import_etc2_astc=true
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/default_filters/use_nearest_mipmap_filter=false
+environment/defaults/default_clear_color=Color(0.024, 0.035, 0.075, 1)
+
+[input_devices]
+pointing/emulate_mouse_from_touch=true
+pointing/emulate_touch_from_mouse=true
