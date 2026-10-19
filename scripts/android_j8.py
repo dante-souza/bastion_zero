@@ -96,6 +96,27 @@ PROFILES = {
     ),
 }
 PACKAGE = PROFILES["m1r"].package  # backward-compatible testing alias
+
+# Any other branch (dev, main, feature/*) builds with ONE preset and installs
+# over the premium app (same package as Phase H-I6). CI and this tool derive
+# everything else from the branch name, so a new branch needs no plumbing.
+BRANCH_ARTIFACT = "Bastion-Zero-J8-ARMv7"
+BRANCH_APK = "bastion-zero-j8-branch-debug.apk"
+BRANCH_PACKAGE = "com.dantesouza.bastionzero.phaseh"
+
+
+def branch_slug(branch: str) -> str:
+    """Filesystem-safe cache key, e.g. feature/perf-baseline -> feature-perf-baseline."""
+    return re.sub(r"[^A-Za-z0-9._-]+", "-", branch).strip("-")
+
+
+def branch_profile(branch: str) -> BuildProfile:
+    for profile in PROFILES.values():
+        if branch == profile.branch:
+            return profile  # frozen phase branches keep their own artifact/package
+    if not branch_slug(branch):
+        raise RuntimeError("Cannot infer Android profile: no current Git branch (detached HEAD?).")
+    return BuildProfile(branch_slug(branch), branch, BRANCH_ARTIFACT, BRANCH_APK, BRANCH_PACKAGE)
 DEFAULT_DEVICE = os.environ.get("BASTION_DEVICE", "38c19745")
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -126,18 +147,15 @@ def adb(serial: str, *args: str, check: bool = True, capture: bool = False) -> s
 
 
 def resolve_profile(name: str) -> BuildProfile:
+    """auto = current Git branch; a legacy key (phase-i6, m1r); or any branch name."""
     if name == "auto":
         branch = execute(["git", "-C", str(ROOT), "branch", "--show-current"], capture=True).stdout.strip()
-        for profile in PROFILES.values():
-            if branch == profile.branch:
-                return profile
-        raise RuntimeError(
-            f"Cannot infer Android profile from Git branch {branch!r}. "
-            "Use 'make phase-i6', or explicitly set PROFILE=phase-i6|phase-i5|phase-i4|phase-i3|phase-i2|phase-i1|phase-h|phase-g|phase-f|phase-e|phase-d|phase-c|phase-b|phase-a|m1r."
-        )
-    if name not in PROFILES:
-        raise RuntimeError(f"Unknown PROFILE={name!r}; supported: auto, {', '.join(PROFILES)}")
-    return PROFILES[name]
+        return branch_profile(branch)
+    if name in PROFILES:
+        return PROFILES[name]
+    if name in {"dev", "main"} or "/" in name:
+        return branch_profile(name)
+    raise RuntimeError(f"Unknown PROFILE={name!r}; use auto, a branch name, or one of: {', '.join(PROFILES)}")
 
 
 def resolve_apk(filename: str, profile: BuildProfile) -> Path:
@@ -317,91 +335,16 @@ def screenshot(serial: str, profile: BuildProfile) -> None:
 
 def help_text() -> None:
     print("Bastion Zero — Makefile-first Galaxy J8 workflow")
-    print("  make phase-a              download latest Phase A, reinstall and launch on J8")
-    print("  make phase-a-apk          download/cache Phase A APK only")
-    print("  make phase-a-reinstall-run  reinstall existing Phase A APK and launch")
-    print("  make phase-a-run          launch installed Phase A")
-    print("  make phase-a-doctor       check J8, Phase A package and APK")
-    print("  make phase-a-logs         Android diagnostics")
-    print("  make phase-a-screenshot   save screenshot in screenshots/")
-    print("  make phase-b              download, reinstall and launch Guardian Phase B.1")
-    print("  make phase-b-apk          download/cache Phase B.1 APK")
-    print("  make phase-b-reinstall-run  reinstall cached Phase B.1 APK and launch")
-    print("  make phase-b-run          launch installed Phase B")
-    print("  make phase-b-doctor       check J8, Phase B package and APK")
-    print("  make phase-b-logs         Android diagnostics")
-    print("  make phase-b-screenshot   save screenshot in screenshots/")
-    print("  make phase-c              download, reinstall and launch Phase C enemies")
-    print("  make phase-c-apk          download/cache Phase C APK")
-    print("  make phase-c-reinstall-run  reinstall cached Phase C APK and launch")
-    print("  make phase-c-run          launch installed Phase C build")
-    print("  make phase-c-doctor       check J8, Phase C package and APK")
-    print("  make phase-c-logs         Android diagnostics")
-    print("  make phase-c-screenshot   save screenshot in screenshots/")
-    print("  make phase-d              download, reinstall and launch Phase D effects + showcase")
-    print("  make phase-d-apk          download/cache Phase D APK")
-    print("  make phase-d-reinstall-run  reinstall cached Phase D APK and launch")
-    print("  make phase-d-run          launch installed Phase D build")
-    print("  make phase-d-doctor       check J8, Phase D package and APK")
-    print("  make phase-d-logs         Android diagnostics")
-    print("  make phase-d-screenshot   save screenshot in screenshots/")
-    print("  make phase-e              download, reinstall and launch D.1 + E")
-    print("  make phase-e-apk          download/cache Phase E APK")
-    print("  make phase-e-reinstall-run  reinstall cached Phase E APK and launch")
-    print("  make phase-e-run          launch installed Phase E build")
-    print("  make phase-e-doctor       check J8, Phase E package and APK")
-    print("  make phase-e-logs         Android diagnostics")
-    print("  make phase-e-screenshot   save screenshot in screenshots/")
-    print("  make phase-f              download, reinstall and launch dense Phase F showcase")
-    print("  make phase-f-apk          download/cache Phase F APK")
-    print("  make phase-f-reinstall-run  reinstall cached Phase F APK and launch")
-    print("  make phase-f-run          launch installed Phase F build")
-    print("  make phase-f-doctor       check J8, Phase F package and APK")
-    print("  make phase-f-logs         Android diagnostics")
-    print("  make phase-f-screenshot   save screenshot in screenshots/")
-    print("  make phase-g              download, reinstall and launch Last Horizon Hangar")
-    print("  make phase-g-apk          download/cache Phase G APK")
-    print("  make phase-g-reinstall-run  reinstall cached Phase G APK and launch")
-    print("  make phase-g-run          launch installed Phase G build")
-    print("  make phase-g-doctor       check J8, Phase G package and APK")
-    print("  make phase-g-logs         Android diagnostics")
-    print("  make phase-g-screenshot   save screenshot in screenshots/")
-    print("  make phase-h              download, reinstall and launch premium Phase H")
-    print("  make phase-h-art          import approved cinematic art ZIP; specify ART_BUNDLE=")
-    print("  make phase-h-art-check    verify all six premium image SHA-256 hashes")
-    print("  make phase-h-apk          download/cache Phase H APK")
-    print("  make phase-h-reinstall-run  reinstall cached Phase H APK and launch")
-    print("  make phase-h-run          launch installed Phase H build")
-    print("  make phase-h-doctor       check J8, Phase H package and APK")
-    print("  make phase-h-logs         Android diagnostics")
-    print("  make phase-h-screenshot   save screenshot in screenshots/")
-    print("  make phase-i1             download, reinstall and launch tactical HUD")
-    print("  make phase-i1-doctor      verify J8 and current tactical package")
-    print("  make phase-i1-logs        Android logs for tactical HUD")
-    print("  make phase-i1-screenshot  capture current tactical combat UI")
-    print("  make phase-i2             download, reinstall and launch level-up choice")
-    print("  make phase-i2-doctor      verify J8 and current evolution package")
-    print("  make phase-i2-screenshot  capture 3-card level-up menu")
-    print("  make phase-i3             download, reinstall and launch tactical title")
-    print("  make phase-i3-doctor      verify Android J8 deployment")
-    print("  make phase-i3-screenshot  capture tactical title/menu or enlarged evolution")
-    print("  make phase-i4             download, reinstall and launch threat guide build")
-    print("  make phase-i4-doctor      verify J8 package and installed version")
-    print("  make phase-i4-screenshot  capture native threat-language screen")
-    print("  make phase-i5             download, reinstall and launch color-language build")
-    print("  make phase-i5-doctor      verify J8 package and installed version")
-    print("  make phase-i5-screenshot  capture recolored combat or threat guide")
-    print("  make phase-i6             download, reinstall and launch playtest-fix build")
-    print("  make phase-i6-doctor      verify J8 package and installed version")
-    print("  make phase-i6-screenshot  capture compact HUD or level-up cards")
-    print("  make fresh                download/reinstall/run selected branch profile")
+    print("  Any branch: push it, wait for 'Android J8 debug APK' in GitHub Actions, then:")
+    print("  make fresh                download latest APK of this branch, reinstall and launch")
     for key, value in COMMANDS.items():
         print(f"  make {key:<20} {value}")
-    print("  make sync                 Fast-forward local main/dev/M1R/Phase-A/Phase-B/Phase-C/Phase-D/Phase-E/Phase-F/Phase-G/Phase-H/Phase-I1/Phase-I2/Phase-I3/Phase-I4/Phase-I5/Phase-I6 and restore branch")
+    print("  make sync                 Fast-forward local main/dev and the frozen phase branches")
     print("  make check-tools          Python developer tool tests")
     print("  make check                Python + headless Godot validations")
     print("  make git-status           Inspect current local Git branch")
-    print("  Overrides: PROFILE=phase-i6|phase-i5|phase-i4|phase-i3|phase-i2|phase-i1|phase-h|phase-g|phase-f|phase-e|phase-d|phase-c|phase-b|phase-a|m1r|auto, DEVICE=serial, APK=path, RUN_ID=number")
+    print("  Frozen phases: make phase-a … phase-i6 (and -apk, -doctor, -logs, -screenshot, …)")
+    print("  Overrides: PROFILE=auto|<branch>|phase-i6|…|m1r, DEVICE=serial, APK=path, RUN_ID=number")
     print("  Default DEVICE=38c19745 (Galaxy J8); saves in the selected package are disposable.")
 
 
