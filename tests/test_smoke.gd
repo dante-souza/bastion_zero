@@ -202,7 +202,7 @@ func _run() -> void:
         _expect(is_equal_approx(left.y, right.y) and center.y < left.y, "horizon has symmetric upward crest")
         _expect(center.y < GameCatalog.BREACH_Y and left.y > GameCatalog.BREACH_Y, "horizon frames the defended zone without moving breach logic")
     _expect(ArenaBackground.horizon_y(-400.0) == ArenaBackground.horizon_y(0.0), "horizon clamps outside left edge")
-    _expect(ArenaBackground.RADIAL_SECTORS == 32 and ArenaBackground.AURA_RADIUS.x > 400.0, "Phase B.1 uses smooth, bounded backdrop halo")
+    _expect(ArenaBackground.AURA_RADIUS.x > 400.0, "Phase B.1 uses smooth, bounded backdrop halo")
     _expect(ArenaBackground.AURA_CENTER.y < GameCatalog.GUARDIAN.y, "aura sits behind upper Guardian silhouette")
     _expect(GuardianRenderer.MODULE_DIRECTIONS.size() == 4 and GuardianRenderer.RING_SEGMENTS == 4, "four cardinal Guardian modules")
     _expect(GuardianRenderer.MODULE_TIP_RADIUS < 90.0 and GuardianRenderer.CORE_RADIUS > 12.0, "Guardian keeps J8-safe footprint and visible core")
@@ -793,8 +793,71 @@ func _run() -> void:
             "I.6 back cannot skip a pending upgrade choice")
 
     game.queue_free()
+
+    # Perf pass: caches must never change who gets hit or found.
+    var perf := Arena.new()
+    root.add_child(perf)
+    perf.begin_run({}, 1, true)
+    perf._spawn_enemy("grunt", 200.0, 400.0)
+    perf._spawn_enemy("grunt", 360.0, 400.0)
+    perf._spawn_enemy("grunt", 520.0, 400.0)
+    var first_id: int = int(perf.enemies[0]["id"])
+    var middle_id: int = int(perf.enemies[1]["id"])
+    var last_id: int = int(perf.enemies[2]["id"])
+    _expect(perf._index_by_id(last_id) == 2, "perf id cache finds a fresh spawn")
+    perf._damage_by_id(middle_id, 1.0e9, "beam")
+    _expect(perf._index_by_id(middle_id) == -1 and perf._index_by_id(last_id) == 1
+        and perf._index_by_id(first_id) == 0, "perf id cache follows a kill that shifts indices")
+    perf.enemies.clear()
+    perf._spawn_enemy("tank", 360.0, 500.0)
+    _expect(perf._index_by_id(int(perf.enemies[0]["id"])) == 0 and perf._index_by_id(first_id) == -1,
+        "perf id cache survives the enemy list being cleared from outside")
+    perf.projectiles.clear()
+    perf.projectiles.append({"pos": Vector2(360.0, 560.0), "velocity": Vector2(0.0, -6000.0),
+        "damage": 5.0, "life": 1.0, "target": -1, "kind": "gun",
+        "pierce_left": 0, "ricochet_left": 0, "hit_ids": []})
+    perf._move_projectiles(1.0 / 60.0)
+    _expect(float(perf.enemies[0]["hp"]) < float(perf.enemies[0]["max_hp"]) and perf.projectiles.is_empty(),
+        "perf swept hit test still catches a fast round crossing a target in one tick")
+    var backdrop: SectorBackdrop = perf.get_node_or_null("SectorBackdrop") as SectorBackdrop
+    _expect(backdrop != null and backdrop.show_behind_parent,
+        "backdrop draws on its own GPU layer behind combat")
+    _expect(perf.perf_line().begins_with("BastionZero perf: fps=") and perf.perf_line().contains("draw_calls="),
+        "perf probe line is logcat-ready")
+    var cache: EnemySpriteCache = perf.sprite_cache
+    var all_baked := true
+    for kind in EnemySpriteCache.BUILTIN_KINDS:
+        for reduced in [true, false]:
+            var region: Rect2 = cache.region_of(kind, reduced)
+            var needed: float = 2.0 * EnemyRenderer.visual_radius(kind, 0.0) * EnemySpriteCache.SCALE
+            all_baked = all_baked and cache.has_sprite(kind, reduced) and region.size.x > needed
+    _expect(all_baked, "every enemy kind has a baked body in both FX modes, with room for its edges")
+    _expect(not cache.has_sprite("decoy", true), "unregistered kinds fall back to vector drawing")
+    _expect(cache.has_sprite("warden", true) and cache.has_sprite("warden", false)
+        and cache.has_sprite(MechanicVisuals.shield_key("runner", 2), true)
+        and cache.has_sprite(MechanicVisuals.shield_key("elite", 1), false),
+        "Warden bodies and shield marks are baked into the enemy atlas")
+    var regions: Array = []
+    for kind in EnemySpriteCache.BUILTIN_KINDS:
+        regions.append(cache.region_of(kind, true))
+        regions.append(cache.region_of(kind, false))
+    var overlap := false
+    for i in range(regions.size()):
+        for j in range(i + 1, regions.size()):
+            overlap = overlap or Rect2(regions[i]).intersects(regions[j])
+    _expect(not overlap and Vector2(cache.size).x >= Rect2(regions[0]).end.x,
+        "baked enemy bodies sit in separate cells inside the atlas")
+    var body_layer: EnemyBodyLayer = perf.bodies
+    _expect(body_layer.show_behind_parent and (body_layer.material as CanvasItemMaterial).blend_mode
+        == CanvasItemMaterial.BLEND_MODE_PREMULT_ALPHA and body_layer.get_index() > perf.glow.get_index(),
+        "enemy bodies draw premultiplied, above the glow and behind the overlays")
+    _expect(int(ProjectSettings.get_setting("physics/common/max_physics_steps_per_frame")) == 2,
+        "a slow frame runs at most 2 catch-up physics ticks")
+    perf.queue_free()
+
     _sector_checks()
     _mechanic_checks()
+    _neon_checks()
     print("RESULT: ", "PASS" if failures == 0 else "%d FAILURES" % failures)
     quit(0 if failures == 0 else 1)
 
@@ -820,10 +883,12 @@ func _sector_checks() -> void:
             patterns_ok = patterns_ok and CombatDirector.PATTERNS.has(pattern)
         _expect(patterns_ok, "%s only uses authored formations" % map.get("code", ""))
         # Palette rule: backdrops are cool (blue band) or near-neutral; never warm, never green.
-        for key in ["sky_top", "sky_bottom", "horizon", "horizon_core"]:
+        for key in ["sky_top", "sky_bottom", "horizon", "horizon_core", "accent"]:
             var c: Color = map.get(key, Color.BLACK)
             _expect(c.s < 0.25 or (c.h >= 0.48 and c.h <= 0.76),
                 "%s %s stays cool (hue %.2f)" % [map.get("code", ""), key, c.h])
+        _expect(SectorBackdrop.THEMES.has(String(map.get("backdrop", ""))),
+            "%s has its own animated backdrop scene" % map.get("code", ""))
         var shape: String = String(map.get("shape", "crest"))
         var low := INF
         var high := -INF
@@ -1061,3 +1126,23 @@ func _mechanic_checks() -> void:
             "card %s has a name and three ranks" % key)
     _expect(SaveData.validated({"moving_line": true})["moving_line"] == GameCatalog.PLAYTEST_TOOLS and
         SaveData.defaults()["moving_line"] == false, "Moving Line setting saves and defaults off")
+
+
+## Neon pass: one shader backs every sector; menus and previews reuse it.
+func _neon_checks() -> void:
+    _expect(not SectorBackdrop.SHADER.get_shader_uniform_list().is_empty(),
+        "sector backdrop shader parses and exposes its uniforms")
+    var themes: Dictionary = {}
+    for stage in range(1, SectorCatalog.count() + 1):
+        themes[String(SectorCatalog.value(stage, "backdrop", ""))] = true
+    _expect(themes.size() == SectorCatalog.count(), "each of the six sectors has a distinct backdrop scene")
+    for key in ["sky_top", "sky_bottom", "horizon", "horizon_core", "accent"]:
+        var c: Color = SectorBackdrop.MENU[key]
+        _expect(c.s < 0.25 or (c.h >= 0.48 and c.h <= 0.76), "menu backdrop %s stays cool" % key)
+    var backdrop := SectorBackdrop.new()
+    backdrop.configure_stage(3, true)
+    _expect(int(backdrop.uniform("theme")) == SectorBackdrop.THEMES.find("rift")
+        and int(backdrop.uniform("shape")) == SectorBackdrop.SHAPES.find("twin")
+        and bool(backdrop.uniform("low_fx")), "stage 3 backdrop gets its rift scene, twin ridges and LOW FX")
+    backdrop.free()
+    _expect(NeonGlowLayer.glow_texture() != null, "glow layer shares one radial texture")

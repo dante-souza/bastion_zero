@@ -8,6 +8,7 @@ const GRUNT_VISUAL_MIN := 19.0
 const RUNNER_VISUAL_MIN := 19.0
 const TANK_VISUAL_MIN := 27.0
 const ELITE_VISUAL_MIN := 48.0
+const WARDEN_VISUAL_MIN := 21.0
 const HEALTH_BAR_WIDTH := 5.0
 
 static func visual_radius(kind: String, collision_radius: float) -> float:
@@ -15,6 +16,7 @@ static func visual_radius(kind: String, collision_radius: float) -> float:
         "runner": return maxf(RUNNER_VISUAL_MIN, collision_radius)
         "tank": return maxf(TANK_VISUAL_MIN, collision_radius)
         "elite": return maxf(ELITE_VISUAL_MIN, collision_radius)
+        "warden": return maxf(WARDEN_VISUAL_MIN, collision_radius)
     return maxf(GRUNT_VISUAL_MIN, collision_radius)
 
 
@@ -22,7 +24,8 @@ static func show_health(kind: String, fraction: float, focused: bool) -> bool:
     # Phase I.6: bars only where HP is a decision (multi-hit Tanks and Elites)
     # or on the target the player picked. Damaged swarm units no longer each
     # grow a bar, which put an ivory dash over nearly every enemy mid-fight.
-    return kind == "tank" or kind == "elite" or focused
+    # Wardens too: killing one first is the decision their bar informs.
+    return kind == "tank" or kind == "elite" or kind == "warden" or focused
 
 
 static func triangle_vertices(at: Vector2, size: float) -> PackedVector2Array:
@@ -34,19 +37,22 @@ static func triangle_vertices(at: Vector2, size: float) -> PackedVector2Array:
     ])
 
 
+## Full vector drawing of one enemy: its body plus the per-frame overlays.
+## The arena stamps bodies from EnemySpriteCache instead and only calls
+## draw_overlays; this stays the fallback for kinds nothing has baked.
 static func draw_to(
         canvas: CanvasItem, enemy: Dictionary, reduced_fx: bool,
         visual_time: float, is_focused: bool, elite_enraged: bool) -> void:
-    var kind: String = String(enemy["kind"])
-    var at: Vector2 = enemy["pos"]
-    var collision_radius: float = float(enemy["radius"])
-    var radius: float = visual_radius(kind, collision_radius)
+    draw_body(canvas, enemy["pos"], String(enemy["kind"]), reduced_fx)
+    draw_overlays(canvas, enemy, reduced_fx, visual_time, is_focused, elite_enraged)
+
+
+## The static part of an enemy: what EnemySpriteCache bakes. It depends only
+## on kind and FX mode, never on time or the enemy's state.
+static func draw_body(canvas: CanvasItem, at: Vector2, kind: String, reduced_fx: bool) -> void:
+    var radius: float = visual_radius(kind, 0.0)
     var tint: Color = VisualProfile.enemy_tint(kind)
     var interior: Color = VisualProfile.ENEMY_INTERIOR
-
-    if float(enemy["slow"]) > 0.0:
-        canvas.draw_arc(at, radius + 8.0, 0.0, TAU, 20, VisualProfile.ENEMY_SLOWED, 2.0, true)
-
     match kind:
         "runner":
             var vertices := triangle_vertices(at, radius)
@@ -73,12 +79,28 @@ static func draw_to(
                 tint, 2.0, true)
             canvas.draw_circle(at, 3.4, VisualProfile.ENEMY_CENTER)
         "elite":
-            _draw_elite(canvas, at, radius, visual_time, elite_enraged, reduced_fx)
+            _draw_elite_body(canvas, at, radius)
         _:
             canvas.draw_circle(at, radius, interior)
             canvas.draw_arc(at, radius - 1.5, 0.0, TAU, 26, tint, 5.0, true)
             canvas.draw_circle(at, radius * 0.38, Color(tint.r, tint.g, tint.b, 0.23))
             canvas.draw_circle(at, 3.0, VisualProfile.ENEMY_CENTER)
+
+
+## Everything that changes from frame to frame: slow, hit flash, focus lock,
+## health bar, and the Elite's pulse and rage rings.
+static func draw_overlays(
+        canvas: CanvasItem, enemy: Dictionary, reduced_fx: bool,
+        visual_time: float, is_focused: bool, elite_enraged: bool) -> void:
+    var kind: String = String(enemy["kind"])
+    var at: Vector2 = enemy["pos"]
+    var radius: float = visual_radius(kind, float(enemy["radius"]))
+
+    if float(enemy["slow"]) > 0.0:
+        canvas.draw_arc(at, radius + 8.0, 0.0, TAU, 20, VisualProfile.ENEMY_SLOWED, 2.0, true)
+
+    if kind == "elite":
+        _draw_elite_overlays(canvas, at, radius, visual_time, elite_enraged, reduced_fx)
 
     if float(enemy["flash"]) > 0.0:
         canvas.draw_arc(at, radius + 4.0, 0.0, TAU, 24,
@@ -98,9 +120,7 @@ static func draw_to(
             VisualProfile.HEALTH_FILL, true)
 
 
-static func _draw_elite(
-        canvas: CanvasItem, at: Vector2, radius: float,
-        visual_time: float, enraged: bool, reduced_fx: bool) -> void:
+static func _draw_elite_body(canvas: CanvasItem, at: Vector2, radius: float) -> void:
     var pink: Color = VisualProfile.ELITE
     var ember: Color = VisualProfile.ELITE_RIM
     canvas.draw_circle(at, radius, VisualProfile.ENEMY_INTERIOR)
@@ -111,11 +131,16 @@ static func _draw_elite(
         var first: float = angle + 0.07
         var last: float = angle + TAU / 4.0 - 0.20
         canvas.draw_arc(at, radius * 0.82, first, last, 10, pink, 6.0, true)
-
-    var pulse: float = 0.5 + 0.5 * sin(visual_time * 2.0)
     canvas.draw_arc(at, radius * 0.47, 0.0, TAU, 26, pink, 3.0, true)
     canvas.draw_circle(at, radius * 0.23, ember)
     canvas.draw_circle(at, 5.0, VisualProfile.ENEMY_INTERIOR)
+
+
+static func _draw_elite_overlays(
+        canvas: CanvasItem, at: Vector2, radius: float,
+        visual_time: float, enraged: bool, reduced_fx: bool) -> void:
+    var pink: Color = VisualProfile.ELITE
+    var pulse: float = 0.5 + 0.5 * sin(visual_time * 2.0)
     if not reduced_fx:
         canvas.draw_arc(at, radius + 7.0 + 1.5 * pulse,
             0.0, TAU, 32, Color(pink.r, pink.g, pink.b, 0.26), 2.5, true)

@@ -16,6 +16,8 @@ extends RefCounted
 ##   "fog"   - weapon range is multiplied by `range_scale`.
 ##
 ## Backdrop horizon shapes: "crest", "twin", "shelf", "jagged".
+## Backdrop scenes (animated by SectorBackdrop): "horizon", "aurora", "rift",
+## "foundry", "radar", "null"; `accent` colors the scene's moving element.
 ## Backdrop colors stay cool: warm belongs to hostiles, green to XP.
 const MAPS := [
     {
@@ -26,7 +28,8 @@ const MAPS := [
         "cycle": ["LINE", "WEDGE", "PINCER", "RUSH", "ARMORED", "WARDEN"],
         "elite_at": 0.0, "rule": "none",
         "sky_top": Color("#020509"), "sky_bottom": Color("#081e39"),
-        "horizon": Color("#168BFF"), "horizon_core": Color("#67D8FF"), "shape": "crest"
+        "horizon": Color("#168BFF"), "horizon_core": Color("#67D8FF"), "shape": "crest",
+        "accent": Color("#3A7BFF"), "backdrop": "horizon"
     },
     {
         "code": "ELITE 01", "place": "LAST HORIZON", "tag": "ELITE",
@@ -35,8 +38,9 @@ const MAPS := [
         "opening": "PINCER", "opening_phase": 0.12,
         "cycle": ["ARMORED", "PINCER", "RUSH", "PHALANX", "WEDGE", "CONVOY", "WARDEN"],
         "elite_at": 0.60, "rule": "none",
-        "sky_top": Color("#020509"), "sky_bottom": Color("#081e39"),
-        "horizon": Color("#168BFF"), "horizon_core": Color("#67D8FF"), "shape": "crest"
+        "sky_top": Color("#020509"), "sky_bottom": Color("#0d1640"),
+        "horizon": Color("#168BFF"), "horizon_core": Color("#67D8FF"), "shape": "crest",
+        "accent": Color("#8C6BFF"), "backdrop": "aurora"
     },
     {
         "code": "SWARM 02", "place": "CINDER RIFT", "tag": "SWARM",
@@ -47,7 +51,8 @@ const MAPS := [
         "elite_at": 0.0, "rule": "surge", "rule_every": 15.0,
         "rule_label": "RUNNER SURGE",
         "sky_top": Color("#03031a"), "sky_bottom": Color("#111848"),
-        "horizon": Color("#5A7DFF"), "horizon_core": Color("#C3CEFF"), "shape": "twin"
+        "horizon": Color("#5A7DFF"), "horizon_core": Color("#C3CEFF"), "shape": "twin",
+        "accent": Color("#6F7DFF"), "backdrop": "rift"
     },
     {
         "code": "SIEGE 03", "place": "IRON SHELF", "tag": "SIEGE",
@@ -58,7 +63,8 @@ const MAPS := [
         "elite_at": 0.72, "rule": "regen", "regen": 0.015,
         "rule_label": "NANITE REPAIR",
         "sky_top": Color("#03070b"), "sky_bottom": Color("#14293b"),
-        "horizon": Color("#6FA8C8"), "horizon_core": Color("#D4ECF7"), "shape": "shelf"
+        "horizon": Color("#6FA8C8"), "horizon_core": Color("#D4ECF7"), "shape": "shelf",
+        "accent": Color("#7FB3D6"), "backdrop": "foundry"
     },
     {
         "code": "AMBUSH 04", "place": "DROP ZONE", "tag": "AMBUSH",
@@ -69,7 +75,8 @@ const MAPS := [
         "elite_at": 0.0, "rule": "drop", "rule_every": 13.0, "drop_delay": 1.6,
         "rule_label": "DROP POD",
         "sky_top": Color("#010910"), "sky_bottom": Color("#06283c"),
-        "horizon": Color("#19B4E6"), "horizon_core": Color("#8FF0FF"), "shape": "jagged"
+        "horizon": Color("#19B4E6"), "horizon_core": Color("#8FF0FF"), "shape": "jagged",
+        "accent": Color("#2FC8F0"), "backdrop": "radar"
     },
     {
         "code": "ELITE 02", "place": "NULL EXPANSE", "tag": "ELITE",
@@ -80,7 +87,8 @@ const MAPS := [
         "elite_at": 0.50, "rule": "fog", "range_scale": 0.82,
         "rule_label": "NULL FOG",
         "sky_top": Color("#010205"), "sky_bottom": Color("#0b1331"),
-        "horizon": Color("#8AA0D8"), "horizon_core": Color("#E1E9FF"), "shape": "crest"
+        "horizon": Color("#8AA0D8"), "horizon_core": Color("#E1E9FF"), "shape": "crest",
+        "accent": Color("#9AA8E8"), "backdrop": "null"
     }
 ]
 

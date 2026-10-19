@@ -6,7 +6,6 @@ extends RefCounted
 ## restyle can swap this one file. Drawing only; no gameplay state here.
 ## Colors follow the rule: Warden and shields are warm (hostile), Overdrive
 ## and the Line are cool (yours).
-const WARDEN_VISUAL_MIN := 21.0
 
 
 static func hexagon(at: Vector2, size: float, turn: float = 0.0) -> PackedVector2Array:
@@ -30,37 +29,52 @@ static func draw_warden_aura(canvas: CanvasItem, at: Vector2, reduced_fx: bool, 
         canvas.draw_arc(at, reach, start, start + TAU / float(dashes) * 0.55, 6, stroke, 2.0, not reduced_fx)
 
 
-static func draw_warden(canvas: CanvasItem, enemy: Dictionary, reduced_fx: bool,
-        visual_time: float, is_focused: bool) -> void:
-    var at: Vector2 = enemy["pos"]
-    var radius: float = maxf(WARDEN_VISUAL_MIN, float(enemy["radius"]))
+## Static Warden body, baked into the enemy atlas (EnemySpriteCache); slow,
+## flash, focus and the HP bar come from EnemyRenderer.draw_overlays.
+static func draw_warden_body(canvas: CanvasItem, at: Vector2, _kind: String = "warden", _reduced_fx: bool = true) -> void:
+    var radius: float = EnemyRenderer.visual_radius("warden", 0.0)
     var tint: Color = VisualProfile.WARDEN
-    var turn: float = visual_time * 0.8
-    var body := hexagon(at, radius, turn)
+    var body := hexagon(at, radius)
     canvas.draw_colored_polygon(body.slice(0, 6), VisualProfile.ENEMY_INTERIOR)
     canvas.draw_polyline(body, tint, 4.0, true)
-    canvas.draw_polyline(hexagon(at, radius * 0.52, -turn), Color(tint.r, tint.g, tint.b, 0.70), 2.0, true)
+    canvas.draw_polyline(hexagon(at, radius * 0.52, PI / 6.0), Color(tint.r, tint.g, tint.b, 0.70), 2.0, true)
     canvas.draw_circle(at, 3.2, VisualProfile.ENEMY_CENTER)
-    if float(enemy["slow"]) > 0.0:
-        canvas.draw_arc(at, radius + 8.0, 0.0, TAU, 20, VisualProfile.ENEMY_SLOWED, 2.0, true)
-    if float(enemy["flash"]) > 0.0:
-        canvas.draw_arc(at, radius + 4.0, 0.0, TAU, 24, Color(1.0, 1.0, 1.0, 0.92), 2.5, true)
-    if is_focused:
-        canvas.draw_arc(at, radius + 11.0, 0.0, TAU, 28, VisualProfile.TARGET_LOCK, 2.5, true)
-    # HP is a decision on a Warden, so it always carries a bar.
-    var fraction: float = clampf(float(enemy["hp"]) / maxf(1.0, float(enemy["max_hp"])), 0.0, 1.0)
-    var upper: Vector2 = at + Vector2(-radius, -radius - 16.0)
-    canvas.draw_rect(Rect2(upper, Vector2(radius * 2.0, EnemyRenderer.HEALTH_BAR_WIDTH)), VisualProfile.HEALTH_TRACK, true)
-    canvas.draw_rect(Rect2(upper, Vector2(radius * 2.0 * fraction, EnemyRenderer.HEALTH_BAR_WIDTH)), VisualProfile.HEALTH_FILL, true)
+
+
+## Atlas key for a shield mark: one cell per (source, enemy kind).
+static func shield_key(kind: String, shield: int) -> String:
+    return "shield%d_%s" % [shield, kind]
+
+
+static func shield_radius(kind: String) -> float:
+    return EnemyRenderer.visual_radius(kind, 0.0) + 6.0
+
+
+static func shield_tint(shield: int) -> Color:
+    return VisualProfile.WARDEN if shield == 1 else VisualProfile.TANK_SHIELD
+
+
+## Bake the Warden body and every shield mark once (called before the
+## atlas is built). Elite cells cover the phase-II Warden shielding the boss.
+static func register_sprites() -> void:
+    EnemySpriteCache.register("warden", EnemyRenderer.visual_radius("warden", 0.0) + 2.0, draw_warden_body)
+    for kind in ["grunt", "runner", "tank", "elite"]:
+        for shield in [1, 2]:
+            EnemySpriteCache.register(shield_key(kind, shield), shield_radius(kind) + 2.0,
+                _paint_shield.bind(kind, shield))
+
+
+static func _paint_shield(canvas: CanvasItem, at: Vector2, _key: String, _reduced_fx: bool, kind: String, shield: int) -> void:
+    var tint: Color = shield_tint(shield)
+    canvas.draw_polyline(hexagon(at, shield_radius(kind), PI / 6.0), Color(tint.r, tint.g, tint.b, 0.85), 2.0, true)
 
 
 ## Hex outline around a protected hostile, in the color of what protects it:
 ## salmon for a Warden aura, tank yellow for an escort.
 static func draw_shield_mark(canvas: CanvasItem, enemy: Dictionary, reduced_fx: bool) -> void:
-    var at: Vector2 = enemy["pos"]
-    var radius: float = EnemyRenderer.visual_radius(String(enemy["kind"]), float(enemy["radius"])) + 6.0
-    var tint: Color = VisualProfile.WARDEN if int(enemy["shield"]) == 1 else VisualProfile.TANK_SHIELD
-    canvas.draw_polyline(hexagon(at, radius, PI / 6.0), Color(tint.r, tint.g, tint.b, 0.85), 2.0, not reduced_fx)
+    var tint: Color = shield_tint(int(enemy["shield"]))
+    canvas.draw_polyline(hexagon(enemy["pos"], shield_radius(String(enemy["kind"])), PI / 6.0),
+        Color(tint.r, tint.g, tint.b, 0.85), 2.0, not reduced_fx)
 
 
 ## Overdrive: a lance from the Guardian to the strike point and a closing ring.
