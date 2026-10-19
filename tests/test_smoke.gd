@@ -202,7 +202,7 @@ func _run() -> void:
         _expect(is_equal_approx(left.y, right.y) and center.y < left.y, "horizon has symmetric upward crest")
         _expect(center.y < GameCatalog.BREACH_Y and left.y > GameCatalog.BREACH_Y, "horizon frames the defended zone without moving breach logic")
     _expect(ArenaBackground.horizon_y(-400.0) == ArenaBackground.horizon_y(0.0), "horizon clamps outside left edge")
-    _expect(ArenaBackground.RADIAL_SECTORS == 32 and ArenaBackground.AURA_RADIUS.x > 400.0, "Phase B.1 uses smooth, bounded backdrop halo")
+    _expect(ArenaBackground.AURA_RADIUS.x > 400.0, "Phase B.1 uses smooth, bounded backdrop halo")
     _expect(ArenaBackground.AURA_CENTER.y < GameCatalog.GUARDIAN.y, "aura sits behind upper Guardian silhouette")
     _expect(GuardianRenderer.MODULE_DIRECTIONS.size() == 4 and GuardianRenderer.RING_SEGMENTS == 4, "four cardinal Guardian modules")
     _expect(GuardianRenderer.MODULE_TIP_RADIUS < 90.0 and GuardianRenderer.CORE_RADIUS > 12.0, "Guardian keeps J8-safe footprint and visible core")
@@ -819,14 +819,15 @@ func _run() -> void:
     perf._move_projectiles(1.0 / 60.0)
     _expect(float(perf.enemies[0]["hp"]) < float(perf.enemies[0]["max_hp"]) and perf.projectiles.is_empty(),
         "perf swept hit test still catches a fast round crossing a target in one tick")
-    var backdrop: Node2D = perf.get_node_or_null("Backdrop")
+    var backdrop: SectorBackdrop = perf.get_node_or_null("SectorBackdrop") as SectorBackdrop
     _expect(backdrop != null and backdrop.show_behind_parent,
-        "perf backdrop draws on its own layer behind combat")
+        "backdrop draws on its own GPU layer behind combat")
     _expect(perf.perf_line().begins_with("BastionZero perf: fps=") and perf.perf_line().contains("draw_calls="),
         "perf probe line is logcat-ready")
     perf.queue_free()
 
     _sector_checks()
+    _neon_checks()
     print("RESULT: ", "PASS" if failures == 0 else "%d FAILURES" % failures)
     quit(0 if failures == 0 else 1)
 
@@ -852,10 +853,12 @@ func _sector_checks() -> void:
             patterns_ok = patterns_ok and CombatDirector.PATTERNS.has(pattern)
         _expect(patterns_ok, "%s only uses authored formations" % map.get("code", ""))
         # Palette rule: backdrops are cool (blue band) or near-neutral; never warm, never green.
-        for key in ["sky_top", "sky_bottom", "horizon", "horizon_core"]:
+        for key in ["sky_top", "sky_bottom", "horizon", "horizon_core", "accent"]:
             var c: Color = map.get(key, Color.BLACK)
             _expect(c.s < 0.25 or (c.h >= 0.48 and c.h <= 0.76),
                 "%s %s stays cool (hue %.2f)" % [map.get("code", ""), key, c.h])
+        _expect(SectorBackdrop.THEMES.has(String(map.get("backdrop", ""))),
+            "%s has its own animated backdrop scene" % map.get("code", ""))
         var shape: String = String(map.get("shape", "crest"))
         var low := INF
         var high := -INF
@@ -956,3 +959,23 @@ func _sector_checks() -> void:
         elite_count += 1 if String(enemy["kind"]) == "elite" else 0
     _expect(elite_count == 1 and fog._elite_spawned, "ELITE 02 elite arrives at half time")
     fog.queue_free()
+
+
+## Neon pass: one shader backs every sector; menus and previews reuse it.
+func _neon_checks() -> void:
+    _expect(not SectorBackdrop.SHADER.get_shader_uniform_list().is_empty(),
+        "sector backdrop shader parses and exposes its uniforms")
+    var themes: Dictionary = {}
+    for stage in range(1, SectorCatalog.count() + 1):
+        themes[String(SectorCatalog.value(stage, "backdrop", ""))] = true
+    _expect(themes.size() == SectorCatalog.count(), "each of the six sectors has a distinct backdrop scene")
+    for key in ["sky_top", "sky_bottom", "horizon", "horizon_core", "accent"]:
+        var c: Color = SectorBackdrop.MENU[key]
+        _expect(c.s < 0.25 or (c.h >= 0.48 and c.h <= 0.76), "menu backdrop %s stays cool" % key)
+    var backdrop := SectorBackdrop.new()
+    backdrop.configure_stage(3, true)
+    _expect(int(backdrop.uniform("theme")) == SectorBackdrop.THEMES.find("rift")
+        and int(backdrop.uniform("shape")) == SectorBackdrop.SHAPES.find("twin")
+        and bool(backdrop.uniform("low_fx")), "stage 3 backdrop gets its rift scene, twin ridges and LOW FX")
+    backdrop.free()
+    _expect(NeonGlowLayer.glow_texture() != null, "glow layer shares one radial texture")

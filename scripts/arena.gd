@@ -76,17 +76,23 @@ var perf_draw_usec := 0.0
 var perf_ticks_per_frame := 0.0
 var _perf_ticks_this_frame := 0
 var _perf_log_timer := PERF_LOG_INTERVAL
-## The backdrop is static in reduced FX, so it lives on its own canvas item
-## that keeps its recorded commands instead of rebuilding them every frame.
-var _backdrop: Node2D
+## Neon pass: GPU backdrop (sky, horizon, the sector's animated scene) and the
+## additive glow under units. Both draw behind Arena's own _draw. The shader
+## animates on its own, so the backdrop needs no per-frame script work.
+var backdrop: SectorBackdrop
+var glow: NeonGlowLayer
 
 func _ready() -> void:
     rng.randomize()
-    _backdrop = Node2D.new()
-    _backdrop.name = "Backdrop"
-    _backdrop.show_behind_parent = true
-    _backdrop.draw.connect(_draw_backdrop)
-    add_child(_backdrop)
+    backdrop = SectorBackdrop.new()
+    backdrop.name = "SectorBackdrop"
+    backdrop.show_behind_parent = true
+    backdrop.size = GameCatalog.WORLD_SIZE
+    backdrop.configure_menu(low_fx)
+    add_child(backdrop)
+    glow = NeonGlowLayer.new()
+    glow.arena = self
+    add_child(glow)
     set_process(true)
     set_physics_process(true)
 
@@ -101,6 +107,7 @@ func begin_run(permanent_upgrades: Dictionary, selected_stage: int = 1, reduced_
     _rule_timer = float(SectorCatalog.value(stage, "rule_every", 0.0)) * (0.5 if showcase_active else 1.0)
     _range_scale = float(SectorCatalog.value(stage, "range_scale", 1.0))
     pending_drops.clear()
+    backdrop.configure_stage(stage, low_fx)
     rng.seed = 14057 + stage * 137
     levels = {
         "gun": 1, "beam": 0, "volley": 0, "arc": 0, "nova": 0,
@@ -150,8 +157,6 @@ func begin_run(permanent_upgrades: Dictionary, selected_stage: int = 1, reduced_
         _tick_showcase_script()
         _spawn_timer = 0.55
     state = "running"
-    if _backdrop != null:
-        _backdrop.queue_redraw()
     stats_changed.emit(snapshot())
     queue_redraw()
 
@@ -228,10 +233,7 @@ func _process(delta: float) -> void:
     if state == "running":
         _visual_clock += delta
         queue_redraw()
-        # Full FX pulses the horizon halo and fog drifts in every FX mode;
-        # otherwise the backdrop keeps the commands recorded at begin_run.
-        if _backdrop != null and (not low_fx or SectorCatalog.rule(stage) == "fog"):
-            _backdrop.queue_redraw()
+        glow.queue_redraw()
         perf_ticks_per_frame = lerpf(perf_ticks_per_frame, float(_perf_ticks_this_frame), 0.05)
         _perf_ticks_this_frame = 0
         _perf_log_timer -= delta
@@ -927,11 +929,23 @@ func _effect(kind: String, a: Vector2, b: Vector2, radius: float, color: Color, 
         effects.pop_front()
     effects.append({"kind": kind, "a": a, "b": b, "radius": radius, "color": color, "ttl": duration, "duration": duration})
 
-func _draw_backdrop() -> void:
-    ArenaBackground.draw_to(_backdrop, low_fx, _visual_clock, stage)
+## Menus show the arena's backdrop in its MENU theme, with no battle on it.
+func show_menu_backdrop(reduced_fx: bool) -> void:
+    state = "idle"
+    backdrop.configure_menu(reduced_fx)
+    queue_redraw()
+    glow.queue_redraw()
+
+
+func visual_clock() -> float:
+    return _visual_clock
+
 
 func _draw() -> void:
+    if state == "idle":
+        return
     var started: int = Time.get_ticks_usec()
+    ArenaBackground.draw_to(self)
     for drop in pending_drops:
         EnemyRenderer.draw_drop_marker(self, drop, _visual_clock)
     var damage_fraction: float = clampf((_guardian_damage_until - _visual_clock) / 0.32, 0.0, 1.0)

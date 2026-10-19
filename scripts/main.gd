@@ -4,10 +4,15 @@ const CYAN := Color("#63eeff")
 const GOLD := Color("#ffc96d")
 const PALE := Color("#b7c8de")
 const GREEN := Color("#8ef3b2")
+const VIOLET := Color("#8C6BFF")
+## Neon pass: menu panels let the animated backdrop show through.
+const SCRIM := Color(0.01, 0.02, 0.06, 0.58)
+const PANEL_FILL := Color(0.035, 0.08, 0.16, 0.86)
 var arena: Arena
 var record: Dictionary
 var hud: TacticalHud
 var modal: ColorRect
+var transition: ScreenTransition
 var current_stage := 1
 var _last_back_frame := -1
 ## The first two sectors keep their original node names for tests and tools.
@@ -22,6 +27,8 @@ func _ready() -> void:
     arena.upgrade_requested.connect(_choose_system)
     arena.run_completed.connect(_results)
     _build_hud()
+    transition = ScreenTransition.new()
+    add_child(transition)
     resized.connect(_resize_arena)
     _resize_arena()
     _title()
@@ -95,10 +102,21 @@ func _stats(info: Dictionary) -> void:
     hud.apply_snapshot(info)
 
 
+## Every screen goes through here so it fades in the same way.
+func _show(screen: ColorRect) -> void:
+    modal = screen
+    add_child(screen)
+    transition.reveal(screen)
+
+
+func _menu_backdrop() -> void:
+    arena.show_menu_backdrop(bool(record.get("low_fx", true)))
+
+
 func _title() -> void:
-    arena.state = "idle"
     hud.hide()
     record = SaveData.validated(record)
+    _menu_backdrop()
     _clear()
     var title := TitleMenuView.new()
     title.configure(record)
@@ -107,8 +125,7 @@ func _title() -> void:
     title.sectors_requested.connect(_sectors)
     title.settings_requested.connect(_settings)
     title.codex_requested.connect(_threat_guide)
-    modal = title
-    add_child(title)
+    _show(title)
 
 
 ## Opens from title, or while paused without accidentally unpausing Arena.
@@ -122,12 +139,11 @@ func _threat_guide(from_pause: bool = false) -> void:
         guide.return_requested.connect(_show_pause_menu)
     else:
         guide.return_requested.connect(_title)
-    modal = guide
-    add_child(guide)
+    _show(guide)
 
 
 func _sectors() -> void:
-    arena.state = "idle"
+    _menu_backdrop()
     hud.hide()
     var content := _screen("SECTORS", "SELECT A MAP", true)
     if GameCatalog.PLAYTEST_TOOLS:
@@ -138,16 +154,12 @@ func _sectors() -> void:
         content.add_child(toggle)
     var unlocked: int = int(record.get("stage_unlocked", 1))
     for stage in range(1, SectorCatalog.count() + 1):
-        var map: Dictionary = SectorCatalog.get_map(stage)
-        var caption: String = "%s  •  %s" % [map["code"], map["place"]]
-        var deploy := _button(caption, stage == 1)
-        deploy.name = SECTOR_BUTTON_NAMES.get(stage, "Sector%d" % stage)
-        deploy.disabled = not SectorCatalog.is_open(stage, unlocked, GameCatalog.PLAYTEST_TOOLS)
-        if deploy.disabled:
-            deploy.text = "%s  •  LOCKED — CLEAR %s" % [map["code"], GameCatalog.stage_name(stage - 1)]
-        deploy.pressed.connect(_deploy.bind(stage))
-        content.add_child(deploy)
-        content.add_child(_label(String(map["brief"]), 15, PALE, true))
+        var card := SectorCard.new()
+        card.name = SECTOR_BUTTON_NAMES.get(stage, "Sector%d" % stage)
+        card.setup(stage, SectorCatalog.is_open(stage, unlocked, GameCatalog.PLAYTEST_TOOLS),
+            bool(record.get("low_fx", true)), "LOCKED — CLEAR " + GameCatalog.stage_name(stage - 1))
+        card.pressed.connect(_deploy.bind(stage))
+        content.add_child(card)
     var back := _button("RETURN TO TITLE", false)
     back.name = "SectorsBack"
     back.pressed.connect(_title)
@@ -161,7 +173,7 @@ func _toggle_hard_start() -> void:
 
 
 func _settings() -> void:
-    arena.state = "idle"
+    _menu_backdrop()
     hud.hide()
     var content := _screen("SETTINGS", "SYSTEM CONFIGURATION")
     var fx_label := "LOW (J8)" if bool(record.get("low_fx", true)) else "FULL"
@@ -183,9 +195,9 @@ func _settings_toggle_fx() -> void:
 
 
 func _hangar() -> void:
-    arena.state = "idle"
     hud.hide()
     record = SaveData.validated(record)
+    _menu_backdrop()
     _clear()
     var hangar := HangarView.new()
     hangar.configure(record)
@@ -193,8 +205,7 @@ func _hangar() -> void:
     hangar.research_requested.connect(_research)
     hangar.fx_requested.connect(_toggle_fx)
     hangar.title_requested.connect(_title)
-    modal = hangar
-    add_child(hangar)
+    _show(hangar)
 
 func _research(kind: String) -> void:
     if SaveData.buy_meta(record, kind):
@@ -214,6 +225,7 @@ func _deploy(selected_stage: int = 1) -> void:
     hud.show()
     arena.begin_run(record["meta"], current_stage, bool(record["low_fx"]),
         bool(record.get("hard_start", false)))
+    transition.deploy(SectorCatalog.get_map(current_stage))
 
 func _pause() -> void:
     if arena.state != "running":
@@ -255,8 +267,7 @@ func _choose_system(offers: Array[String]) -> void:
     var choice := EvolutionChoiceView.new()
     choice.configure(eligible, arena.levels, arena.level)
     choice.upgrade_chosen.connect(_apply_upgrade)
-    modal = choice
-    add_child(choice)
+    _show(choice)
 
 
 func _apply_upgrade(kind: String) -> void:
@@ -303,11 +314,11 @@ func _clear() -> void:
 
 func _screen(heading: String, subheading: String, tall: bool = false) -> VBoxContainer:
     _clear()
-    modal = ColorRect.new()
-    modal.color = Color(0.015, 0.025, 0.05, 0.96)
-    modal.mouse_filter = Control.MOUSE_FILTER_STOP
-    modal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-    add_child(modal)
+    var screen := ColorRect.new()
+    screen.color = SCRIM
+    screen.mouse_filter = Control.MOUSE_FILTER_STOP
+    screen.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    _show(screen)
     var scroll := ScrollContainer.new()
     scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -325,18 +336,21 @@ func _screen(heading: String, subheading: String, tall: bool = false) -> VBoxCon
     var body := VBoxContainer.new()
     body.add_theme_constant_override("separation", 19 if tall else 15)
     panel.add_child(body)
-    body.add_child(_label(heading, 44 if tall else 38, CYAN, true))
+    body.add_child(_neon_label(heading, 44 if tall else 38, CYAN))
     body.add_child(_label(subheading, 25 if tall else 20, GOLD, true))
-    body.add_child(HSeparator.new())
+    body.add_child(_neon_rule())
     return body
 
 func _panel(compact: bool = false) -> PanelContainer:
     var p := PanelContainer.new()
     var style := StyleBoxFlat.new()
-    style.bg_color = Color("#122940")
-    style.border_color = Color("#367b9b")
+    style.bg_color = PANEL_FILL
+    style.border_color = CYAN
     style.set_border_width_all(2)
     style.set_corner_radius_all(13)
+    # One StyleBox shadow is the panel's neon bloom; no shader needed.
+    style.shadow_color = Color(CYAN, 0.22)
+    style.shadow_size = 16
     style.content_margin_left = HudProfile.HUD_MARGIN_HORIZONTAL if compact else 18
     style.content_margin_right = HudProfile.HUD_MARGIN_HORIZONTAL if compact else 18
     style.content_margin_top = HudProfile.HUD_MARGIN_VERTICAL if compact else 15
@@ -351,14 +365,19 @@ func _button(caption: String, accent: bool) -> Button:
     b.add_theme_font_size_override("font_size", 19)
     for variant in ["normal", "hover", "pressed", "disabled"]:
         var style := StyleBoxFlat.new()
-        style.bg_color = Color("#146884") if accent else Color("#1b3653")
+        style.bg_color = Color(0.05, 0.36, 0.48, 0.92) if accent else Color(0.06, 0.13, 0.24, 0.88)
         if variant == "hover" or variant == "pressed":
             style.bg_color = style.bg_color.lightened(0.16)
         if variant == "disabled":
-            style.bg_color = Color("#142033")
+            style.bg_color = Color(0.05, 0.08, 0.14, 0.80)
         style.border_color = CYAN if accent else Color("#3f85a4")
+        if variant == "disabled":
+            style.border_color = Color("#24384d")
         style.set_border_width_all(2)
         style.set_corner_radius_all(8)
+        if accent and variant != "disabled":
+            style.shadow_color = Color(CYAN, 0.30)
+            style.shadow_size = 8
         style.content_margin_top = 10
         style.content_margin_bottom = 10
         style.content_margin_left = 12
@@ -375,3 +394,19 @@ func _label(caption: String, font_size: int, color: Color, center: bool = false)
     if center:
         l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     return l
+
+
+## Neon heading: a soft same-hue outline reads as a glow on the dark scrim.
+func _neon_label(caption: String, font_size: int, color: Color) -> Label:
+    var l := _label(caption, font_size, color, true)
+    l.add_theme_color_override("font_outline_color", Color(color, 0.28))
+    l.add_theme_constant_override("outline_size", 10)
+    return l
+
+
+func _neon_rule() -> ColorRect:
+    var rule := ColorRect.new()
+    rule.custom_minimum_size.y = 2.0
+    rule.color = Color(CYAN, 0.55)
+    rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    return rule
