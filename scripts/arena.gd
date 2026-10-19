@@ -62,9 +62,22 @@ var _hard_formations_start := GameCatalog.SHOWCASE_FORMATIONS_START
 var _rule_timer := 0.0
 var _range_scale := 1.0
 var pending_drops: Array[Dictionary] = []
+## Neon pass: GPU backdrop (sky, horizon, the sector's animated scene) and the
+## additive glow under units. Both draw behind Arena's own _draw.
+var backdrop: SectorBackdrop
+var glow: NeonGlowLayer
 
 func _ready() -> void:
     rng.randomize()
+    backdrop = SectorBackdrop.new()
+    backdrop.name = "SectorBackdrop"
+    backdrop.show_behind_parent = true
+    backdrop.size = GameCatalog.WORLD_SIZE
+    backdrop.configure_menu(low_fx)
+    add_child(backdrop)
+    glow = NeonGlowLayer.new()
+    glow.arena = self
+    add_child(glow)
     set_process(true)
     set_physics_process(true)
 
@@ -79,6 +92,7 @@ func begin_run(permanent_upgrades: Dictionary, selected_stage: int = 1, reduced_
     _rule_timer = float(SectorCatalog.value(stage, "rule_every", 0.0)) * (0.5 if showcase_active else 1.0)
     _range_scale = float(SectorCatalog.value(stage, "range_scale", 1.0))
     pending_drops.clear()
+    backdrop.configure_stage(stage, low_fx)
     rng.seed = 14057 + stage * 137
     levels = {
         "gun": 1, "beam": 0, "volley": 0, "arc": 0, "nova": 0,
@@ -203,6 +217,7 @@ func _process(delta: float) -> void:
     if state == "running":
         _visual_clock += delta
         queue_redraw()
+        glow.queue_redraw()
 
 func _physics_process(delta: float) -> void:
     if state != "running":
@@ -828,8 +843,22 @@ func _effect(kind: String, a: Vector2, b: Vector2, radius: float, color: Color, 
         effects.pop_front()
     effects.append({"kind": kind, "a": a, "b": b, "radius": radius, "color": color, "ttl": duration, "duration": duration})
 
+## Menus show the arena's backdrop in its MENU theme, with no battle on it.
+func show_menu_backdrop(reduced_fx: bool) -> void:
+    state = "idle"
+    backdrop.configure_menu(reduced_fx)
+    queue_redraw()
+    glow.queue_redraw()
+
+
+func visual_clock() -> float:
+    return _visual_clock
+
+
 func _draw() -> void:
-    ArenaBackground.draw_to(self, low_fx, _visual_clock, stage)
+    if state == "idle":
+        return
+    ArenaBackground.draw_to(self)
     for drop in pending_drops:
         EnemyRenderer.draw_drop_marker(self, drop, _visual_clock)
     var damage_fraction: float = clampf((_guardian_damage_until - _visual_clock) / 0.32, 0.0, 1.0)

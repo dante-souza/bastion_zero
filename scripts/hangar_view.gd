@@ -33,7 +33,7 @@ func configure(saved_record: Dictionary) -> void:
 
 
 func _ready() -> void:
-    color = Color("#020814")
+    color = Color(0.008, 0.03, 0.08, 0.78)
     mouse_filter = Control.MOUSE_FILTER_STOP
     set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     # The old background repeated the Guardian behind the deploy controls.

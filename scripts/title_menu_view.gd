@@ -25,7 +25,8 @@ func configure(saved: Dictionary) -> void:
 
 
 func _ready() -> void:
-    color = BG
+    # Neon pass: a light scrim, so the animated menu backdrop shows through.
+    color = Color(BG, 0.30)
     mouse_filter = Control.MOUSE_FILTER_STOP
     set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     _build()

@@ -15,7 +15,7 @@ const MINT := Color("#6BBD98")
 
 
 func _ready() -> void:
-    color = BG
+    color = Color(BG, 0.86)
     mouse_filter = Control.MOUSE_FILTER_STOP
     set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     _build()

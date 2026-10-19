@@ -46,3 +46,12 @@ real per-rank copy and distinct icons; health bars only on Tanks, Elites
 and the focused target; kill pops bloom to white instead of fading to
 brown; Android back pauses or steps back instead of quitting mid-run.
 `make phase-i6` deploys it. Details in `docs/VISUAL-PHASE-I6.md`.
+
+## Neon pass — Living Maps
+
+Each of the six sectors now has its own animated backdrop (aurora, rift,
+foundry scan, radar sweep, null fog) drawn by one GPU shader, units carry a
+cheap additive neon glow, menus float over an animated violet backdrop,
+SECTORS shows live map cards, and screens fade in with a mission card on
+deploy. Rendering only; VISUAL FX LOW/FULL stays the quality toggle.
+Details and J8 cost notes in `docs/VISUAL-NEON-PASS.md`.

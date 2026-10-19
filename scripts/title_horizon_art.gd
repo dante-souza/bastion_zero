@@ -3,10 +3,9 @@ extends Control
 
 ## Phase I.3 title illustration: same original Guardian used in gameplay,
 ## a restrained defensive arc and a sparse tactical enemy silhouette field.
-## Static _draw only; no processing, GPU particles or remote assets.
+## Static _draw only; the animated sky behind it is the menu backdrop.
 
 const GUARDIAN: Texture2D = preload("res://assets/guardian_phase_b3.svg")
-const SKY := Color("#020912")
 const CYAN := Color("#31D7EF")
 const MINT := Color("#68B994")
 const WEDGE := Color("#FF923D")
@@ -35,7 +34,6 @@ func _ready() -> void:
 func _draw() -> void:
     var w: float = size.x
     var h: float = size.y
-    draw_rect(Rect2(Vector2.ZERO, size), SKY)
     # Enemy identity is shape + color, independent of the reference image.
     draw_arc(Vector2(w * 0.19, h * 0.17), 10.0, 0.0, TAU, 28, DRIFTER, 3.0, true)
     draw_rect(Rect2(Vector2(w * 0.52 - 9, h * 0.10), Vector2(18, 18)),
@@ -50,8 +48,11 @@ func _draw() -> void:
         var relative: float = (x - w * 0.5) / maxf(w * 0.5, 1.0)
         var y: float = h * 0.76 + 57.0 * relative * relative
         horizon.append(Vector2(x, y))
-    draw_polyline(horizon, CYAN.darkened(0.56), 7.0, true)
-    draw_polyline(horizon, CYAN, 2.2, true)
+    # Neon tube: wide faint halo, mid glow, bright core.
+    draw_polyline(horizon, Color(CYAN, 0.10), 22.0, true)
+    draw_polyline(horizon, Color(CYAN, 0.28), 8.0, true)
+    draw_polyline(horizon, CYAN, 2.4, true)
+    draw_polyline(horizon, Color("#D8FBFF"), 1.0, true)
 
 
 func _wedge(center: Vector2, radius: float) -> void:
