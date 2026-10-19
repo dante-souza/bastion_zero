@@ -1,0 +1,122 @@
+name: Android J8 debug APK
+
+on:
+  # Frozen phase branches build with their own copy of this file.
+  push:
+    branches: [dev, main, 'feature/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android-debug:
+    name: ARMv7 APK • Samsung Galaxy J8
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+
+      - name: Install JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # Ubuntu hosted runners already include the Android SDK. Avoid the setup-android@v3
+      # action: its legacy "tools" installation is no longer available upstream.
+      - name: Locate runner Android SDK
+        shell: bash
+        run: |
+          echo "ANDROID_HOME=${ANDROID_HOME}"
+          test -d "${ANDROID_HOME}/cmdline-tools"
+          SDKMANAGER="$(find "${ANDROID_HOME}/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)"
+          test -n "$SDKMANAGER"
+          echo "$(dirname "$SDKMANAGER")" >> "$GITHUB_PATH"
+          echo "Using $SDKMANAGER"
+
+      - name: Install Godot 4.4 Android SDK dependencies
+        shell: bash
+        run: |
+          sdkmanager "platform-tools" "build-tools;34.0.0" "platforms;android-34"
+          echo "Android SDK: ${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+
+      - name: Install Godot and export templates
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.4.1
+          use-dotnet: false
+          include-templates: true
+
+      - name: Configure Godot Android paths
+        shell: bash
+        env:
+          BASTION_DEBUG_KEYSTORE_BASE64: ${{ secrets.BASTION_DEBUG_KEYSTORE_BASE64 }}
+        run: |
+          mkdir -p "$HOME/.config/godot"
+          cat > "$HOME/.config/godot/editor_settings-4.tres" <<EOF
+          [gd_resource type="EditorSettings" format=3]
+
+          [resource]
+          export/android/java_sdk_path = "${JAVA_HOME}"
+          export/android/android_sdk_path = "${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          EOF
+          if [ -n "$BASTION_DEBUG_KEYSTORE_BASE64" ]; then
+            printf '%s' "$BASTION_DEBUG_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/bastion-zero-debug.keystore"
+            echo "Using stable secret-provided CI debug keystore."
+          else
+            echo "::warning::No BASTION_DEBUG_KEYSTORE_BASE64 secret: generating ephemeral key; updates will require uninstall."
+            keytool -genkeypair -noprompt -keystore "$RUNNER_TEMP/bastion-zero-debug.keystore" \
+              -storepass android -alias androiddebugkey -keypass android \
+              -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Bastion Zero,C=BR"
+          fi
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_PATH=$RUNNER_TEMP/bastion-zero-debug.keystore" >> "$GITHUB_ENV"
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_USER=androiddebugkey" >> "$GITHUB_ENV"
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=android" >> "$GITHUB_ENV"
+
+      - name: Verify Phase H approved art
+        shell: bash
+        run: python scripts/phase_h_assets.py verify --require
+
+      - name: Import Godot resources
+        shell: bash
+        run: godot --headless --path . --editor --quit --quit-after 240
+
+      - name: Create 32-bit ARM debug APK
+        shell: bash
+        run: |
+          # One preset for every branch. Stamp a rising versionCode and a
+          # versionName that says which branch and commit is installed.
+          VERSION="$(sed -n 's/^const GAME_VERSION := "\(.*\)"$/\1/p' scripts/game_catalog.gd)"
+          SLUG="$(printf '%s' "$GITHUB_REF_NAME" | tr -c 'A-Za-z0-9._-' '-')"
+          CODE=$((1000 + GITHUB_RUN_NUMBER))
+          NAME="${VERSION}-${SLUG}-${GITHUB_SHA::7}"
+          python3 - "$CODE" "$NAME" <<'PY'
+          import re, sys
+          from pathlib import Path
+          path = Path("export_presets.cfg")
+          text = path.read_text(encoding="utf-8")
+          head, sep, tail = text.partition('name="Android J8 Branch Debug"')
+          if not sep:
+              sys.exit("Android J8 Branch Debug preset missing")
+          tail = re.sub(r"version/code=\d+", f"version/code={sys.argv[1]}", tail, count=1)
+          tail = re.sub(r'version/name="[^"]*"', f'version/name="{sys.argv[2]}"', tail, count=1)
+          path.write_text(head + sep + tail, encoding="utf-8")
+          PY
+          echo "versionCode=$CODE versionName=$NAME"
+          mkdir -p dist
+          APK="dist/bastion-zero-j8-branch-debug.apk"
+          godot --headless --path . --export-debug "Android J8 Branch Debug" "$APK"
+          test -s "$APK"
+          (cd dist && sha256sum bastion-zero-j8-branch-debug.apk) | tee dist/SHA256SUMS.txt
+
+      - name: Upload J8 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bastion-Zero-J8-ARMv7
+          path: |
+            dist/bastion-zero-j8-branch-debug.apk
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30
