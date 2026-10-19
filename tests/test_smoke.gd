@@ -13,7 +13,8 @@ func _expect(ok: bool, label: String) -> void:
         push_error("FAIL " + label)
 
 func _run() -> void:
-    _expect(GameCatalog.TOTAL_STAGES == 2, "normal and elite stages")
+    _expect(GameCatalog.TOTAL_STAGES == 6 and SectorCatalog.count() == GameCatalog.TOTAL_STAGES,
+        "six playable sectors and the catalog agrees with TOTAL_STAGES")
     _expect(load("res://assets/branding/last_horizon_boot.png") is Texture2D,
         "native Godot boot splash imports as a PNG texture")
     _expect(load("res://assets/branding/guardian_launcher_192.png") is Texture2D,
@@ -181,7 +182,10 @@ func _run() -> void:
     var stage2_preview := Arena.new()
     root.add_child(stage2_preview)
     stage2_preview.begin_run({}, 2, true, true)
-    _expect(not stage2_preview.showcase_active and stage2_preview.level == 1 and int(stage2_preview.levels["nova"]) == 0, "ELITE 01 never receives the NORMAL 01 showcase")
+    _expect(stage2_preview.showcase_active and stage2_preview.level == 12 and
+        not stage2_preview._showcase_elite_spawned and
+        stage2_preview._hard_script != GameCatalog.SHOWCASE_SCRIPT,
+        "ELITE 01 hard start gets LV12 but its own opener, not NORMAL 01's script")
     stage2_preview.queue_free()
     _expect(GameCatalog.stage_name(1) == "NORMAL 01", "stage one name")
     _expect(GameCatalog.stage_name(2) == "ELITE 01", "stage two name")
@@ -536,8 +540,14 @@ func _run() -> void:
                 "SectorNormal", true, false) as Button
             var sector_elite: Button = (game.get("modal") as ColorRect).find_child(
                 "SectorElite", true, false) as Button
-            _expect(sector_normal != null and sector_elite != null and sector_elite.disabled,
-                "SECTORS opens real Normal deployment and properly locked Elite")
+            _expect(sector_normal != null and sector_elite != null and
+                sector_elite.disabled == not GameCatalog.PLAYTEST_TOOLS,
+                "SECTORS opens real Normal deployment; Elite locked unless playtest tools")
+            for stage in range(3, SectorCatalog.count() + 1):
+                _expect((game.get("modal") as ColorRect).find_child("Sector%d" % stage, true, false) is Button,
+                    "SECTORS lists %s" % GameCatalog.stage_name(stage))
+            _expect((game.get("modal") as ColorRect).find_child("SectorHardStart", true, false) is Button
+                == GameCatalog.PLAYTEST_TOOLS, "HARD START toggle is offered in playtest builds")
         game.call("_title")
         var settings_title: TitleMenuView = game.get("modal") as TitleMenuView
         var settings_button: Button = settings_title.find_child("OpenSettings", true, false) as Button
@@ -596,7 +606,7 @@ func _run() -> void:
         for label_node in hangar_view.find_children("*", "Label", true, false):
             if String((label_node as Label).text) == "BUILD  " + GameCatalog.GAME_VERSION:
                 build_label_visible = true
-        _expect(GameCatalog.GAME_VERSION.begins_with("0.9.5") and build_label_visible,
+        _expect(GameCatalog.GAME_VERSION.begins_with("0.9.6") and build_label_visible,
             "Hangar footer displays current Phase G patch version")
     var deploy: Button
     if hangar_view != null:
@@ -816,5 +826,133 @@ func _run() -> void:
         "perf probe line is logcat-ready")
     perf.queue_free()
 
+    _sector_checks()
     print("RESULT: ", "PASS" if failures == 0 else "%d FAILURES" % failures)
     quit(0 if failures == 0 else 1)
+
+
+## Playable sectors: identity, field rules, cool backdrops and HARD START.
+func _sector_checks() -> void:
+    var required := ["code", "place", "tag", "brief", "seconds", "hp", "pace", "speed",
+        "heavy", "opening", "opening_phase", "cycle", "elite_at", "rule",
+        "sky_top", "sky_bottom", "horizon", "horizon_core", "shape"]
+    var codes: Dictionary = {}
+    var places_rules: Dictionary = {}
+    for stage in range(1, SectorCatalog.count() + 1):
+        var map: Dictionary = SectorCatalog.get_map(stage)
+        var missing: Array = []
+        for key in required:
+            if not map.has(key):
+                missing.append(key)
+        _expect(missing.is_empty(), "sector %d defines every field %s" % [stage, missing])
+        codes[map.get("code", "")] = true
+        places_rules["%s/%s/%s" % [map.get("place", ""), map.get("rule", ""), map.get("shape", "")]] = true
+        var patterns_ok := CombatDirector.PATTERNS.has(map.get("opening", ""))
+        for pattern in map.get("cycle", []):
+            patterns_ok = patterns_ok and CombatDirector.PATTERNS.has(pattern)
+        _expect(patterns_ok, "%s only uses authored formations" % map.get("code", ""))
+        # Palette rule: backdrops are cool (blue band) or near-neutral; never warm, never green.
+        for key in ["sky_top", "sky_bottom", "horizon", "horizon_core"]:
+            var c: Color = map.get(key, Color.BLACK)
+            _expect(c.s < 0.25 or (c.h >= 0.48 and c.h <= 0.76),
+                "%s %s stays cool (hue %.2f)" % [map.get("code", ""), key, c.h])
+        var shape: String = String(map.get("shape", "crest"))
+        var low := INF
+        var high := -INF
+        for point in ArenaBackground.horizon_points(shape):
+            low = minf(low, point.y)
+            high = maxf(high, point.y)
+        _expect(low >= 975.0 and high <= 1125.0,
+            "%s horizon frames the Guardian (%.0f..%.0f)" % [map.get("code", ""), low, high])
+        var rng := RandomNumberGenerator.new()
+        rng.seed = 99 + stage
+        var safe := true
+        for idx in range(12):
+            for member in CombatDirector.formation(stage, GameCatalog.stage_duration(stage) * float(idx) / 12.0, idx, rng):
+                safe = safe and float(member["x"]) >= 40.0 and float(member["x"]) <= 680.0
+        _expect(safe, "%s formations stay inside the field" % map.get("code", ""))
+    _expect(codes.size() == SectorCatalog.count(), "every sector has its own code")
+    _expect(places_rules.size() == SectorCatalog.count() - 1,
+        "sectors 3-6 each have their own place, rule and horizon (1 and 2 share LAST HORIZON)")
+    _expect(CombatDirector.pattern_for(3, 0.0, 0) == "RUSH" and CombatDirector.pattern_for(4, 0.0, 0) == "ARMORED",
+        "SWARM opens with a rush, SIEGE with armor")
+    _expect(SectorCatalog.is_open(2, 1, true) and not SectorCatalog.is_open(2, 1, false)
+        and SectorCatalog.is_open(3, 3, false) and not SectorCatalog.is_open(7, 6, true),
+        "sector locks follow progression unless playtest tools open them")
+    _expect(not SaveData.validated({"hard_start": false})["hard_start"] and
+        SaveData.validated({})["hard_start"] == GameCatalog.PLAYTEST_TOOLS,
+        "HARD START preference persists and defaults on only in playtest builds")
+    _expect(ThreatLanguage.color_for(ThreatLanguage.KIND_FORMATION, "SIEGE") == ThreatLanguage.SHIELDED,
+        "SIEGE wall warns as armored")
+
+    for stage in range(1, SectorCatalog.count() + 1):
+        var hard := Arena.new()
+        root.add_child(hard)
+        hard.begin_run({}, stage, true, true)
+        _expect(hard.level == GameCatalog.SHOWCASE_START_LEVEL and int(hard.levels["nova"]) == 2
+            and hard.enemies.size() >= 6, "%s HARD START opens at LV12 with a busy field (%d)" % [
+                GameCatalog.stage_name(stage), hard.enemies.size()])
+        var steps := 0
+        while hard.state != "finished" and steps < 30 * 20:
+            if hard.state == "upgrade":
+                var offers: Array[String] = GameCatalog.upgrade_offers(hard.levels, hard.rng)
+                if offers.is_empty():
+                    break
+                hard.choose_upgrade(offers[0])
+            hard._physics_process(1.0 / 30.0)
+            steps += 1
+        _expect(hard.elapsed >= 19.9 or hard.state == "finished",
+            "%s HARD START simulates 20s without stalling" % GameCatalog.stage_name(stage))
+        hard.queue_free()
+
+    var swarm := Arena.new()
+    root.add_child(swarm)
+    swarm.begin_run({}, 3, true, false)
+    _expect(swarm.combat_event.contains("RUNNER SURGE"), "SWARM announces its field rule")
+    swarm.elapsed = 20.0
+    swarm._rule_timer = 0.01
+    swarm._tick_field_rule(0.05)
+    var runners := 0
+    for enemy in swarm.enemies:
+        runners += 1 if String(enemy["kind"]) == "runner" else 0
+    _expect(runners == 6, "runner surge pours three runners down each flank")
+    _expect(float(swarm.enemies[0]["speed"]) > 144.0, "SWARM runners move faster than NORMAL runners")
+    swarm.queue_free()
+
+    var siege := Arena.new()
+    root.add_child(siege)
+    siege.begin_run({}, 4, true, false)
+    siege._spawn_enemy("tank", 360.0, 200.0)
+    siege.enemies[0]["hp"] = float(siege.enemies[0]["max_hp"]) * 0.5
+    siege._move_enemies(1.0)
+    _expect(is_equal_approx(float(siege.enemies[0]["hp"]) / float(siege.enemies[0]["max_hp"]), 0.515),
+        "SIEGE nanites repair 1.5% max HP per second")
+    siege.queue_free()
+
+    var ambush := Arena.new()
+    root.add_child(ambush)
+    ambush.begin_run({}, 5, true, false)
+    ambush._rule_timer = 0.01
+    ambush._tick_field_rule(0.05)
+    _expect(ambush.pending_drops.size() == 1 and ambush.enemies.is_empty(),
+        "drop pod is telegraphed before anything lands")
+    ambush._tick_field_rule(1.7)
+    _expect(ambush.pending_drops.is_empty() and ambush.enemies.size() == 3,
+        "drop pod lands a three-unit squad mid-field")
+    var mid_field := true
+    for enemy in ambush.enemies:
+        mid_field = mid_field and Vector2(enemy["pos"]).y > 380.0
+    _expect(mid_field, "drop squad appears mid-field, not at the top edge")
+    ambush.queue_free()
+
+    var fog := Arena.new()
+    root.add_child(fog)
+    fog.begin_run({}, 6, true, false)
+    _expect(is_equal_approx(fog._range(100.0), 82.0), "NULL FOG cuts weapon range by 18%")
+    fog.elapsed = GameCatalog.stage_duration(6) * 0.51
+    fog._physics_process(0.01)
+    var elite_count := 0
+    for enemy in fog.enemies:
+        elite_count += 1 if String(enemy["kind"]) == "elite" else 0
+    _expect(elite_count == 1 and fog._elite_spawned, "ELITE 02 elite arrives at half time")
+    fog.queue_free()

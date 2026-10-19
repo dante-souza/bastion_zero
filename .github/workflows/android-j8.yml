@@ -1,8 +1,9 @@
 name: Android J8 debug APK
 
 on:
+  # Frozen phase branches build with their own copy of this file.
   push:
-    branches: ['feature/m1-playable-game', 'feature/m1-visual-phase-a', 'feature/m1-visual-phase-b-guardian', 'feature/m1-visual-phase-c-enemies', 'feature/m1-visual-phase-d-weapons', 'feature/m1-visual-phase-e-hud', 'feature/m1-visual-phase-f-evolution', 'feature/m1-visual-phase-g-identity-hangar', 'feature/m1-visual-phase-h-premium', 'feature/m1-visual-phase-i1-combat-hud', 'feature/m1-visual-phase-i2-evolution', 'feature/m1-visual-phase-i3-title-menu', 'feature/m1-visual-phase-i4-threat-language', 'feature/m1-visual-phase-i5-color-language', 'feature/m1-visual-phase-i6-playtest-fixes']
+    branches: [dev, main, 'feature/**']
   workflow_dispatch:
 
 permissions:
@@ -75,7 +76,6 @@ jobs:
           echo "GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=android" >> "$GITHUB_ENV"
 
       - name: Verify Phase H approved art
-        if: github.ref_name == 'feature/m1-visual-phase-h-premium' || github.ref_name == 'feature/m1-visual-phase-i1-combat-hud' || github.ref_name == 'feature/m1-visual-phase-i2-evolution' || github.ref_name == 'feature/m1-visual-phase-i3-title-menu' || github.ref_name == 'feature/m1-visual-phase-i4-threat-language' || github.ref_name == 'feature/m1-visual-phase-i5-color-language' || github.ref_name == 'feature/m1-visual-phase-i6-playtest-fixes'
         shell: bash
         run: python scripts/phase_h_assets.py verify --require
 
@@ -86,64 +86,37 @@ jobs:
       - name: Create 32-bit ARM debug APK
         shell: bash
         run: |
+          # One preset for every branch. Stamp a rising versionCode and a
+          # versionName that says which branch and commit is installed.
+          VERSION="$(sed -n 's/^const GAME_VERSION := "\(.*\)"$/\1/p' scripts/game_catalog.gd)"
+          SLUG="$(printf '%s' "$GITHUB_REF_NAME" | tr -c 'A-Za-z0-9._-' '-')"
+          CODE=$((1000 + GITHUB_RUN_NUMBER))
+          NAME="${VERSION}-${SLUG}-${GITHUB_SHA::7}"
+          python3 - "$CODE" "$NAME" <<'PY'
+          import re, sys
+          from pathlib import Path
+          path = Path("export_presets.cfg")
+          text = path.read_text(encoding="utf-8")
+          head, sep, tail = text.partition('name="Android J8 Branch Debug"')
+          if not sep:
+              sys.exit("Android J8 Branch Debug preset missing")
+          tail = re.sub(r"version/code=\d+", f"version/code={sys.argv[1]}", tail, count=1)
+          tail = re.sub(r'version/name="[^"]*"', f'version/name="{sys.argv[2]}"', tail, count=1)
+          path.write_text(head + sep + tail, encoding="utf-8")
+          PY
+          echo "versionCode=$CODE versionName=$NAME"
           mkdir -p dist
-          if [[ "$GITHUB_REF_NAME" == "feature/m1-visual-phase-i6-playtest-fixes" ]]; then
-            PRESET="Android J8 Phase I6 Debug"
-            APK="dist/bastion-zero-phase-i6-j8-debug.apk"
-          elif [[ "$GITHUB_REF_NAME" == "feature/m1-visual-phase-i5-color-language" ]]; then
-            PRESET="Android J8 Phase I5 Debug"
-            APK="dist/bastion-zero-phase-i5-j8-debug.apk"
-          elif [[ "$GITHUB_REF_NAME" == "feature/m1-visual-phase-i4-threat-language" ]]; then
-            PRESET="Android J8 Phase I4 Debug"
-            APK="dist/bastion-zero-phase-i4-j8-debug.apk"
-          elif [[ "$GITHUB_REF_NAME" == "feature/m1-visual-phase-i3-title-menu" ]]; then
-            PRESET="Android J8 Phase I3 Debug"
-            APK="dist/bastion-zero-phase-i3-j8-debug.apk"
-          elif [[ "$GITHUB_REF_NAME" == "feature/m1-visual-phase-i2-evolution" ]]; then
-            PRESET="Android J8 Phase I2 Debug"
-            APK="dist/bastion-zero-phase-i2-j8-debug.apk"
-          elif [[ "$GITHUB_REF_NAME" == "feature/m1-visual-phase-i1-combat-hud" ]]; then
-            PRESET="Android J8 Phase I1 Debug"
-            APK="dist/bastion-zero-phase-i1-j8-debug.apk"
-          elif [[ "$GITHUB_REF_NAME" == "feature/m1-visual-phase-h-premium" ]]; then
-            PRESET="Android J8 Phase H Debug"
-            APK="dist/bastion-zero-phase-h-j8-debug.apk"
-          elif [[ "$GITHUB_REF_NAME" == "feature/m1-visual-phase-g-identity-hangar" ]]; then
-            PRESET="Android J8 Phase G Debug"
-            APK="dist/bastion-zero-phase-g-j8-debug.apk"
-          elif [[ "$GITHUB_REF_NAME" == "feature/m1-visual-phase-f-evolution" ]]; then
-            PRESET="Android J8 Phase F Debug"
-            APK="dist/bastion-zero-phase-f-j8-debug.apk"
-          elif [[ "$GITHUB_REF_NAME" == "feature/m1-visual-phase-e-hud" ]]; then
-            PRESET="Android J8 Phase E Debug"
-            APK="dist/bastion-zero-phase-e-j8-debug.apk"
-          elif [[ "$GITHUB_REF_NAME" == "feature/m1-visual-phase-d-weapons" ]]; then
-            PRESET="Android J8 Phase D Debug"
-            APK="dist/bastion-zero-phase-d-j8-debug.apk"
-          elif [[ "$GITHUB_REF_NAME" == "feature/m1-visual-phase-c-enemies" ]]; then
-            PRESET="Android J8 Phase C Debug"
-            APK="dist/bastion-zero-phase-c-j8-debug.apk"
-          elif [[ "$GITHUB_REF_NAME" == "feature/m1-visual-phase-b-guardian" ]]; then
-            PRESET="Android J8 Phase B Debug"
-            APK="dist/bastion-zero-phase-b-j8-debug.apk"
-          elif [[ "$GITHUB_REF_NAME" == "feature/m1-visual-phase-a" ]]; then
-            PRESET="Android J8 Phase A Debug"
-            APK="dist/bastion-zero-phase-a-j8-debug.apk"
-          else
-            PRESET="Android J8 Debug"
-            APK="dist/bastion-zero-j8-debug.apk"
-          fi
-          godot --headless --path . --export-debug "$PRESET" "$APK"
+          APK="dist/bastion-zero-j8-branch-debug.apk"
+          godot --headless --path . --export-debug "Android J8 Branch Debug" "$APK"
           test -s "$APK"
-          sha256sum "$APK" | tee dist/SHA256SUMS.txt
+          (cd dist && sha256sum bastion-zero-j8-branch-debug.apk) | tee dist/SHA256SUMS.txt
 
       - name: Upload J8 APK
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ github.ref_name == 'feature/m1-visual-phase-i6-playtest-fixes' && 'Bastion-Zero-Phase-I6-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-i5-color-language' && 'Bastion-Zero-Phase-I5-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-i4-threat-language' && 'Bastion-Zero-Phase-I4-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-i3-title-menu' && 'Bastion-Zero-Phase-I3-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-i2-evolution' && 'Bastion-Zero-Phase-I2-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-i1-combat-hud' && 'Bastion-Zero-Phase-I1-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-h-premium' && 'Bastion-Zero-Phase-H-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-g-identity-hangar' && 'Bastion-Zero-Phase-G-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-f-evolution' && 'Bastion-Zero-Phase-F-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-e-hud' && 'Bastion-Zero-Phase-E-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-d-weapons' && 'Bastion-Zero-Phase-D-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-c-enemies' && 'Bastion-Zero-Phase-C-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-b-guardian' && 'Bastion-Zero-Phase-B-J8-ARMv7' || (github.ref_name == 'feature/m1-visual-phase-a' && 'Bastion-Zero-Phase-A-J8-ARMv7' || 'Bastion-Zero-M1R-J8-ARMv7'))))))))))))) }}
+          name: Bastion-Zero-J8-ARMv7
           path: |
-            dist/bastion-zero-*-j8-debug.apk
-            dist/bastion-zero-j8-debug.apk
+            dist/bastion-zero-j8-branch-debug.apk
             dist/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 30

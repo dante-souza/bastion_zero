@@ -52,7 +52,7 @@ func _construct() -> void:
     var title := _column(0)
     title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     header.add_child(title)
-    stage_label = _label("STAGE 01 • NORMAL", 15, WARM)
+    stage_label = _label("NORMAL 01 • LAST HORIZON", 15, WARM)
     stage_label.name = "StageLabel"
     title.add_child(stage_label)
     time_label = _label("00:00 / 01:36", 27, CYAN)
@@ -148,7 +148,8 @@ func _construct() -> void:
 
 func apply_snapshot(info: Dictionary) -> void:
     var stage: int = int(info.get("stage", 1))
-    stage_label.text = "STAGE %02d • %s" % [stage, "ELITE" if stage == 2 else "NORMAL"]
+    stage_label.text = "%s • %s%s" % [String(info.get("stage_name", GameCatalog.stage_name(stage))),
+        String(info.get("sector", "")), "  •  HARD" if bool(info.get("showcase", false)) else ""]
     time_label.text = "%s  /  %s" % [
         GameCatalog.format_time(float(info.get("time", 0.0))),
         GameCatalog.format_time(float(info.get("duration", 0.0)))
