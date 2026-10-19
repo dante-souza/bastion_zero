@@ -15,7 +15,7 @@ static func accent(kind: String) -> Color:
         "nova":
             return VisualProfile.NOVA_FIELD
         "hull":
-            return Color("#F5B86B")
+            return Color("#CFF4FF")
         _:
             return Color("#92CDFF")
 

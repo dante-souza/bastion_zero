@@ -43,15 +43,13 @@ func _build() -> void:
     safe.add_child(content)
 
     content.add_child(_label("THREAT LANGUAGE", 39, WARM))
-    var intro := _label("Shape tells you what it is. Color tells you how to react.", 17, MUTED)
+    var intro := _label("Cool is yours. Warm is hostile. Green is growth. Shape says how it moves.", 17, MUTED)
+    intro.name = "ThreatGuideRule"
     intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     content.add_child(intro)
-    var caution := _label("GREEN CIRCLES ARE HOSTILE — XP IS AWARDED AUTOMATICALLY.", 16, VisualProfile.GRUNT)
-    caution.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    content.add_child(caution)
 
     for group in ["YOURS", "HOSTILE", "SIGNALS"]:
-        var heading := _label(group, 18, MINT if group == "YOURS" else WARM)
+        var heading := _label(group, 18, _heading_color(group))
         heading.name = group + "Heading"
         content.add_child(heading)
         var grid := GridContainer.new()
@@ -113,16 +111,23 @@ func _entry(entry: Dictionary) -> PanelContainer:
     symbol.tint = entry["color"]
     symbol.name = "ThreatSymbol"
     head.add_child(symbol)
-    var name := _label(String(entry["title"]), 18, WARM)
-    name.name = "LegendTitle"
-    name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    head.add_child(name)
+    var title := _label(String(entry["title"]), 18, WARM)
+    title.name = "LegendTitle"
+    title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    head.add_child(title)
     var detail := _label(String(entry["desc"]), 16, MUTED)
     detail.name = "LegendDescription"
     detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     stack.add_child(detail)
     return panel
+
+
+static func _heading_color(group: String) -> Color:
+    match group:
+        "YOURS": return ThreatLanguage.CYAN
+        "HOSTILE": return ThreatLanguage.WARNING
+    return INK
 
 
 func _label(value: String, font: int, tint: Color) -> Label:

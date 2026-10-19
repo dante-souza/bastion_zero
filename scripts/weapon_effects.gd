@@ -16,8 +16,8 @@ static func draw_projectile(canvas: CanvasItem, bullet: Dictionary, reduced_fx: 
             canvas.draw_line(pos, pos - motion * 18.0, VisualProfile.GUN_TRACER, 2.8, true)
             canvas.draw_circle(pos, 2.8, VisualProfile.HIT)
         "rocket":
-            # Amber nose / orange exhaust are recognizably different from
-            # cyan Sentinel rounds even in crowded J8 low-FX screenshots.
+            # Phase I.5: white-hot nose / pale exhaust. Comets left amber
+            # because orange is the Runner's (hostile) color.
             canvas.draw_line(pos, pos - motion * (28.0 if reduced_fx else 35.0),
                 VisualProfile.COMET_TRAIL, 3.6 if reduced_fx else 4.6, true)
             canvas.draw_circle(pos, 8.0, VisualProfile.COMET_BODY)
@@ -43,12 +43,13 @@ static func draw_effect(canvas: CanvasItem, effect: Dictionary, reduced_fx: bool
                     Color(color.r, color.g, color.b, color.a * 0.20),
                     radius + 14.0 * alpha, true)
             canvas.draw_line(at, destination, color, radius + 2.0 * alpha, true)
-            canvas.draw_line(at, destination, Color(1, 0.92, 1, 0.80 * alpha),
+            var core: Color = VisualProfile.PRISM_CORE
+            canvas.draw_line(at, destination, Color(core.r, core.g, core.b, 0.80 * alpha),
                 1.7, true)
             canvas.draw_circle(at, 4.0 * alpha,
-                Color(1.0, 0.60, 0.95, 0.55 * alpha))
+                Color(core.r, core.g, core.b, 0.55 * alpha))
             canvas.draw_circle(destination, 5.0 * alpha,
-                Color(1.0, 0.60, 0.95, 0.45 * alpha))
+                Color(core.r, core.g, core.b, 0.45 * alpha))
         "arc":
             # Jagged lightning decorates the same collision-resolved chain
             # endpoints; faint straight centerline explains its actual path.
@@ -71,7 +72,7 @@ static func draw_effect(canvas: CanvasItem, effect: Dictionary, reduced_fx: bool
                 Color(color.r, color.g, color.b, 0.40 * alpha), 2.4, true)
             canvas.draw_arc(at, expanding, 0.0, TAU, 44, color, 4.0, true)
         "impact":
-            # Rocket burst / fragments: short, warm, non-opaque sparks.
+            # Rocket burst / fragments: short, ice-white, non-opaque sparks.
             var grow: float = radius * (1.0 - 0.35 * alpha)
             canvas.draw_arc(at, grow, 0.0, TAU, 24, color, 3.3 * alpha, true)
             canvas.draw_circle(at, 5.0 * alpha, VisualProfile.COMET_HOT)

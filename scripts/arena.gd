@@ -7,7 +7,6 @@ signal run_completed(victory: bool, report: Dictionary)
 
 const G := GameCatalog.GUARDIAN
 const CYAN := Color("#5feeff")
-const GOLD := Color("#ffca66")
 const RED := Color("#ff6486")
 const BLUE := Color("#7894ff")
 const GREEN := Color("#8ef3b2")
@@ -50,6 +49,8 @@ var formation_index := 0
 var formation_name := "LINE"
 var breaches := 0
 var combat_event := "DEFENSE ONLINE"
+## Phase I.5: severity travels as a kind, never parsed back out of the copy.
+var combat_event_kind := ThreatLanguage.KIND_INFO
 var event_time := 0.0
 var showcase_active := false
 var showcase_script_index := 0
@@ -106,8 +107,7 @@ func begin_run(permanent_upgrades: Dictionary, selected_stage: int = 1, reduced_
     formation_index = 0
     formation_name = "LINE"
     breaches = 0
-    combat_event = "DEFENSE ONLINE"
-    event_time = 3.0
+    _announce("DEFENSE ONLINE", ThreatLanguage.KIND_INFO, 3.0)
     if showcase_active:
         _tick_showcase_script()
         _spawn_timer = 0.55
@@ -136,8 +136,15 @@ func snapshot() -> Dictionary:
         "formation": formation_name, "breaches": breaches,
         "showcase": showcase_active,
         "showcase_beat": showcase_script_index,
-        "event": combat_event if event_time > 0.0 else ""
+        "event": combat_event if event_time > 0.0 else "",
+        "event_kind": combat_event_kind if event_time > 0.0 else ""
     }
+
+func _announce(text: String, kind: String, seconds: float) -> void:
+    combat_event = text
+    combat_event_kind = kind
+    event_time = seconds
+
 
 func toggle_pause() -> void:
     if state == "running":
@@ -198,8 +205,7 @@ func _physics_process(delta: float) -> void:
     if stage == 2 and not _elite_spawned and elapsed > GameCatalog.stage_duration(stage) * 0.60:
         _elite_spawned = true
         _spawn_enemy("elite", 360.0, 155.0)
-        combat_event = "ELITE SIGNATURE DETECTED"
-        event_time = 4.0
+        _announce("ELITE SIGNATURE DETECTED", ThreatLanguage.KIND_ELITE, 4.0)
     _move_enemies(delta)
     if state != "running":
         return
@@ -232,14 +238,12 @@ func _tick_showcase_script() -> void:
             _spawn_enemy(kind, float(spec[1]), float(spec[2]), true)
             if kind == "elite":
                 _showcase_elite_spawned = true
-        combat_event = "SHOWCASE • " + String(beat["label"])
-        event_time = 3.2
+        _announce("SHOWCASE • " + String(beat["label"]), ThreatLanguage.KIND_INFO, 3.2)
         showcase_script_index += 1
     if not showcase_regular_spawns_unlocked and elapsed >= GameCatalog.SHOWCASE_FORMATIONS_START:
         showcase_regular_spawns_unlocked = true
         _spawn_timer = 0.55
-        combat_event = "SHOWCASE • FORMATIONS ONLINE"
-        event_time = 2.6
+        _announce("SHOWCASE • FORMATIONS ONLINE", ThreatLanguage.KIND_INFO, 2.6)
 
 
 func _spawn_formation() -> void:
@@ -254,8 +258,7 @@ func _spawn_formation() -> void:
         _spawn_enemy(String(member["kind"]), float(member["x"]), float(member["y"]))
         created += 1
     if created > 0:
-        combat_event = "THREATS: %s" % formation_name
-        event_time = 2.4
+        _announce("THREATS: %s" % formation_name, ThreatLanguage.KIND_FORMATION, 2.4)
         formation_index += 1
 
 
@@ -333,8 +336,7 @@ func _move_enemies(delta: float) -> void:
             hull = maxf(0.0, hull - float(enemy["damage"]))
             _guardian_damage_until = _visual_clock + 0.32
             breaches += 1
-            combat_event = "BREACH!  -%d HULL" % roundi(float(enemy["damage"]))
-            event_time = 2.0
+            _announce("BREACH!  -%d HULL" % roundi(float(enemy["damage"])), ThreatLanguage.KIND_BREACH, 2.0)
             _effect("ring", Vector2(pos.x, GameCatalog.BREACH_Y), Vector2.ZERO, 76.0, RED, 0.42)
             if int(enemy["id"]) == focused_id:
                 focused_id = -1
@@ -352,8 +354,7 @@ func _process_elite_phase() -> void:
         if float(enemy["hp"]) / maxf(1.0, float(enemy["max_hp"])) > 0.55:
             return
         _elite_enraged = true
-        combat_event = "ELITE PHASE II - ESCORTS"
-        event_time = 5.0
+        _announce("ELITE PHASE II - ESCORTS", ThreatLanguage.KIND_ELITE, 5.0)
         var at: Vector2 = enemy["pos"]
         _effect("ring", at, Vector2.ZERO, 148.0, RED, 0.80)
         if enemies.size() <= MAX_ENEMIES - 2:
@@ -678,7 +679,7 @@ func _fire_nova() -> void:
             enemy["slow"] = maxf(float(enemy["slow"]), 1.1 + float(levels["nova"]) * 0.30)
     # Comet Volley + Nova Field: detonations become supercharged.
     if int(levels["volley"]) >= 2 and int(levels["nova"]) >= 2:
-        _blast(center, radius * 0.67, _power(24.0), "nova", GOLD)
+        _blast(center, radius * 0.67, _power(24.0), "nova", VisualProfile.COMET_HOT)
 
 func _blast(pos: Vector2, radius: float, amount: float, source: String, color: Color) -> void:
     if source != "nova":
@@ -707,9 +708,12 @@ func _damage_by_id(id: int, amount: float, source: String) -> float:
     enemy["hp"] = float(enemy["hp"]) - actual
     weapon_damage[source] = float(weapon_damage.get(source, 0.0)) + actual
     if not low_fx:
-        _effect("number", Vector2(enemy["pos"]) + Vector2(0, -15), Vector2.ZERO, actual, GOLD, 0.42)
+        _effect("number", Vector2(enemy["pos"]) + Vector2(0, -15), Vector2.ZERO, actual, VisualProfile.DAMAGE_NUMBER, 0.42)
     if float(enemy["hp"]) <= 0.0:
-        _effect("ring", Vector2(enemy["pos"]), Vector2.ZERO, float(enemy["radius"]) * 2.1, RED, 0.36)
+        # Phase I.5: a kill pops in the enemy's own color; red rings are reserved
+        # for danger (breach, enraged elite) so they never read as a hazard zone.
+        _effect("ring", Vector2(enemy["pos"]), Vector2.ZERO, float(enemy["radius"]) * 2.1,
+            VisualProfile.enemy_tint(String(enemy["kind"])), 0.36)
         xp += int(enemy["xp"])
         kills += 1
         if focused_id == id:

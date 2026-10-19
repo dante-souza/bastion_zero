@@ -7,10 +7,10 @@ signal pause_requested
 
 const ICE := Color("#E8FCFF")
 const CYAN := Color("#5FEFFF")
-const MINT := Color("#6BBD98")
+const MINT := VisualProfile.XP_GREEN
 const WARM := Color("#EFC187")
 const THREAT := Color("#FF923D")
-const ELITE := Color("#F44A60")
+const ELITE := VisualProfile.ELITE
 const MUTED := Color("#8CA8B9")
 const SLOT_NAMES := ["SENTINEL", "PRISM", "COMET", "ARC", "NOVA"]
 const SLOT_KEYS := ["gun", "beam", "volley", "arc", "nova"]
@@ -153,12 +153,19 @@ func apply_snapshot(info: Dictionary) -> void:
     ]
     var threats: int = int(info.get("enemies", 0))
     var event: String = String(info.get("event", ""))
+    var kind: String = String(info.get("event_kind", ""))
     var formation := String(info.get("formation", "LINE"))
     warning_panel.visible = threats > 0 or not event.is_empty()
-    warning_label.text = ThreatLanguage.banner(event, formation, threats)
-    var severity := ThreatLanguage.color_for_event(event, formation)
+    warning_label.text = ThreatLanguage.banner(event, kind, formation, threats)
+    var severity := ThreatLanguage.color_for(kind, formation)
     if warning_label.get_theme_color("font_color") != severity:
         warning_label.add_theme_color_override("font_color", severity)
+        # The strip follows the same severity: cyan status must not sit in an
+        # orange alert frame. Same darkening as the original orange strip.
+        var strip := warning_panel.get_theme_stylebox("panel") as StyleBoxFlat
+        if strip != null:
+            strip.bg_color = severity.darkened(0.87)
+            strip.border_color = severity.darkened(0.45)
 
     var maximum: float = float(info.get("elite_max_hp", 0.0))
     elite_panel.visible = maximum > 0.0

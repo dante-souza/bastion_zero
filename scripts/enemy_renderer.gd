@@ -100,7 +100,7 @@ static func _draw_elite(
         canvas: CanvasItem, at: Vector2, radius: float,
         visual_time: float, enraged: bool, reduced_fx: bool) -> void:
     var pink: Color = VisualProfile.ELITE
-    var ember: Color = VisualProfile.ELITE_ORANGE
+    var ember: Color = VisualProfile.ELITE_RIM
     canvas.draw_circle(at, radius, VisualProfile.ENEMY_INTERIOR)
     canvas.draw_arc(at, radius, 0.0, TAU, 42, ember, 3.0, true)
     # Quarter arcs are distinctive even at thumbnail size; no particle shower.
@@ -116,7 +116,7 @@ static func _draw_elite(
     canvas.draw_circle(at, 5.0, VisualProfile.ENEMY_INTERIOR)
     if not reduced_fx:
         canvas.draw_arc(at, radius + 7.0 + 1.5 * pulse,
-            0.0, TAU, 32, Color(1.0, 0.41, 0.56, 0.26), 2.5, true)
+            0.0, TAU, 32, Color(pink.r, pink.g, pink.b, 0.26), 2.5, true)
     if enraged:
         canvas.draw_arc(at, radius + 11.0, 0.0, TAU, 36, VisualProfile.ENEMY_ENRAGED, 4.0, true)
         canvas.draw_circle(at, 4.0, VisualProfile.ENEMY_CENTER)

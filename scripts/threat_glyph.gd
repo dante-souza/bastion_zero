@@ -32,11 +32,11 @@ func _draw() -> void:
                 center + Vector2(0,-15)
             ]), VisualProfile.TANK_SHIELD, 2.5, true)
         "elite":
-            draw_arc(center, 23, 0, TAU, 30, VisualProfile.ELITE_ORANGE, 3, true)
+            draw_arc(center, 23, 0, TAU, 30, VisualProfile.ELITE_RIM, 3, true)
             for i in range(4):
                 var angle := float(i) * TAU / 4.0 + 0.11
                 draw_arc(center, 18, angle, angle + 1.22, 8, tint, 4, true)
-            draw_circle(center, 5, VisualProfile.ELITE_ORANGE)
+            draw_circle(center, 5, VisualProfile.ELITE_RIM)
         "guardian":
             draw_circle(center, 23, Color("#092845"))
             draw_arc(center, 20, 0, TAU, 32, VisualProfile.GUARDIAN_RING_LIGHT, 5, true)
@@ -45,6 +45,16 @@ func _draw() -> void:
         "weapon":
             draw_line(center + Vector2(-19, 18), center + Vector2(18,-20), tint, 4, true)
             draw_circle(center + Vector2(18,-20), 4, VisualProfile.HIT)
+        "focus":
+            # Same geometry EnemyRenderer uses: an outline ring around a target.
+            draw_arc(center, 13, 0, TAU, 26, VisualProfile.GRUNT, 4, true)
+            draw_arc(center, 22, 0, TAU, 30, tint, 2.5, true)
+        "slow":
+            draw_arc(center, 13, 0, TAU, 26, VisualProfile.RUNNER, 4, true)
+            draw_arc(center, 21, 0, TAU, 30, tint, 2.0, true)
+            for i in range(3):
+                var y := 20.0 + float(i) * 6.0
+                draw_line(Vector2(6, y), Vector2(13, y), tint, 1.6, true)
         "health":
             draw_rect(Rect2(Vector2(8,31), Vector2(46,7)), VisualProfile.HEALTH_TRACK)
             draw_rect(Rect2(Vector2(8,31), Vector2(33,7)), tint)

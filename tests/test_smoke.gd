@@ -48,13 +48,36 @@ func _run() -> void:
         "I.1 tactical header, warnings and elite health never overlap")
     _expect(ThreatLanguage.descriptions().size() == 12,
         "I.4 threat guide has actual friendly, hostile and signaling vocabulary")
-    _expect(ThreatLanguage.color_for_event("BREACH! -7 HULL", "LINE") == ThreatLanguage.CRITICAL and
-        ThreatLanguage.color_for_event("ELITE - ESCORTED ASSAULT", "LINE") == ThreatLanguage.ELITE and
-        ThreatLanguage.color_for_event("", "ARMORED") == ThreatLanguage.SHIELDED,
-        "HUD threat colors reflect real breach/elite/armored events")
-    _expect(ThreatLanguage.banner("", "WEDGE", 4).contains("4 HOSTILES") and
-        ThreatLanguage.banner("", "WEDGE", 0).is_empty(),
+    _expect(ThreatLanguage.color_for(ThreatLanguage.KIND_BREACH, "LINE") == ThreatLanguage.CRITICAL and
+        ThreatLanguage.color_for(ThreatLanguage.KIND_ELITE, "LINE") == ThreatLanguage.ELITE and
+        ThreatLanguage.color_for("", "ARMORED") == ThreatLanguage.SHIELDED and
+        ThreatLanguage.color_for(ThreatLanguage.KIND_FORMATION, "PHALANX") == ThreatLanguage.SHIELDED,
+        "I.5 HUD severity comes from typed breach/elite/armored event kinds")
+    _expect(ThreatLanguage.color_for(ThreatLanguage.KIND_BREACH, "LINE") ==
+        ThreatLanguage.color_for(ThreatLanguage.KIND_BREACH, "WEDGE"),
+        "I.5 severity no longer depends on message wording")
+    _expect(ThreatLanguage.color_for(ThreatLanguage.KIND_INFO, "LINE") == ThreatLanguage.CYAN and
+        ThreatLanguage.banner("DEFENSE ONLINE", ThreatLanguage.KIND_INFO, "LINE", 0) == "DEFENSE ONLINE",
+        "I.5 friendly status is cyan and never labelled ALERT")
+    _expect(ThreatLanguage.banner("BREACH!  -7 HULL", ThreatLanguage.KIND_BREACH, "LINE", 3).begins_with("ALERT"),
+        "hostile events keep the ALERT prefix")
+    _expect(ThreatLanguage.banner("", "", "WEDGE", 4).contains("4 HOSTILES") and
+        ThreatLanguage.banner("", "", "WEDGE", 0).is_empty(),
         "HUD warns only when real enemies/events exist")
+    # I.5 palette guard: what the player owns must never look like what hurts them.
+    for friendly in VisualProfile.FRIENDLY_SET:
+        for hostile in VisualProfile.HOSTILE_SET:
+            var f: Color = friendly
+            var h: Color = hostile
+            var gap: float = Vector3(f.r - h.r, f.g - h.g, f.b - h.b).length()
+            _expect(gap >= 0.30, "I.5 friendly %s stays apart from hostile %s (gap %.2f)" % [
+                f.to_html(false), h.to_html(false), gap])
+    for hostile in VisualProfile.HOSTILE_SET:
+        var hue: float = Color(hostile).h
+        _expect(hue < 0.22 or hue > 0.45,
+            "I.5 no hostile reads green: " + Color(hostile).to_html(false))
+    _expect(VisualProfile.ENEMY_SLOWED == VisualProfile.NOVA_FIELD,
+        "slow ring keeps the color of Nova Field, its only source")
     for entry in ThreatLanguage.descriptions():
         var legend_kind: String = String(entry["id"])
         if ["grunt", "runner", "tank", "elite"].has(legend_kind):
@@ -71,8 +94,8 @@ func _run() -> void:
         "status slot colors match existing combat effects")
     _expect(WeaponEffects.ARC_SEGMENTS_LOW < WeaponEffects.ARC_SEGMENTS_FULL,
         "J8 low-FX chain lighting remains cheaper after readability pass")
-    _expect(VisualProfile.PRISM_BEAM == Color("#FF56DD"), "Phase D Prism uses magenta identity")
-    _expect(VisualProfile.NOVA_FIELD == Color("#47E7A8"), "Phase D Nova uses jade identity")
+    _expect(VisualProfile.PRISM_BEAM == Color("#B77CFF"), "I.5 Prism moves from magenta to violet")
+    _expect(VisualProfile.NOVA_FIELD == Color("#2FE3C8"), "I.5 Nova moves from jade to teal")
     _expect(VisualProfile.COMET_TRAIL != VisualProfile.GUN_TRACER, "Comet trails differ from gun tracers")
     _expect(VisualProfile.ARC_BOLT != VisualProfile.PRISM_BEAM, "Arc relay distinct from Prism")
     var lightning_low: PackedVector2Array = WeaponEffects.lightning_points(Vector2(10, 20), Vector2(210, 220), true)
@@ -221,10 +244,10 @@ func _run() -> void:
     _expect(is_equal_approx(GameCatalog.damage_factor("tank", "beam"), 0.72), "tank armor resists beams")
     _expect(GameCatalog.damage_factor("tank", "volley") > 1.0, "Comet Volley counters tank armor")
     _expect(GameCatalog.damage_factor("runner", "arc") > 1.0, "Arc Relay counters runners")
-    _expect(VisualProfile.GRUNT == Color("#52F52A"), "Phase C grunts use neon green")
+    _expect(VisualProfile.GRUNT == Color("#FF5FA8"), "I.5 grunts use rose, matching title drifters")
     _expect(VisualProfile.RUNNER == Color("#FF9A37"), "Phase C runners use orange")
     _expect(VisualProfile.TANK == Color("#F4DE45"), "Phase C armored enemies use gold")
-    _expect(VisualProfile.ELITE != VisualProfile.GRUNT and VisualProfile.ELITE != VisualProfile.RUNNER, "elites have distinct magenta identity")
+    _expect(VisualProfile.ELITE != VisualProfile.GRUNT and VisualProfile.ELITE != VisualProfile.RUNNER, "elites have distinct crimson identity")
     _expect(EnemyRenderer.visual_radius("runner", 12.0) >= 18.0, "small runners remain visible on J8")
     _expect(EnemyRenderer.visual_radius("grunt", 16.0) >= 18.0, "grunt ring remains visible on J8")
     _expect(EnemyRenderer.visual_radius("tank", 27.0) == 27.0, "armored silhouette uses existing tank scale")
@@ -474,7 +497,9 @@ func _run() -> void:
                 var icon: ThreatGlyph = codex.find_child("GruntLegend", true, false).find_child(
                     "ThreatSymbol", true, false) as ThreatGlyph
                 _expect(icon != null and icon.tint == VisualProfile.GRUNT,
-                    "codex green ring matches hostile grunt instead of false green XP")
+                    "codex rose ring matches the hostile grunt renderer")
+                _expect(codex.find_child("ThreatGuideRule", true, false) != null,
+                    "codex states the cool/warm/green rule instead of a warning label")
                 var return_button: Button = codex.find_child("ThreatGuideBack", true, false) as Button
                 _expect(return_button != null, "threat guide has genuine return action")
                 if return_button != null:
@@ -549,7 +574,7 @@ func _run() -> void:
         for label_node in hangar_view.find_children("*", "Label", true, false):
             if String((label_node as Label).text) == "BUILD  " + GameCatalog.GAME_VERSION:
                 build_label_visible = true
-        _expect(GameCatalog.GAME_VERSION.begins_with("0.9.3") and build_label_visible,
+        _expect(GameCatalog.GAME_VERSION.begins_with("0.9.4") and build_label_visible,
             "Hangar footer displays current Phase G patch version")
     var deploy: Button
     if hangar_view != null:
@@ -570,7 +595,18 @@ func _run() -> void:
                 tactical.find_child("ThreatBanner", true, false) != null and
                 tactical.find_child("EliteStrip", true, false) != null,
                 "tactical HUD contains pause, real threat warnings and boss HP")
-            tactical.apply_snapshot(live_arena.snapshot())
+            var opening: Dictionary = live_arena.snapshot()
+            _expect(opening.has("event_kind") and
+                String(opening["event_kind"]) == ThreatLanguage.KIND_INFO and
+                not String(opening["event"]).is_empty(),
+                "I.5 Arena snapshot carries a typed event kind")
+            tactical.apply_snapshot(opening)
+            _expect(tactical.warning_label.get_theme_color("font_color") == ThreatLanguage.CYAN and
+                not tactical.warning_label.text.begins_with("ALERT"),
+                "I.5 deployment status renders cyan, not as an orange alert")
+            var strip := tactical.warning_panel.get_theme_stylebox("panel") as StyleBoxFlat
+            _expect(strip != null and strip.border_color == ThreatLanguage.CYAN.darkened(0.45),
+                "I.5 banner frame follows the event severity color")
             _expect(tactical.slot_labels[0].text.contains("R4") and
                 tactical.slot_labels[1].text.contains("R2"),
                 "weapons show actual starting ranks, not invented mockup mechanics")

@@ -26,3 +26,13 @@ real breach (red), armored (yellow) and elite (magenta) events. The pause
 codex returns to the paused game without starting combat. Same premium J8
 app ID; `make phase-i4` deploys the new build. Details in
 `docs/VISUAL-PHASE-I4.md`.
+
+## Phase I.5 — Color Language
+
+One rule for every pixel in combat: **cool is yours, warm is hostile,
+green is XP only.** Grunts become rose rings (matching the title drifters),
+Elites crimson, Prism violet, Comets ice-white and Nova teal, so no
+weapon shares a hue with an enemy. HUD warning colors now come from typed
+event kinds instead of message text, and a test guards the palette.
+Same premium J8 app ID; `make phase-i5` deploys it. Details in
+`docs/VISUAL-PHASE-I5.md`.
