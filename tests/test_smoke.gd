@@ -659,8 +659,9 @@ func _run() -> void:
             tactical.apply_snapshot(with_elite)
             _expect(tactical.warning_panel.offset_top == HudProfile.TACTICAL_WARNING_START,
                 "I.6 banner moves up into the free slot without an elite")
-            _expect(tactical.slot_labels[0].text.contains("R4") and
-                tactical.slot_labels[1].text.contains("R2"),
+            # Default deploy is a LEVEL 1 run: SENTINEL R1, PRISM not yet online.
+            _expect(tactical.slot_labels[0].text.contains("R%d" % int(live_arena.levels["gun"])) and
+                int(live_arena.levels["gun"]) == 1 and tactical.slot_labels[1].text.contains("—"),
                 "weapons show actual starting ranks, not invented mockup mechanics")
             _expect(not tactical.elite_panel.visible,
                 "elite health strip hides without living elite")
@@ -913,8 +914,12 @@ func _sector_checks() -> void:
         and SectorCatalog.is_open(3, 3, false) and not SectorCatalog.is_open(7, 6, true),
         "sector locks follow progression unless playtest tools open them")
     _expect(not SaveData.validated({"hard_start": false})["hard_start"] and
-        SaveData.validated({})["hard_start"] == GameCatalog.PLAYTEST_TOOLS,
-        "HARD START preference persists and defaults on only in playtest builds")
+        not SaveData.validated({})["hard_start"] and not SaveData.defaults()["hard_start"],
+        "runs start at LEVEL 1 by default")
+    _expect(not SaveData.validated({"schema": 2, "hard_start": true})["hard_start"],
+        "saves from before LEVEL 1 default drop their HARD START once")
+    _expect(SaveData.validated({"schema": SaveData.SAVE_SCHEMA, "hard_start": true})["hard_start"]
+        == GameCatalog.PLAYTEST_TOOLS, "HARD START stays a saved toggle in playtest builds")
     _expect(ThreatLanguage.color_for(ThreatLanguage.KIND_FORMATION, "SIEGE") == ThreatLanguage.SHIELDED,
         "SIEGE wall warns as armored")
 

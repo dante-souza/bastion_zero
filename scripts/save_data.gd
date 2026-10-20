@@ -2,7 +2,8 @@ class_name SaveData
 extends RefCounted
 
 const FILE_PATH := "user://bastion_zero_save.json"
-const SAVE_SCHEMA := 2
+## Schema 3: M1 playtests start at LEVEL 1; older saves drop their HARD START once.
+const SAVE_SCHEMA := 3
 
 static func defaults() -> Dictionary:
     return {
@@ -11,7 +12,7 @@ static func defaults() -> Dictionary:
         "meta": {"hull": 0, "damage": 0},
         "runs": 0, "wins": 0, "best_wave": 0, "best_kills": 0,
         "stage_unlocked": 1, "best_stage": 0, "low_fx": true,
-        "hard_start": GameCatalog.PLAYTEST_TOOLS,
+        "hard_start": false,
         "moving_line": false
     }
 
@@ -27,7 +28,9 @@ static func validated(data: Variant) -> Dictionary:
     clean["stage_unlocked"] = clampi(int(data.get("stage_unlocked", 1)), 1, GameCatalog.TOTAL_STAGES)
     clean["best_stage"] = clampi(int(data.get("best_stage", 0)), 0, GameCatalog.TOTAL_STAGES)
     clean["low_fx"] = bool(data.get("low_fx", true))
-    clean["hard_start"] = GameCatalog.PLAYTEST_TOOLS and bool(data.get("hard_start", true))
+    # HARD START is a playtest toggle; runs start at LEVEL 1 unless chosen.
+    var migrated: bool = int(data.get("schema", 0)) >= 3
+    clean["hard_start"] = GameCatalog.PLAYTEST_TOOLS and migrated and bool(data.get("hard_start", false))
     # Moving Line is a prototype: playtest builds only, off unless chosen.
     clean["moving_line"] = GameCatalog.PLAYTEST_TOOLS and bool(data.get("moving_line", false))
     var raw_meta: Variant = data.get("meta", {})
